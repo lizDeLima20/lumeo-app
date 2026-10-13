@@ -1,0 +1,27 @@
+# Dependencies and generated web output
+node_modules/
+dist/
+server-dist/
+
+# Android build output and Gradle state
+android/.gradle/
+android/build/
+android/app/build/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+google-services.json
+
+# Editor, local agent and operating-system state
+.DS_Store
+.idea/
+.vscode/
+.agents/
+.aws/
+.codex/

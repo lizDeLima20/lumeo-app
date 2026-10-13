@@ -1,0 +1,47 @@
+{
+  "name": "lumeo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "predev": "npm run comic:assets",
+    "dev": "vite",
+    "build": "npm run ocr:assets && npm run comic:assets && npm run typecheck && vite build",
+    "build:android": "npm run ocr:assets && npm run comic:assets && npm run typecheck && vite build --mode android",
+    "typecheck": "tsc --noEmit",
+    "typecheck:server": "tsc -p server/tsconfig.json --noEmit",
+    "test:storage": "tsx --test tests/*.test.ts",
+    "test": "npm run test:storage",
+    "ocr:assets": "node scripts/ocr-assets.mjs",
+    "comic:assets": "node scripts/comic-archive-assets.mjs",
+    "preview": "vite preview",
+    "android:java": "./scripts/android-terminal.sh java",
+    "android:sync": "./scripts/android-terminal.sh sync",
+    "android:build": "./scripts/android-terminal.sh build",
+    "android:install": "./scripts/android-terminal.sh install",
+    "android:logs": "./scripts/android-terminal.sh logs",
+    "android:dev": "./scripts/android-terminal.sh dev",
+    "android:open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
+    "@fontsource-variable/literata": "^5.3.0",
+    "@lingo-reader/mobi-parser": "^0.4.6",
+    "fflate": "^0.8.3",
+    "html2canvas": "^1.4.1",
+    "libarchive.js": "^2.0.2",
+    "pdfjs-dist": "^6.3.289",
+    "sharp": "^0.35.5",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.9",
+    "@types/node": "^24.3.0",
+    "concurrently": "^9.2.1",
+    "fake-indexeddb": "^6.2.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.3"
+  }
+}

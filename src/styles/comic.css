@@ -1,0 +1,153 @@
+/* Comic reader. Independent of the book reader's paper, typography and page-turn layers:
+   the comic is painted on one canvas by its own engine, and everything else stays out of
+   its way. The stage colours match the renderer's palette, so the only space around a
+   page is the theme's own background. */
+.comic-reader {
+  position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column;
+  --comic-stage: #141412; --comic-ink: #f0eee7; --comic-fab: rgba(38, 37, 31, .82);
+  background: var(--comic-stage); color: var(--comic-ink);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.comic-reader[data-reader-theme="light"] { --comic-stage: #ebe7de; --comic-ink: #25221c; --comic-fab: rgba(246, 243, 236, .86); }
+
+.comic-stage {
+  position: relative; flex: 1; min-height: 0; overflow: hidden; outline: none;
+  /* The stage owns every gesture: the page follows the finger, the browser does not pan. */
+  touch-action: none; user-select: none; -webkit-user-select: none;
+  background: var(--comic-stage);
+}
+.comic-canvas { position: absolute; left: 0; top: 0; display: block; }
+.comic-loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font-size: .95rem; opacity: .75; }
+
+/* The block overlay sits exactly on the page's artwork (placed by the reader); hidden
+   while a leaf turns, so nothing floats over a moving page. */
+.comic-overlay-slot { position: absolute; pointer-events: none; }
+.comic-overlay-slot > .comic-overlay { pointer-events: none; }
+.comic-overlay-slot .comic-hotspot, .comic-overlay-slot .comic-block { pointer-events: auto; }
+/* An open block takes the next tap anywhere on the page: that tap closes it, never turns. */
+.comic-overlay-slot > .comic-overlay--open { pointer-events: auto; }
+.comic-overlay-slot--hidden { visibility: hidden; }
+
+/* The Lumeo reader's round buttons: same size, place and material. */
+.comic-fab {
+  position: fixed; top: max(.7rem, env(safe-area-inset-top)); z-index: 71; display: grid; place-items: center;
+  width: 2.35rem; height: 2.35rem; padding: 0; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 50%;
+  color: var(--comic-ink); background: var(--comic-fab); box-shadow: 0 .35rem 1rem rgba(0, 0, 0, .18);
+  backdrop-filter: blur(6px); cursor: pointer; font-size: 1rem; line-height: 1;
+}
+.comic-fab--back { left: max(.7rem, env(safe-area-inset-left)); font-size: 1.75rem; }
+.comic-fab--theme { right: max(.7rem, env(safe-area-inset-right)); }
+
+/* Beside the open book only: a phone turns by swiping or tapping the page's edges. */
+.comic-arrow {
+  position: fixed; top: 50%; z-index: 70; display: none; place-items: center; width: 3rem; height: 3rem;
+  margin-top: -1.5rem; padding: 0; border: 0; border-radius: 50%; color: var(--comic-ink);
+  background: color-mix(in srgb, var(--comic-ink) 10%, transparent); font-size: 1.25rem; opacity: .72; cursor: pointer;
+  transition: opacity .16s, transform .16s;
+}
+.comic-arrow:hover { opacity: 1; transform: scale(1.06); }
+.comic-arrow--previous { left: 1rem; }
+.comic-arrow--next { right: 1rem; }
+.comic-reader[data-mode="spread"] .comic-arrow { display: grid; }
+
+/* Where the reader is, for a moment after each turn - then out of the artwork's way. */
+.comic-progress {
+  position: fixed; left: 50%; bottom: max(.6rem, env(safe-area-inset-bottom)); z-index: 70; transform: translateX(-50%);
+  padding: .2rem .6rem; border-radius: 999px; background: var(--comic-fab); color: var(--comic-ink);
+  font-size: .78rem; letter-spacing: .04em; opacity: 0; pointer-events: none; transition: opacity .35s;
+}
+.comic-progress--visible { opacity: .85; }
+
+.comic-overlay { position: absolute; inset: 0; }
+.comic-hotspot {
+  position: absolute; margin: 0; padding: 0; border: 0; background: transparent;
+  appearance: none; cursor: pointer; border-radius: .4rem;
+}
+.comic-hotspot:focus-visible { outline: 2px solid rgba(255, 255, 255, .85); outline-offset: 2px; }
+/* A pseudo-element, so the tap that closes the block still lands on the overlay itself. */
+.comic-overlay--open::before { content: ""; position: absolute; inset: 0; background: rgba(8, 8, 12, .42); }
+
+.comic-block {
+  position: absolute; left: 50%; transform: translate(-50%, -50%) scale(.96);
+  /* Shrink-to-fit would size the panel to its longest line - a two-word balloon would open
+     as a two-word panel. A floor keeps every block comfortable to read. */
+  width: max-content; min-width: min(58%, 20rem); max-width: min(88%, 40rem);
+  max-height: 62%; overflow-y: auto;
+  padding: 1rem 1.15rem; border-radius: 1.25rem;
+  background: var(--comic-block-background, #f7f5ef); color: var(--comic-block-ink, #16161a);
+  box-shadow: 0 1.2rem 2.6rem rgba(0, 0, 0, .45);
+  opacity: 0; transition: opacity .16s ease, transform .16s ease; cursor: pointer;
+}
+.comic-block--caption { border-radius: .5rem; }
+.comic-block--open { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.comic-block__text { margin: 0; font-size: clamp(1.15rem, 4.4vw, 1.65rem); line-height: 1.45; font-weight: 600; text-wrap: pretty; }
+
+.comic-error { margin: auto; max-width: 28rem; padding: 1.5rem; display: grid; gap: .9rem; text-align: center; }
+
+@media (min-width: 900px) {
+  .comic-block { min-width: min(38%, 22rem); max-width: min(62%, 44rem); }
+  .comic-block__text { font-size: clamp(1.2rem, 1.6vw, 1.75rem); }
+}
+
+/* Comic details: the catalogue book page's layout, with a second step for "add". */
+.comic-detail__actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+.comic-detail__actions .button { flex: 1 1 13rem; min-width: 0; }
+.comic-detail__add:disabled { opacity: .55; }
+.comic-detail__unsupported { opacity: .8; }
+
+/* A comic genre on the library shelf: one row per collection, each its own board. */
+/* The genre shelf is a two-column grid (title | count); each collection spans both, one
+   horizontal board under the other, like the library's own author rows. */
+.comic-genre-shelf .comic-shelf-row { grid-column: 1 / -1; min-width: 0; margin-top: .9rem; }
+.comic-shelf-row__title { margin: 0 0 .35rem; font-size: 1rem; font-weight: 600; letter-spacing: .01em; }
+
+/* ---- Text regions: an invisible hit map over the page, one enlarged balloon ---------- */
+/* The hit map follows each page's artwork rectangle (placed by the reader); regions are
+   percentages of it, so every scale and orientation keeps them on their words. Pointer
+   input goes to the stage, which decides tap versus swipe; the targets are for keyboard
+   and screen readers only. */
+.comic-hitmap { position: absolute; inset: 0; pointer-events: none; }
+.comic-hitmap--hidden { visibility: hidden; }
+.comic-hitmap__page { position: absolute; }
+.comic-hitmap__target {
+  position: absolute; margin: 0; padding: 0; border: 0; border-radius: .35rem;
+  background: transparent; appearance: none; pointer-events: none; opacity: 1;
+}
+.comic-hitmap__target:focus-visible { outline: 2px solid #2f6fed; outline-offset: 2px; }
+/* Development only (localStorage "lumeo.comic.debug" = "1"): region bounds. */
+.comic-hitmap--debug .comic-hitmap__target { outline: 1.5px solid rgba(0, 140, 105, .9); background: rgba(0, 140, 105, .08); }
+.comic-hitmap--debug .comic-hitmap__target[data-review="needs-review"] { outline-color: rgba(222, 101, 26, .95); background: rgba(222, 101, 26, .1); }
+
+/* One page's own preparation, in its corner: never a modal, never over the artwork the
+   reader is looking at, and gone as soon as that page answers to a touch. */
+.comic-preparing-layer { position: absolute; inset: 0; z-index: 28; pointer-events: none; }
+.comic-preparing {
+  position: absolute; transform: translateX(-100%); display: flex; align-items: center; gap: .32rem;
+  padding: .14rem .48rem; border-radius: 999px; background: color-mix(in srgb, var(--comic-ink) 62%, transparent);
+  color: var(--comic-paper, #fff); font-size: .68rem; letter-spacing: .03em; white-space: nowrap; opacity: .9;
+}
+.comic-preparing::before {
+  content: ""; width: .5rem; height: .5rem; border-radius: 50%; border: 1.5px solid currentColor;
+  border-top-color: transparent; animation: comic-preparing-spin 900ms linear infinite;
+}
+@keyframes comic-preparing-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .comic-preparing::before { animation: none; } }
+
+.comic-bubble-layer { position: absolute; inset: 0; z-index: 30; pointer-events: none; overflow: hidden; }
+
+/* Enlargement displays the original masked pixels stored in the .lima. */
+.comic-bubble {
+  position: absolute; box-sizing: border-box; display: block; pointer-events: auto;
+  transform-origin: 0 0; will-change: transform, opacity; outline: none;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .34)) drop-shadow(0 2px 4px rgba(0, 0, 0, .22));
+}
+.comic-bubble--leaving { pointer-events: none; }
+.comic-bubble__art { display: block; width: 100%; height: 100%; object-fit: contain; background: transparent; }
+
+/* The discovery nudge: the page's own balloon, cut to its outline, over itself. */
+.comic-hint { position: absolute; pointer-events: none; transform-origin: 50% 50%; will-change: transform; filter: none; }
+.comic-hint canvas { display: block; width: 100%; height: 100%; }
+
+/* Development only: an uncertain recognition is marked, never announced to readers. */
+.comic-bubble-layer--debug .comic-bubble[data-review="needs-review"] { outline: 2px solid #de651a; }
+@media (prefers-reduced-motion: reduce) { .comic-bubble { will-change: auto; } .comic-hint { display: none; } }

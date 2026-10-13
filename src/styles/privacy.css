@@ -1,0 +1,9 @@
+.privacy-page { max-width: 52rem; }
+.privacy-page__heading { display: grid; gap: .8rem; margin-bottom: 2.75rem; }
+.privacy-page__updated { color: var(--color-muted); font-size: .9rem; }
+.privacy-page__section { margin-top: 2rem; }
+.privacy-page__title { margin-bottom: .75rem; color: var(--color-primary); font-size: clamp(1.15rem, 3vw, 1.4rem); }
+.privacy-page__section p + p { margin-top: .75rem; }
+@media (max-width: 63.99rem) {
+  .privacy-page { padding-bottom: 3rem; }
+}

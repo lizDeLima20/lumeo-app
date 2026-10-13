@@ -1,0 +1,78 @@
+import assert from"node:assert/strict";import{describe,it}from"node:test";import{OpenBookNavigationController}from"../src/reader/desktop/OpenBookNavigationController";import{PageSpread}from"../src/reader/desktop/PageSpread";import{PageTurnInteractionController}from"../src/reader/desktop/PageTurnInteractionController";import{OpenBookLayout}from"../src/reader/desktop/OpenBookLayout";import{readFileSync}from"node:fs";import{PageGestureIntent}from"../src/reader/page-turn/PageGestureIntent";import{PageGeometry}from"../src/reader/page-turn/PageGeometry";
+describe("OpenBookNavigationController",()=>{const navigation=new OpenBookNavigationController(15);it("forma spreads par e ímpar",()=>{assert.equal(navigation.spreadStart(1),0);assert.equal(navigation.spreadStart(10),10);assert.equal(navigation.spreadStart(11),10)});it("avança e volta em pares",()=>{assert.equal(navigation.next(10),12);assert.equal(navigation.previous(12),10);assert.equal(navigation.previous(1),1)});it("respeita limites",()=>{assert.equal(navigation.next(15),15);assert.equal(navigation.canNext(14),false);assert.equal(navigation.canPrevious(10),true)});});
+describe("PageSpread",()=>{it("restaura âncora pela página esquerda",()=>{const left={index:9,paragraphs:[],startOffset:100,endOffset:200},right={index:10,paragraphs:[],startOffset:201,endOffset:300};assert.equal(new PageSpread(left,right).anchorPage,10)});});
+describe("PageTurnInteractionController",()=>{it("threshold confirma e cancela drag, no mesmo span do motor",()=>{const controller=new PageTurnInteractionController({}as HTMLElement,()=>{},()=>{});const needed=1000*PageGeometry.dragSpanFactor*.3;assert.equal(controller.shouldComplete(needed+1,1000),true);assert.equal(controller.shouldComplete(needed-1,1000),false);assert.equal(controller.shouldComplete(150,1000),false)});it("o gesto so comeca quando prova que e horizontal",()=>{const intent=new PageGestureIntent();intent.arm(200,200);assert.equal(intent.accepts(203,200),false,"tremor abaixo do limiar nao vira gesto");assert.equal(intent.accepts(200,260),false,"rolagem vertical nao folheia");assert.equal(intent.accepts(180,205),true,"arrasto horizontal claro folheia");assert.equal(intent.accepts(200,260),true,"reconhecido uma vez, segue reconhecido");assert.ok(PageGestureIntent.slopPixels>=5&&PageGestureIntent.slopPixels<=12);});});
+
+describe("OpenBookLayout",()=>{
+  const source=readFileSync("src/reader/desktop/OpenBookLayout.ts","utf8");
+  it("uma folha em voo tem verso real e pagina real embaixo",()=>{
+    // a spread renders four pages: the two shown, plus the one each leaf uncovers
+    assert.match(source,/underBefore/);assert.match(source,/underAfter/);
+    assert.match(source,/versoBefore/);assert.match(source,/versoAfter/);
+  });
+  it("nenhuma copia de pagina guarda o modificador de lado",()=>{
+    // --left/--right is how the turn controller finds the leaf; a nested copy earlier
+    // in the document would win the querySelector and the wrong page would animate
+    assert.equal(OpenBookLayout.sideModifierIsUniquePerSpread,true);
+    assert.equal(source.includes("classList.add(`open-book-page--under-"),false);
+    const replacements=source.match(/classList\.replace\(/g)??[];
+    assert.equal(replacements.length,2,"verso e under precisam trocar a classe, nao acrescentar");
+  });
+  it("a capa fechada não usa conteúdo real ou a imagem da capa como verso",()=>{
+    assert.match(source,/leaf\.append\(this\.coverVerso\(\)\)/);
+    assert.match(source,/private hardCoverInside\(side:"left"\|"verso"\)/);
+    assert.equal(source.includes("coverVerso(cover"),false);
+  });
+});
+
+describe("pré-renderização e capa do livro fechado",()=>{
+  const layout=readFileSync("src/reader/desktop/OpenBookLayout.ts","utf8"),reader=readFileSync("src/views/ReaderView.ts","utf8"),css=readFileSync("src/styles/reader.css","utf8");
+  it("a página 1 ao lado da capa aberta já tem verso e a página que revela",()=>{
+    assert.match(layout,/first\.append\(this\.verso\(neighbours\.versoAfter,"right"\)\)/);
+    assert.match(layout,/book\.append\(this\.under\(neighbours\.underAfter,"right"\),back,first\)/);
+    assert.match(reader,/versoAfter:this\.reflow\.pageAt\(3\),underAfter:this\.reflow\.pageAt\(4\)/);
+  });
+  it("atrás da página 1 fica o forro da capa, nunca a arte da capa",()=>{
+    assert.match(layout,/if\(page\?\.cover\)\{const lining=this\.hardCoverInside\("left"\)/);
+  });
+  it("posições físicas: capa fechada, capa aberta e spreads que continuam a virada",()=>{
+    // total+1: the lining takes a place of its own, so page n sits at position n+1
+    const navigation=new OpenBookNavigationController(10+1);
+    assert.equal(navigation.next(1),2);assert.equal(navigation.next(2),4);assert.equal(navigation.next(3),4);
+    assert.equal(navigation.spreadStart(4),4);assert.equal(navigation.previous(4),2);assert.equal(navigation.previous(2),1);
+    assert.match(reader,/private desktopPosition\(\):number\{const page=this\.reflow\?\.currentPageNumber\?\?1;return page===1\?\(this\.desktopState\.isClosed\?1:2\):page\+1;\}/);
+  });
+  it("progresso só da capa ou da primeira página abre o livro fechado",()=>{
+    assert.match(reader,/if\(this\.reflow\.currentPageNumber<=2&&this\.reflow\.pageAt\(1\)\?\.cover\)\{this\.reflow\.goTo\(1\);this\.desktopState\.restore\(0\);\}/);
+  });
+  it("a folha curvada não pinta papel branco sobre a página revelada",()=>{
+    assert.match(css,/\.open-book-page\.page-turn-curled\{background:transparent!important;box-shadow:none!important\}/);
+    assert.match(css,/\.reflow-sheet\.page-turn-active\{position:absolute\}/);
+  });
+});
+
+describe("camadas da folha desktop",()=>{
+  const css=readFileSync("src/styles/reader.css","utf8");
+  it("a folha em movimento cruza por cima do lado de destino sem ser recortada",()=>{
+    const start=css.lastIndexOf(".open-book-page.page-turn-active,.open-book-layout--cover");
+    const rule=css.slice(start,css.indexOf("}",start));
+    assert.match(rule,/z-index:40!important/);
+    assert.match(rule,/overflow:visible!important/);
+  });
+  it("prepara a página exposta antes do primeiro frame nas duas direções",()=>{
+    const engine=readFileSync("src/reader/page-turn/PageTurnEngine.ts","utf8");
+    assert.match(engine,/page-turn-under-active/);
+    assert.match(engine,/page-turn-active",direction===1\?"page-turn--next":"page-turn--previous/);
+    assert.match(css,/\.page-turn-active\.page-turn--next\) \.open-book-page--under-right/);
+    assert.match(css,/\.page-turn-active\.page-turn--previous\) \.open-book-page--under-left/);
+  });
+  it("a capa fechada ocupa a página direita da geometria final",()=>{
+    assert.match(css,/\.open-book-layout--closed \.open-book-page--cover\{[\s\S]*grid-column:2!important/);
+    assert.match(css,/\.open-book-layout--cover,\.open-book-layout--closed,\.open-book-layout--open-cover\{[\s\S]*width:calc\(var\(--desktop-page-width\) \* 2\)!important/);
+  });
+  it("o palco fechado não deixa uma folha branca atrás da capa",()=>{
+    assert.match(css,/\.reader-stage--reflow \.reflow-pages:has\(\.desktop-book-reader\)\{background:transparent!important\}/);
+    assert.match(css,/\.open-book-page--under-cover\{[\s\S]*display:none!important/);
+    assert.match(css,/\.open-book-layout--closed:has\(\.page-turn--next\) \.open-book-page--under-cover\{display:block!important/);
+  });
+});

@@ -1,0 +1,9 @@
+{
+  "engine": "tesseract.js",
+  "languages": [
+    "por",
+    "eng"
+  ],
+  "tessdata": "https://tessdata.projectnaptha.com/4.0.0_fast",
+  "generatedAt": "2026-10-13T11:42:45.342Z"
+}

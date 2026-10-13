@@ -1,0 +1,148 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { CatalogSourceRegistry } from "../src/catalog/CatalogSourceRegistry.js";
+import { HybridCatalogSourceProvider } from "../src/catalog/HybridCatalogSourceProvider.js";
+import { LegacyDriveCatalogProvider } from "../src/catalog/LegacyDriveCatalogProvider.js";
+import { PublicDriveFolderReader } from "../src/catalog/PublicDriveFolderReader.js";
+import { StructuredDriveCatalogProvider } from "../src/catalog/StructuredDriveCatalogProvider.js";
+import type { CatalogSourceProvider } from "../src/catalog/CatalogSourceProvider.js";
+import type { CatalogBookRecord, CatalogPage, CatalogQuery, CatalogSourceConfig } from "../src/catalog/types.js";
+
+const source = (sourceId: string, locale = "pt-BR", mode: CatalogSourceConfig["mode"] = "auto"): CatalogSourceConfig => ({ sourceId, locale, folderId: "folder-id-123", mode, enabled: true, priority: 10 });
+const book = (bookId: string, driveFileId: string, sha256: string | null = null): CatalogBookRecord => ({ bookId, title: `Livro ${bookId}`, author: "Autora", genreId: "sem-genero", genreName: "Sem gênero", coverUrl: null, description: null, format: "pdf", fileSize: null, driveFileId, storageAccountId: "test", sha256, volume: null, collection: null, language: "pt-BR", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z", status: "ACTIVE" });
+
+class MemoryProvider implements CatalogSourceProvider {
+  public readonly provider: "legacy" | "structured";
+  public constructor(public readonly source: CatalogSourceConfig, private readonly records: readonly CatalogBookRecord[], kind: "legacy" | "structured" = "legacy", private readonly failure = false) { this.provider = kind; }
+  public async list(_query: CatalogQuery): Promise<CatalogPage> { if (this.failure) throw new Error("SOURCE_DOWN"); return { items: this.records, nextCursor: null }; }
+  public async get(bookId: string): Promise<CatalogBookRecord | null> { if (this.failure) throw new Error("SOURCE_DOWN"); return this.records.find((item) => item.bookId === bookId) ?? null; }
+  public diagnostic() { return { sourceId: this.source.sourceId, locale: this.source.locale, mode: this.provider, provider: this.provider }; }
+}
+
+class PagedMemoryProvider extends MemoryProvider {
+  public override async list(query: CatalogQuery): Promise<CatalogPage> {
+    const all = await super.list(query);
+    const start = query.offset;
+    const page = all.items.slice(start, start + query.limit + 1);
+    return { items: page.slice(0, query.limit), nextCursor: page.length > query.limit ? String(start + query.limit) : null };
+  }
+}
+
+describe("hybrid catalog sources", () => {
+  it("detects catalog.json sources as structured and missing files as legacy", async () => {
+    const structured = new MemoryProvider(source("structured"), [], "structured") as MemoryProvider & { hasCatalog(): Promise<boolean> };
+    structured.hasCatalog = async () => true;
+    const absent = new MemoryProvider(source("legacy"), []) as MemoryProvider & { hasCatalog(): Promise<boolean> };
+    absent.hasCatalog = async () => false;
+    const registry = new CatalogSourceRegistry([source("structured"), source("legacy")], {
+      legacy: (item) => new MemoryProvider(item, [], "legacy"),
+      structured: (item) => item.sourceId === "structured" ? structured : absent,
+    });
+    assert.deepEqual((await registry.providers("pt-BR")).map((provider) => provider.provider), ["legacy", "structured"]);
+  });
+
+  it("aggregates locale sources, removes sha duplicates, and isolates a failed source", async () => {
+    const ptOne = new MemoryProvider(source("pt-one"), [book("one", "file-one", "a".repeat(64))]);
+    const ptDuplicate = new MemoryProvider(source("pt-two"), [book("duplicate", "file-two", "a".repeat(64))], "structured");
+    const ptFailure = new MemoryProvider(source("pt-fail"), [], "legacy", true);
+    const english = new MemoryProvider(source("en-one", "en-US"), [book("english", "file-en")]);
+    const hybrid = new HybridCatalogSourceProvider(async (locale) => [ptOne, ptDuplicate, ptFailure, english].filter((provider) => !locale || provider.source.locale === locale));
+    const portuguese = await hybrid.list({ offset: 0, limit: 24, locale: "pt-BR" });
+    assert.deepEqual(portuguese.items.map((item) => item.bookId), ["one"]);
+    const englishPage = await hybrid.list({ offset: 0, limit: 24, locale: "en-US" });
+    assert.deepEqual(englishPage.items.map((item) => item.bookId), ["english"]);
+  });
+
+  it("keeps legacy PDF previews and uses a separate structured cover", async () => {
+    const folder = new PublicDriveFolderReader(async () => new Response('<tr data-id="pdf-file-123" aria-label="Legacy - Autora.pdf PDF Shared"></tr>'));
+    const legacy = new LegacyDriveCatalogProvider(source("legacy", "pt-BR", "legacy"), folder);
+    const legacyBook = (await legacy.list({ offset: 0, limit: 24 })).items[0]!;
+    assert.match(legacyBook.coverUrl ?? "", /id=pdf-file-123/);
+
+    const structuredFolder = new PublicDriveFolderReader(async () => new Response('<tr data-id="catalog-file-123" aria-label="catalog.json JSON Shared"></tr>'));
+    const structured = new StructuredDriveCatalogProvider(source("controlled", "pt-BR", "structured"), structuredFolder, async () => new Response(JSON.stringify({ version: 1, locale: "pt-BR", books: [{ bookId: "structured-book", title: "EPUB", author: "Autora", genre: "romance", format: "epub", bookDriveFileId: "epub-file-123", coverDriveFileId: "cover-file-123" }] })));
+    const structuredBook = (await structured.list({ offset: 0, limit: 24 })).items[0]!;
+    assert.match(structuredBook.coverUrl ?? "", /id=cover-file-123/);
+  });
+
+  it("searches title and author by word prefixes inside the selected genre", async () => {
+    const science = new MemoryProvider(source("science"), [
+      { ...book("estudar", "file-study"), title: "Como estudar para vencer", author: "João Silva", genreId: "ciencias", genreName: "Ciências" },
+      { ...book("other", "file-other"), title: "A Guerra dos Reinos", author: "Outra Autora", genreId: "aventura", genreName: "Aventura" },
+    ]);
+    const hybrid = new HybridCatalogSourceProvider(async () => [science]);
+    const page = await hybrid.list({ offset: 0, limit: 24, genreId: "ciencias", query: "EST ven" });
+    assert.deepEqual(page.items.map((item) => item.bookId), ["estudar"]);
+    assert.deepEqual((await hybrid.list({ offset: 0, limit: 24, genreId: "ciencias", query: "jo sil" })).items.map((item) => item.bookId), ["estudar"]);
+    assert.deepEqual((await hybrid.list({ offset: 0, limit: 24, genreId: "ciencias", query: "guer" })).items, []);
+  });
+
+  it("also searches by volume, alone or combined with title/collection", async () => {
+    const hqs = new MemoryProvider(source("comics"), [
+      { ...book("hulk-2", "file-hulk-2"), title: "Hulk", collection: "HQs da Marvel", volume: "Volume 2" },
+      { ...book("hulk-3", "file-hulk-3"), title: "Hulk", collection: "HQs da Marvel", volume: "Volume 3" },
+      { ...book("batman-2", "file-batman-2"), title: "Batman", collection: "HQs da DC", volume: "2" },
+    ]);
+    const hybrid = new HybridCatalogSourceProvider(async () => [hqs]);
+
+    // 1. busca somente pelo volume encontra o registro.
+    assert.deepEqual((await hybrid.list({ offset: 0, limit: 24, query: "volume 2" })).items.map((item) => item.bookId), ["hulk-2"]);
+    // 2. título + volume encontra o registro.
+    assert.deepEqual((await hybrid.list({ offset: 0, limit: 24, query: "Hulk Volume 2" })).items.map((item) => item.bookId), ["hulk-2"]);
+    // 3. coleção + volume encontra o registro.
+    assert.deepEqual((await hybrid.list({ offset: 0, limit: 24, query: "Marvel Volume 2" })).items.map((item) => item.bookId), ["hulk-2"]);
+    // 4. volume diferente não encontra.
+    assert.deepEqual((await hybrid.list({ offset: 0, limit: 24, query: "Hulk Volume 9" })).items, []);
+    // 6. busca existente por título/coleção não sofre regressão (autor/gênero já cobertos no teste acima).
+    assert.deepEqual((await hybrid.list({ offset: 0, limit: 24, query: "batman" })).items.map((item) => item.bookId), ["batman-2"]);
+    assert.deepEqual((await hybrid.list({ offset: 0, limit: 24, query: "dc" })).items.map((item) => item.bookId), ["batman-2"]);
+  });
+
+  it("5. livros sem volume continuam funcionando normalmente", async () => {
+    const plain = new MemoryProvider(source("plain"), [{ ...book("plain-1", "file-plain"), title: "Livro Simples", volume: null }]);
+    const hybrid = new HybridCatalogSourceProvider(async () => [plain]);
+    assert.deepEqual((await hybrid.list({ offset: 0, limit: 24, query: "simples" })).items.map((item) => item.bookId), ["plain-1"]);
+  });
+
+  it("7. busca por volume também filtra antes da paginação, não só na primeira página", async () => {
+    const values = Array.from({ length: 50 }, (_, index) => ({ ...book(`comic-${index}`, `drive-${index}`), title: "Aventura", volume: String(index) }));
+    const provider = new MemoryProvider(source("volumes"), values);
+    const hybrid = new HybridCatalogSourceProvider(async () => [provider]);
+    // O registro com volume "42" está muito além do limite de página (5); se a busca
+    // rodasse só sobre a primeira página já paginada, ele nunca seria encontrado.
+    const result = await hybrid.list({ offset: 0, limit: 5, query: "42" });
+    assert.deepEqual(result.items.map((item) => item.bookId), ["comic-42"]);
+    assert.equal(result.total, 1);
+  });
+
+  it("searches and paginates beyond the former 500-record source cap", async () => {
+    const values = Array.from({ length: 1_501 }, (_, index) => book(`catalog-${index}`, `drive-${index}`));
+    const provider = new PagedMemoryProvider(source("large"), values);
+    const hybrid = new HybridCatalogSourceProvider(async () => [provider]);
+
+    const result = await hybrid.list({ offset: 0, limit: 24, query: "catalog-1500" });
+    assert.deepEqual(result.items.map((item) => item.bookId), ["catalog-1500"]);
+    assert.equal(result.total, 1);
+    const firstPage = await hybrid.list({ offset: 0, limit: 24 });
+    assert.equal(firstPage.total, 1_501); assert.equal(firstPage.items.length, 24); assert.equal(firstPage.nextCursor, "24");
+  });
+  it("falls back to PT-BR sources only when the requested locale has none", async () => {
+    const portuguese = new MemoryProvider(source("pt-catalog", "pt-BR", "legacy"), [book("livro-pt", "drive-pt")]);
+    const registry = new CatalogSourceRegistry([portuguese.source], {
+      legacy: () => portuguese,
+      structured: (item) => new MemoryProvider(item, [], "structured") as MemoryProvider & { hasCatalog(): Promise<boolean> },
+    });
+    const hybrid = new HybridCatalogSourceProvider((locale) => registry.providers(locale));
+    const page = await hybrid.list({ offset: 0, limit: 24, locale: "en-US" });
+    assert.deepEqual(page.items.map((item) => item.bookId), ["livro-pt"]);
+    assert.equal((await new HybridCatalogSourceProvider((locale) => registry.providers(locale)).get("livro-pt", "en-US"))?.bookId, "livro-pt");
+
+    const english = new MemoryProvider(source("en-catalog", "en-US", "legacy"), [book("livro-en", "drive-en")]);
+    const localizedRegistry = new CatalogSourceRegistry([portuguese.source, english.source], {
+      legacy: (item) => item.locale === "en-US" ? english : portuguese,
+      structured: (item) => new MemoryProvider(item, [], "structured") as MemoryProvider & { hasCatalog(): Promise<boolean> },
+    });
+    assert.deepEqual((await localizedRegistry.providers("en-US")).map((item) => item.source.sourceId), ["en-catalog"]);
+  });
+
+});
