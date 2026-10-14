@@ -1,4 +1,5 @@
 import { LocalFileImporter } from "../importers/LocalFileImporter";
+import { Capacitor } from "@capacitor/core";
 import { EnvironmentConfig } from "../config/EnvironmentConfig";
 import { OneDriveConnections } from "../external/OneDriveConnections";
 import { ExternalLibraryStorage } from "../external/ExternalLibraryStorage";
@@ -82,8 +83,12 @@ import { ComicDetailsView } from "../views/ComicDetailsView";
 import type { DriveFolderEntry, DriveFolderListing } from "../services/DriveCollectionService";
 import { PersonalDriveImporter } from "../services/PersonalDriveImporter";
 import { GoogleDriveLibraryService } from "../external/GoogleDriveLibraryService";
+import { GoogleDriveLibraryRepository } from "../external/GoogleDriveLibraryRepository";
+import { PersonalDriveLibraryView } from "../views/PersonalDriveLibraryView";
 
 export class App {
+  /** Android is intentionally a serverless personal-library mode. */
+  private readonly personalAndroid = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
   private readonly state = new AppState();
   private readonly storage = new StorageService();
   private database = new IndexedDbService();
@@ -154,8 +159,17 @@ export class App {
     this.router.register("audiobooks", () => new AudiobooksView(() => this.router.navigate("home")));
     this.router.register("library", () => new LibraryView(this.state,
       (genreId) => this.router.navigate("genre", { id: genreId }), (bookId) => this.openLibraryBook(bookId), (bookId) => void this.deleteBook(bookId, false)));
-    this.router.register("explore", (params) => new CatalogExplorerView(this.catalog, this.state, (bookId) => this.router.navigate("catalog-book", { id: bookId }), () => this.router.navigate("catalog-admin"),
-      { collections: this.driveCollections, open: (collection) => this.router.navigate("collection-genre", { id: collection.id }) }, params.get("genre") ?? ""));
+    this.router.register("explore", (params) => {
+      if (this.personalAndroid) {
+        const drive = new GoogleDriveLibraryService();
+        return new PersonalDriveLibraryView(this.state, new GoogleDriveLibraryRepository(new ExternalLibraryStorage(this.database), "personal"), drive,
+          new PersonalDriveImporter(drive, this.imports, this.books, this.genres, this.covers),
+          book => void this.addBook(book), id => this.openLibraryBook(id), async () => { this.state.library.replaceGenres(await this.genres.getAll()); this.state.notify(); }, params.get("addLink") === "1",
+          book => this.syncBook(book));
+      }
+      return new CatalogExplorerView(this.catalog, this.state, (bookId) => this.router.navigate("catalog-book", { id: bookId }), () => this.router.navigate("catalog-admin"),
+        { collections: this.driveCollections, open: (collection) => this.router.navigate("collection-genre", { id: collection.id }) }, params.get("genre") ?? "");
+    });
     /* A published Drive folder browsed live. The folder id travels in the URL, so a
      * breadcrumb step and the browser's own Back button land on the same screen. */
     this.router.register("catalog-book", (params) => new CatalogBookView(this.catalog, this.state, params.get("id") ?? "",
@@ -169,7 +183,8 @@ export class App {
       return new BookImportView(this.state, this.imports, this.genres, this.collections, this.covers, this.metadataExtractor,
         (book) => void this.addBook(book), () => this.router.navigate("library"), (bookId) => this.deleteBook(bookId, false), undefined,
         { importer: new PersonalDriveImporter(new GoogleDriveLibraryService(), this.imports, this.books, this.genres, this.covers),
-          saved: book => void this.addBook(book), refreshGenres: async () => { this.state.library.replaceGenres(await this.genres.getAll()); this.state.notify(); } });
+          saved: book => void this.addBook(book), refreshGenres: async () => { this.state.library.replaceGenres(await this.genres.getAll()); this.state.notify(); } },
+        this.personalAndroid ? () => this.router.navigate("explore") : undefined);
     });
     this.router.register("book", (params) => this.detailsView(params.get("id") ?? ""));
     this.router.register("edit-book", (params) => new BookEditView(this.state, this.findBook(params.get("id")), this.genres, this.covers,
@@ -180,7 +195,7 @@ export class App {
       const id = params.get("id") ?? "";
       if (new ComicContentTypeResolver().isComic(this.findBook(id)))
         return new ComicReaderView(id, this.readerManager, this.state.settings.theme,
-          () => this.router.navigate("library"), (book) => this.syncBook(book));
+          () => this.router.navigate("library"), (book) => this.syncBook(book), this.state.books);
       return new ReaderView(id, this.readerManager,
         this.state.settings.theme, () => this.router.navigate("library"), (book) => this.syncBook(book), this.database,
         this.userName(), this.state.currentUser?.id, this.state.books);
@@ -210,7 +225,7 @@ export class App {
         open: (bookId) => this.openLibraryBook(bookId) },
       () => this.router.navigate("collection-genre", { id: params.get("id") ?? "" })));
     this.router.register("settings", () => new SettingsView(this.state, (theme) => void this.changeTheme(theme),new StoragePersistenceService(),new DesktopLibraryFolderService(this.database),
-      this.state.currentUser ? { connections: new OneDriveConnections(new ExternalLibraryStorage(this.database), this.state.currentUser.id),
+      !this.personalAndroid && this.state.currentUser ? { connections: new OneDriveConnections(new ExternalLibraryStorage(this.database), this.state.currentUser.id),
         open: source => this.router.navigate("import", { source }) } : undefined, this.pwaInstall));
   }
 
@@ -325,7 +340,13 @@ export class App {
   }
 
   private createImportManager(): ImportManager {
-    const local = new LocalFileImporter(); const drive = new GoogleDriveImporter(this.driveConfig, local);
+    const local = new LocalFileImporter();
+    // Personal Android imports Drive through PersonalDriveImporter, which uses
+    // native Google Identity and the Drive API directly. Do not configure the
+    // older browser/config-based importers in this runtime.
+    if (this.personalAndroid) return new ImportManager(local, this.books, this.localFileStore(), undefined, undefined,
+      this.limaDocuments, new DesktopLibraryFolderService(this.database), new LibraryChecksumRepository(this.database));
+    const drive = new GoogleDriveImporter(this.driveConfig, local);
     return new ImportManager(local, this.books, this.localFileStore(), drive, new UrlImporter(local, undefined, drive),this.limaDocuments,new DesktopLibraryFolderService(this.database),new LibraryChecksumRepository(this.database));
   }
 
@@ -483,6 +504,8 @@ export class App {
   }
 
   private guardRoute(route: RouteName): RouteName {
+    const remoteOnly: readonly RouteName[] = ["catalog-book", "catalog-admin", "collection", "collection-genre", "comic"];
+    if (this.personalAndroid && remoteOnly.includes(route)) return "library";
     if (this.state.authStatus === "LOCAL_LIBRARY_READY") return route === "login" || route === "register" || route === "device-conflict" ? "library" : route;
     const publicRoutes: readonly RouteName[] = ["login", "register", "privacy"];
     if (route === "privacy") return route;
@@ -525,7 +548,8 @@ export class App {
     this.headerView?.unmount();
     this.headerView = new HeaderView((route) => this.router.navigate(route),
       this.isAuthenticated() && this.state.deviceStatus === "authorized",
-      this.userName(), () => void this.logout());
+      this.userName(), () => void this.logout(), this.personalAndroid,
+      () => this.router.navigate("explore", { addLink: "1" }));
     this.headerView.mount(this.headerRoot);
     const authenticated = this.isAuthenticated() && this.state.deviceStatus === "authorized";
     this.footerRoot.replaceChildren(...(authenticated ? [new MobileBottomNavigation((route)=>this.router.navigate(route)).render()] : []));

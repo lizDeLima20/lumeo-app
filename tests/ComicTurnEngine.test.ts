@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, it } from "node:test";
-import { ComicLayout, SPREAD_MARGINS } from "../src/reader/comic/ComicLayout";
+import { ComicLayout, NATIVE_LANDSCAPE_SPREAD, SPREAD_MARGINS } from "../src/reader/comic/ComicLayout";
 import { ComicSpreadMap, type ComicTurnPlan } from "../src/reader/comic/ComicSpreadMap";
 import { ComicFoldGeometry, type ComicFold, type ComicPoint } from "../src/reader/comic/ComicFoldGeometry";
 import { ComicTurnController, COMIC_TURN, type ComicTurnHost } from "../src/reader/comic/ComicTurnController";
@@ -16,9 +16,11 @@ const close = (a: number, b: number, epsilon = 1e-6): boolean => Math.abs(a - b)
 const desktop = { native: false, finePointer: true };
 
 describe("HQ: uma geometria para todos os estados", () => {
-  it("celular, tablet e o app Android leem uma página; livro aberto só no desktop largo com mouse", () => {
+  it("retratro nativo usa uma página, paisagem nativa usa o leitor aberto existente", () => {
     assert.equal(ComicLayout.mode(412, 915, desktop), "single");
-    assert.equal(ComicLayout.mode(1280, 800, { native: true, finePointer: true }), "single");
+    assert.equal(ComicLayout.mode(1280, 800, { native: true, finePointer: true }), "spread");
+    assert.equal(ComicLayout.mode(480, 320, { native: true, finePointer: false }), "spread");
+    assert.equal(ComicLayout.mode(412, 915, { native: true, finePointer: false }), "single");
     assert.equal(ComicLayout.mode(1280, 800, { native: false, finePointer: false }), "single");
     assert.equal(ComicLayout.mode(1000, 800, desktop), "single");
     assert.equal(ComicLayout.mode(1024, 1366, desktop), "single");
@@ -43,6 +45,22 @@ describe("HQ: uma geometria para todos os estados", () => {
     assert.ok(geometry.pageHeight <= 1080 - SPREAD_MARGINS.top - SPREAD_MARGINS.bottom);
     assert.ok(left.x >= SPREAD_MARGINS.side);
     assert.ok(close(geometry.pageWidth / geometry.pageHeight, 1500 / 2306, .005));
+  });
+
+  it("na paisagem Android as páginas ficam centralizadas dentro da faixa de setenta por cento", () => {
+    const width = 1280, height = 720, geometry = ComicLayout.geometry("spread", width, height, 1500 / 2306, "native-landscape");
+    const left = ComicLayout.slot(geometry, "left"), right = ComicLayout.slot(geometry, "right");
+    assert.equal(left.x + left.width, right.x);
+    assert.ok(left.x >= width * NATIVE_LANDSCAPE_SPREAD.sideShare - 1);
+    assert.ok(right.x + right.width <= width * (1 - NATIVE_LANDSCAPE_SPREAD.sideShare) + 1);
+    assert.ok(geometry.top >= NATIVE_LANDSCAPE_SPREAD.top);
+    assert.ok(geometry.top + geometry.pageHeight <= height - NATIVE_LANDSCAPE_SPREAD.bottom + 1);
+  });
+
+  it("em uma paisagem estreita a margem cresce só o necessário para os controles", () => {
+    const width = 320, geometry = ComicLayout.geometry("spread", width, 240, 2 / 3, "native-landscape");
+    const left = ComicLayout.slot(geometry, "left");
+    assert.ok(left.x >= NATIVE_LANDSCAPE_SPREAD.minSide - 1);
   });
 
   it("páginas de outra proporção são contidas no mesmo espaço, sem cortar nem esticar", () => {
@@ -86,6 +104,13 @@ describe("HQ: ordem física das folhas", () => {
     const page = spread.pageOfPosition(spread.positionOfPage(13));
     assert.equal(page, 12);
     assert.equal(single.pageOfPosition(single.positionOfPage(page)), 12);
+  });
+
+  it("o leitor conserva a página focalizada ao recalcular a geometria", () => {
+    const view = source("views/ComicReaderView.ts");
+    assert.match(view, /this\.readingPage = Math\.min\(Math\.max\(1, page\)/);
+    assert.match(view, /this\.position = this\.map\.positionOfPage\(this\.readingPage\)/);
+    assert.match(view, /restoreBubbleAfterLayout\(openRegion\)/);
   });
 });
 

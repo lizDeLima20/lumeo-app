@@ -4,14 +4,14 @@ import { describe, it } from "node:test";
 import { EnvironmentConfig } from "../src/config/EnvironmentConfig";
 
 describe("configuração Android Capacitor", () => {
-  it("uses the production BFF when the Android build has its explicit public URL", () => {
+  it("never accepts a BFF URL in the Android personal build", () => {
     const config = new EnvironmentConfig({ MODE: "android", VITE_APP_ENV: "production", VITE_CAPACITOR_API_URL: "https://lumeo-livros.vercel.app/api/" } as ImportMetaEnv, () => true).read();
-    assert.equal(config.bffBaseUrl, "https://lumeo-livros.vercel.app/api");
+    assert.equal(config.bffBaseUrl, "");
   });
 
-  it("never sends catalogue requests to the WebView origin when the Android env is missing", () => {
+  it("never resolves a catalogue endpoint for Android, even from a legacy env", () => {
     const config = new EnvironmentConfig({ MODE: "production", VITE_API_URL: "http://localhost:3000/api" } as ImportMetaEnv, () => true).read();
-    assert.equal(config.bffBaseUrl, "https://lumeo-livros.vercel.app/api");
+    assert.equal(config.bffBaseUrl, "");
     assert.notEqual(config.bffBaseUrl, "/api");
   });
 
@@ -34,8 +34,9 @@ describe("configuração Android Capacitor", () => {
 
   it("keeps Android runtime diagnostics free of session and secret values", async () => {
     const diagnostics = await readFile("src/platform/AndroidRuntimeDiagnostics.ts", "utf8");
-    assert.doesNotMatch(diagnostics, /accessToken|refreshToken|secretKey|authorization/i);
-    assert.match(diagnostics, /LUMEO_ANDROID_BFF_READY/);
+    assert.doesNotMatch(diagnostics, /accessToken|refreshToken|secretKey|bearer\s+/i);
+    assert.match(diagnostics, /LUMEO_ANDROID_PERSONAL_LIBRARY_READY/);
+    assert.doesNotMatch(diagnostics, /fetch\(|BFF_READY|supabaseUrl/);
     assert.match(diagnostics, /JSON\.stringify/);
   });
 });

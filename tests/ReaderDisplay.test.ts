@@ -31,7 +31,7 @@ describe("Leitura no Android como e-reader", () => {
     assert.match(activity, /registerPlugin\(ReaderDisplayPlugin\.class\)/);
     const reader = readFileSync("src/views/ReaderView.ts", "utf8");
     assert.match(reader, /void ReaderDisplay\.apply\(preferences\.screenBrightness\)/);
-    assert.match(reader, /this\.pomodoro=null;void ReaderDisplay\.restore\(\);/, "sair do leitor devolve o brilho do sistema");
+    assert.match(reader, /this\.pomodoro=null;void AndroidReadingOptics\.stop\(\);void ReaderDisplay\.restore\(\);/, "sair do leitor interrompe a camada óptica e devolve o brilho do sistema");
   });
 
   it("no Android começa com Papel e Literata, e guarda as escolhas", async () => {

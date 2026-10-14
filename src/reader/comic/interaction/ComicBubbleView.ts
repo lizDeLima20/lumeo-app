@@ -31,7 +31,12 @@ const MEANINGFUL_GAIN = .03;
  *  in analysis or enhancement falls back to the plain upscaled original: a balloon that
  *  cannot be improved must still open, and silently, never asking the reader to judge it. */
 function comicPrepareBubbleArtwork(region: ComicTextRegion, width: number, height: number, art: ComicOriginalArt): ComicBubbleArtwork {
-  const original = comicArtworkCanvas(art, { width, height });
+  // Keep more source pixels than CSS pixels in the enlarged view. Small balloons benefit
+  // most; the pixel budget prevents a large caption from allocating a huge temporary image.
+  const smallSource = Math.min(art.width, art.height) < 240;
+  const preferred = Math.max(1, Math.min(smallSource ? 3 : 2.5, typeof devicePixelRatio === "number" ? devicePixelRatio : 2));
+  const qualityScale = Math.min(preferred, Math.sqrt(4_000_000 / Math.max(1, width * height)));
+  const original = comicArtworkCanvas(art, { width: width * qualityScale, height: height * qualityScale });
   const fallback = Boolean(art.fallback);
   try {
     const context = original.getContext("2d", { willReadFrequently: true });
@@ -116,7 +121,9 @@ export class ComicBubbleView {
    *  rest of the session - reopening the same balloon, or one at the same size, never
    *  repeats the analysis or the enhancement pass. */
   private artworkFor(region: ComicTextRegion, width: number, height: number, art: ComicOriginalArt): ComicBubbleArtwork {
-    const key = `${region.id}:${Math.round(width)}x${Math.round(height)}:${art.fallback ? "f" : "o"}`;
+    const density = Math.max(1, Math.min(Math.min(art.width, art.height) < 240 ? 3 : 2.5,
+      typeof devicePixelRatio === "number" ? devicePixelRatio : 2));
+    const key = `${region.id}:${Math.round(width)}x${Math.round(height)}@${density}:${art.fallback ? "f" : "o"}`;
     const cached = this.artworkCache.get(key);
     if (cached) return cached;
     const artwork = comicPrepareBubbleArtwork(region, width, height, art);

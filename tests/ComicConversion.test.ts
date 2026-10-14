@@ -10,6 +10,7 @@ import { ComicLimaDeserializer } from "../src/reader/comic/interaction/ComicLima
 import { ComicInteractionEngine } from "../src/reader/comic/interaction/ComicInteractionEngine";
 import { ComicRegionOcr, comicTextCandidates, groupComicTextLines } from "../src/reader/comic/interaction/ComicRegionOcr";
 import { ComicLayout } from "../src/reader/comic/ComicLayout";
+import { comicHorizontalContentBounds } from "../src/reader/comic/ComicPageMarginDetector";
 import { drawComicInteractionDebug } from "../src/reader/comic/interaction/ComicInteractionDebug";
 import type { ComicTextRegion } from "../src/reader/comic/interaction/ComicInteractionTypes";
 import { detectComicContainers, type ComicVisualContainer } from "../src/reader/comic/interaction/ComicContainerDetector";
@@ -105,15 +106,28 @@ test("interaction files cannot silently refer to another page", async () => {
   assert.throws(() => new ComicLimaDeserializer().deserialize(zipSync(entries)), /incorreta/);
 });
 
-test("phone and tablet fit to their actual viewport; content hints never crop or distort", () => {
+test("phone and tablet fit cropped comic artwork without distortion", () => {
   for (const [width, height] of [[412, 915], [834, 1194], [1194, 834]]) {
     const slot = { x: 0, y: 0, width: width!, height: height! };
     const fit = ComicLayout.presentationFit(slot, 1920, 2951, { x: .1, y: .1, width: .8, height: .8 });
     assert.ok(fit.width <= slot.width + 1e-9 && fit.height <= slot.height + 1e-9);
-    assert.ok(Math.abs(fit.width / fit.height - 1920 / 2951) < 1e-9);
+    assert.ok(Math.abs(fit.width / fit.height - (1920 * .8) / (2951 * .8)) < 1e-9);
     assert.ok(Math.abs(fit.width - slot.width) < 1e-9 || Math.abs(fit.height - slot.height) < 1e-9);
-    assert.deepEqual({ ...ComicLayout.contain(slot, 1920, 2951), contentBounds: fit.contentBounds }, fit);
+    assert.deepEqual(fit.contentBounds, { x: .1, y: .1, width: .8, height: .8 });
   }
+});
+
+test("comic page crop removes only continuous white side gutters", () => {
+  const width = 100, height = 80, data = new Uint8ClampedArray(width * height * 4).fill(255);
+  for (let y = 0; y < height; y++) for (let x = 12; x < 91; x++) {
+    const offset = (y * width + x) * 4; data[offset] = 30; data[offset + 1] = 40; data[offset + 2] = 50;
+  }
+  const bounds = comicHorizontalContentBounds({ width, height, data });
+  assert.ok(bounds.x <= .12 && bounds.x >= .1); assert.ok(bounds.x + bounds.width >= .91);
+  assert.equal(bounds.y, 0); assert.equal(bounds.height, 1);
+  // One real mark at the outside edge protects that side from being cut.
+  data[(40 * width) * 4] = 0; data[(41 * width) * 4] = 0;
+  assert.equal(comicHorizontalContentBounds({ width, height, data }).x, 0);
 });
 
 test("debug has no visible effect by default", () => {
@@ -744,16 +758,12 @@ test("a segmentação é determinística: a mesma página dá exatamente o mesmo
   assert.equal(shape(detectComicContainers(image(page), { step: 1 })), shape(detectComicContainers(image(page), { step: 1 })));
 });
 
-// A per-pixel silhouette used to be cut from the popup crop, loosened ring by ring before
-// falling back to a bare rectangle when it still clipped a letter. That shape never
-// perfectly matched what the flood fill found - a concave notch, a highlight the fill's own
-// tolerance missed - and every pixel it left out came back as a transparent hole in the
-// popup. The crop is a continuous rectangle now, with nothing inside it for a silhouette to
-// carve a hole in; `comicAdaptiveCropBounds`, not a mask, is what keeps it off a neighbour.
-test("o recorte é sempre um retângulo contínuo, opaco - nunca uma máscara de silhueta com buracos", () => {
+test("o recorte usa a silhueta selada e mantém fallback completo quando ela não é segura", () => {
   const cutout = readFileSync(new URL("../src/reader/comic/interaction/ComicObjectCutout.ts", import.meta.url), "utf8");
-  assert.match(cutout, /new Uint8ClampedArray\(width \* height \* 4\)\.fill\(255\)/, "a máscara publicada é sempre totalmente opaca");
-  assert.doesNotMatch(cutout, /includesStencil|cutsInk|excluded\[/, "nada aqui decide pixel a pixel o que fica de fora");
+  assert.match(cutout, /comicSealCutoutAlpha/);
+  assert.match(cutout, /comicMaskCutsInk/);
+  assert.match(cutout, /method: "original-crop-fallback"/);
+  assert.match(cutout, /method: "component-mask"/);
 });
 
 test("sozinho na página, o balão recebe um respiro confortável em toda volta", () => {

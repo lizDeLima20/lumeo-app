@@ -56,7 +56,7 @@ describe("PWA offline e armazenamento robusto", () => {
     assert.match(sw, /url\.hostname === "www\.googleapis\.com"/);
     assert.match(sw, /Authenticated Drive API requests are browser-only/);
     assert.match(sw, /request\.headers\.has\("Authorization"\)/);
-    assert.doesNotMatch(sw, /url\.pathname\.startsWith\("\/api\/"\)/);
+    assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)/, "legacy API-shaped requests must bypass Cache Storage");
   });
 
   it("aVersaoDoServiceWorkerEUmaSo", async () => {

@@ -45,7 +45,8 @@ export class BookImportView extends BaseView {
     private readonly metadataExtractor: BookMetadataExtractor,
     private readonly onSaved: (book: Book) => void, private readonly onCancel: () => void, private readonly onReplaceExisting?: (bookId: string) => Promise<void>,
     private readonly oneDrive?: { connections: OneDriveConnections; coordinator: OneDriveImportCoordinator; initialSourceId?: string; openExisting(id: string): void },
-    private readonly personalDrive?: { importer: PersonalDriveImporter; saved(book: Book): void; refreshGenres(): Promise<void> }) { super(); }
+    private readonly personalDrive?: { importer: PersonalDriveImporter; saved(book: Book): void; refreshGenres(): Promise<void> },
+    private readonly openPersonalDrive?: () => void) { super(); }
 
   public override unmount(): void {
     this.googleModal?.dispose(); this.googleModal = null;
@@ -103,6 +104,7 @@ export class BookImportView extends BaseView {
       file.wrapper.classList.remove("is-hidden"); file.input.click();
     });
     drive.addEventListener("click", () => {
+      if (this.openPersonalDrive) { this.openPersonalDrive(); return; }
       this.googleModal ??= new GoogleDriveLibrariesModal(new GoogleDriveLibraryRepository(
         new ExternalLibraryStorage(new IndexedDbService(`lumeo-library-${this.state.currentUser?.id ?? ""}`)), this.state.currentUser?.id ?? ""), new GoogleDriveLibraryService(),
         async downloaded => {
@@ -128,7 +130,9 @@ export class BookImportView extends BaseView {
       } catch (caught) { error.textContent = this.driveImportMessage(caught); }
       finally { if (driveImportController === controller) driveImportController = null; importDriveLink.disabled = false; cancelDriveLink.classList.add("is-hidden"); }
     })());
-    form.append(sourceChoices, file.wrapper, driveLink.wrapper, importDriveLink, cancelDriveLink, download, coverPreview, metadataNote, title.wrapper, author.wrapper, genreLabel, genreSuggestion, newGenreRow, collectionLabel, collectionSuggestion, statusLabel, error, actions);
+    form.append(sourceChoices, file.wrapper);
+    if (!this.openPersonalDrive) form.append(driveLink.wrapper, importDriveLink, cancelDriveLink);
+    form.append(download, coverPreview, metadataNote, title.wrapper, author.wrapper, genreLabel, genreSuggestion, newGenreRow, collectionLabel, collectionSuggestion, statusLabel, error, actions);
     if (this.oneDrive) {
       const cancelDownload = this.createElement("button", "button button--secondary is-hidden", I18nManager.shared.t("import.download.cancel"));
       cancelDownload.type = "button"; this.remoteCancel = cancelDownload;

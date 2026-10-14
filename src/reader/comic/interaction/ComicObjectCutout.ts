@@ -1,5 +1,6 @@
 import type { Bbox } from "tesseract.js";
 import type { ComicStencil, ComicVisualContainer } from "./ComicContainerDetector";
+import { comicSealCutoutAlpha } from "./ComicCutoutIntegrity";
 import { dilateMaskSquare, sealComicArtMask, type ComicMask } from "./ComicShapeMask";
 import type { ComicPageAsset, ComicTextRegion } from "./ComicInteractionTypes";
 import { comicRegionBounds } from "./ComicRegionBounds";
@@ -11,6 +12,77 @@ export function comicMaskedPixels(source: ImageData, alpha: Uint8Array): Uint8Cl
   const output = new Uint8ClampedArray(source.data);
   for (let i = 0; i < alpha.length; i++) output[i * 4 + 3] = Math.round(source.data[i * 4 + 3]! * alpha[i]! / 255);
   return output;
+}
+
+export interface ComicCutoutMask {
+  alpha: Uint8Array;
+  method: "component-mask" | "original-crop-fallback";
+  confidence: number;
+  holesFilled: number;
+}
+
+/** Rasterise the detector's own object silhouette in the full-resolution crop.
+ *
+ * The detector works on a bounded sampling grid while the stored artwork can be a much
+ * larger PDF/archive image.  This is deliberately done from coordinates instead of a
+ * resized bitmap: every source pixel is copied unchanged and only its alpha is decided.
+ * The one-cell expansion recovers the inked outline which sits just outside a flood-filled
+ * background; sealing afterwards fills lettering, icons and enclosed highlights so they
+ * can never become transparent holes. */
+export function comicCutoutMask(source: ImageData, crop: Bbox, container?: ComicVisualContainer,
+  siblings: readonly ComicVisualContainer[] = []): ComicCutoutMask {
+  const opaque = (): ComicCutoutMask => ({
+    alpha: new Uint8Array(source.width * source.height).fill(255),
+    method: "original-crop-fallback", confidence: 0, holesFilled: 0,
+  });
+  const stencil = container?.artStencil ?? container?.stencil;
+  if (!container || !stencil || stencil.width < 1 || stencil.height < 1 || stencil.data.length !== stencil.width * stencil.height) return opaque();
+
+  let mask: ComicMask = { width: source.width, height: source.height, data: new Uint8Array(source.width * source.height) };
+  for (let y = 0; y < source.height; y++) for (let x = 0; x < source.width; x++) {
+    const cellX = Math.floor((crop.x0 + x - stencil.x) / stencil.step);
+    const cellY = Math.floor((crop.y0 + y - stencil.y) / stencil.step);
+    if (cellX >= 0 && cellY >= 0 && cellX < stencil.width && cellY < stencil.height
+      && stencil.data[cellY * stencil.width + cellX]) mask.data[y * source.width + x] = 1;
+  }
+  // The stencil describes the fill. Recover its sampled border without making a large
+  // rectangle: at most two source pixels for a normal analysis grid, bounded to four for
+  // coarse/legacy packages.
+  const outlineReach = Math.max(1, Math.min(4, Math.ceil(stencil.step * .75)));
+  for (let pass = 0; pass < outlineReach; pass++) mask = dilateMaskSquare(mask);
+  const rawAlpha = Uint8Array.from(mask.data, value => value ? 255 : 0);
+  // A grown outline may reach the first pixel of a close neighbour. Its independently
+  // detected stencil has precedence there: subtract exactly that object, never a guessed
+  // rectangle around it. This is the purple-panel case where three balloons touch visually
+  // but still have three separate fills and three separate clicks.
+  const excluded = new Uint8Array(rawAlpha.length);
+  for (const sibling of siblings) {
+    if (sibling === container) continue;
+    const other = sibling.artStencil ?? sibling.stencil;
+    if (!other) continue;
+    for (let y = 0; y < source.height; y++) for (let x = 0; x < source.width; x++) {
+      const cellX = Math.floor((crop.x0 + x - other.x) / other.step);
+      const cellY = Math.floor((crop.y0 + y - other.y) / other.step);
+      if (cellX >= 0 && cellY >= 0 && cellX < other.width && cellY < other.height
+        && other.data[cellY * other.width + cellX]) excluded[y * source.width + x] = 1;
+    }
+  }
+  const sealed = comicSealCutoutAlpha(rawAlpha, source.width, source.height, excluded);
+  const alpha = sealed.alpha;
+  let visible = 0;
+  for (const value of alpha) if (value) visible++;
+  const share = visible / Math.max(1, alpha.length);
+  const ink = {
+    x0: container.ink.x0 - crop.x0, y0: container.ink.y0 - crop.y0,
+    x1: container.ink.x1 - crop.x0, y1: container.ink.y1 - crop.y0,
+  };
+  // A silhouette that is implausibly small or still removes original lettering is less
+  // trustworthy than the complete local crop. The fallback preserves the source intact;
+  // it is explicit metadata, never presented as successful object segmentation.
+  if (share < .04 || comicMaskCutsInk(source, alpha, ink, container.textColor)) return opaque();
+  const confidence = Math.max(.3, Math.min(.98,
+    container.styleConfidence * .7 + Math.min(1, share / .35) * .3 - Math.min(.2, sealed.holesFilled / Math.max(1, visible))));
+  return { alpha, method: "component-mask", confidence, holesFilled: sealed.holesFilled };
 }
 
 /** How far a crop may stretch past its own art in one direction before a real neighbour,
@@ -66,19 +138,9 @@ export function comicAdaptiveCropBounds(art: Bbox, siblings: readonly ComicVisua
   return { x0, y0, x1: Math.max(x1, x0 + 1), y1: Math.max(y1, y0 + 1) };
 }
 
-/** Assets are produced during conversion from the full source render, never the display
- *  canvas - and always as one continuous rectangle of it, at full opacity.
- *
- *  A per-pixel silhouette used to be cut from this same rectangle, to crop a balloon to its
- *  own curved outline rather than hand back its whole bounding box. That shape never
- *  perfectly matches what the flood fill actually found - a concave notch between two
- *  lobes, a highlight the fill's own tolerance did not cross - and every pixel the shape
- *  left out of a word's own territory came back as a hole in the popup: transparent, not
- *  missing art, but exactly as unreadable. A continuous crop cannot have one: there is
- *  nothing inside the rectangle for a silhouette to carve out. The trade is a corner of
- *  neighbouring artwork sometimes showing at the edge of a round balloon's popup, which
- *  `comicAdaptiveCropBounds` already keeps small by backing off whenever a real neighbour
- *  is close - never a letter, a tail or a word missing from the middle of a sentence. */
+/** Assets are produced from the full source render, never the display bitmap. A reliable
+ * detector silhouette isolates the object; an uncertain silhouette falls back to a
+ * complete, opaque local crop so a failed segmentation can never cut words or punch holes. */
 export async function comicCreateCutouts(canvas: HTMLCanvasElement, regions: ComicTextRegion[],
   containers: readonly ComicVisualContainer[]): Promise<ComicPageAsset[]> {
   const source = canvas.getContext("2d", { willReadFrequently: true })!;
@@ -110,45 +172,42 @@ export async function comicCreateCutouts(canvas: HTMLCanvasElement, regions: Com
     const cropBounds = comicAdaptiveCropBounds(art, containers, canvas.width, canvas.height, container, container ? Number.POSITIVE_INFINITY : 2);
     const x = cropBounds.x0, y = cropBounds.y0, width = Math.max(1, cropBounds.x1 - x), height = Math.max(1, cropBounds.y1 - y);
     const pixels = source.getImageData(x, y, width, height);
+    const cutout = comicCutoutMask(pixels, cropBounds, container, containers);
     const assetPath = `interaction/assets/${region.id}.webp`, maskPath = `interaction/assets/${region.id}-mask.webp`;
     const output = document.createElement("canvas"); output.width = width; output.height = height;
     const context = output.getContext("2d")!;
-    context.putImageData(pixels, 0, 0);
+    context.putImageData(new ImageData(comicMaskedPixels(pixels, cutout.alpha), width, height), 0, 0);
     assets.push(await encode(output, assetPath));
-    // A fully opaque mask, kept only so the field exists for whatever still reads it - the
-    // crop itself is always the whole continuous rectangle now, nothing within it unseen.
-    const mask = new Uint8ClampedArray(width * height * 4).fill(255);
+    const mask = new Uint8ClampedArray(width * height * 4);
+    for (let index = 0; index < cutout.alpha.length; index++) {
+      const offset = index * 4; mask[offset] = mask[offset + 1] = mask[offset + 2] = 255; mask[offset + 3] = cutout.alpha[index]!;
+    }
     context.putImageData(new ImageData(mask, width, height), 0, 0);
     assets.push(await encode(output, maskPath)); output.width = output.height = 0;
     region.assetPath = assetPath; region.maskPath = maskPath;
     region.assetWidth = width; region.assetHeight = height;
     region.visualBounds = { x: x / canvas.width, y: y / canvas.height, width: width / canvas.width, height: height / canvas.height };
     region.hitBounds = { ...region.visualBounds }; Object.assign(region, region.hitBounds);
-    region.segmentationMethod = "original-crop-fallback";
+    region.segmentationMethod = cutout.method;
     if (region.bubbleGroup) {
       region.bubbleGroup.unionBounds = { ...region.visualBounds };
       region.bubbleGroup.unionMaskPath = maskPath;
     }
-    region.segmentationConfidence = container ? Math.min(.85, container.styleConfidence) : 0;
+    region.segmentationConfidence = cutout.confidence;
     region.segmentationNeedsReview = region.segmentationConfidence < .8;
     region.needsReview = region.recognitionStatus !== "recognized";
   }
   return assets;
 }
 
-/** The same silhouette, widened by `reach` cells in every direction. Kept for whatever
- *  still reads a container's own stencil for shape, not for cropping - container detection
- *  and the hint animator still work from pixel silhouettes; only the final popup no longer
- *  does. */
+/** The same silhouette, widened by `reach` cells in every direction. */
 export function comicGrowStencil(stencil: ComicStencil, reach: number): ComicStencil {
   let mask: ComicMask = sealComicArtMask({ width: stencil.width, height: stencil.height, data: stencil.data }, 0);
   for (let step = 0; step < Math.max(0, reach); step++) mask = dilateMaskSquare(mask);
   return { ...stencil, data: mask.data };
 }
 
-/** Conservative safety check against the source image, not against OCR characters. Kept
- *  for the components still reading it; the popup crop itself no longer needs it, since a
- *  continuous rectangle has nothing inside it a mask could clip. */
+/** Conservative safety check against source pixels, not OCR's reconstructed text. */
 export function comicMaskCutsInk(image: ImageData, alpha: Uint8Array,
   ink: { x0: number; y0: number; x1: number; y1: number }, colour: string,
   owned?: (x: number, y: number) => boolean): boolean {
@@ -163,7 +222,10 @@ export function comicMaskCutsInk(image: ImageData, alpha: Uint8Array,
       total++; if (!alpha[i]) missing++;
     }
   }
-  return missing > 8 && missing > total * .01;
+  // Four source pixels are already a visible part of a thin glyph at the analysis
+  // resolution. Requiring a larger absolute loss let a short word be clipped merely
+  // because it contained fewer pixels than a paragraph.
+  return missing >= 4 && missing > total * .01;
 }
 
 /** WebP, like the page images beside them. Alpha is stored losslessly either way, so the

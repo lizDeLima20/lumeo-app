@@ -1,20 +1,15 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
+import { EnvironmentConfig } from "../src/config/EnvironmentConfig";
 
-const SUPABASE_URL = "https://rasonfawfsvyfhjkinbp.supabase.co";
-
-describe("configuração Supabase produção", () => {
-  it("envExampleUsesRealSupabaseUrlWithoutSecrets", async () => {
-    const env = await readFile(new URL("../.env.example", import.meta.url), "utf8");
-    assert.match(env, new RegExp(`SUPABASE_URL=${SUPABASE_URL}`));
-    assert.match(env, new RegExp(`VITE_SUPABASE_URL=${SUPABASE_URL}`));
-    assert.match(env, /SUPABASE_SECRET_KEY=\n/);
-    assert.match(env, /VITE_SUPABASE_PUBLISHABLE_KEY=\n/);
-    assert.match(env, /SUPABASE_ANON_KEY=\n/);
-    assert.match(env, /SUPABASE_SERVICE_ROLE_KEY=\n/);
-    assert.doesNotMatch(env, /SUPABASE_SECRET_KEY=sb_secret_/);
-    assert.doesNotMatch(env, /VITE_SUPABASE_.*sb_secret_/);
+describe("artefatos legados Supabase", () => {
+  it("Android pessoal não requer nem aceita configuração Supabase", () => {
+    const config = new EnvironmentConfig({ MODE: "production", VITE_SUPABASE_URL: "https://ignored.example" } as ImportMetaEnv, () => true).read();
+    assert.equal(config.bffBaseUrl, "");
+    // The value can exist in a developer environment, but it is never used to
+    // import, download or read a book in the native personal-library flow.
+    assert.equal(config.supabaseUrl, "https://ignored.example");
   });
 
   it("envFilesAreGitIgnoredButExampleIsTracked", async () => {

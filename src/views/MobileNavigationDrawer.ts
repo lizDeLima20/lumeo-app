@@ -3,7 +3,7 @@ import type { NavigationItem } from "../navigation/NavigationItem";
 import { I18nManager } from "../i18n/I18nManager";
 
 export class MobileNavigationDrawer {
-  public static readonly motionDuration = 300;
+  public static readonly motionDuration = 460;
   public static readonly hasOwnBackground = true;
   public static readonly hasOverlay = true;
   private root: HTMLElement | null = null;
@@ -14,7 +14,7 @@ export class MobileNavigationDrawer {
 
   public constructor(private readonly items: readonly NavigationItem[], private readonly userName: string,
     private readonly onNavigate: (route: RouteName) => void, private readonly onLogout: () => void,
-    private readonly onStateChange: (open: boolean) => void) {}
+    private readonly onStateChange: (open: boolean) => void, private readonly onAddDriveLink?: () => void) {}
 
   public render(): HTMLElement {
     const root = document.createElement("div"); root.className = "mobile-navigation";
@@ -28,7 +28,10 @@ export class MobileNavigationDrawer {
     const hello = document.createElement("strong"); hello.textContent = this.i18n.t("ui.greeting.hello", { name: this.userName });
     const wish = document.createElement("span"); wish.textContent = this.i18n.t("ui.greeting.goodReading"); greeting.append(hello, wish); profile.append(avatar, greeting);
     const nav = document.createElement("nav"); nav.className = "drawer-links"; nav.setAttribute("aria-label", this.i18n.t("ui.navigation.mobile"));
-    this.items.forEach((item) => nav.append(this.navigationButton(item)));
+    this.items.forEach((item) => {
+      nav.append(this.navigationButton(item));
+      if (item.route === "import" && this.onAddDriveLink) nav.append(this.addDriveLinkButton());
+    });
     const footer = document.createElement("footer"); footer.className = "drawer-footer";
     const privacy = document.createElement("button"); privacy.type = "button"; privacy.className = "drawer-privacy";
     privacy.textContent = this.i18n.t("ui.navigation.privacy");
@@ -70,5 +73,11 @@ export class MobileNavigationDrawer {
     const label = document.createElement("span"); label.textContent = this.i18n.t(item.labelKey); button.append(icon, label);
     if (item.route && window.location.pathname === `/${item.route}`) { button.classList.add("drawer-link--current"); button.setAttribute("aria-current", "page"); }
     button.addEventListener("click", () => { this.close(false); item.route ? this.onNavigate(item.route) : this.onLogout(); }); return button;
+  }
+  private addDriveLinkButton(): HTMLButtonElement {
+    const button = document.createElement("button"); button.type = "button"; button.className = "drawer-link drawer-link--drive";
+    const icon = document.createElement("span"); icon.className = "drawer-link__icon"; icon.textContent = "+"; icon.setAttribute("aria-hidden", "true");
+    button.append(icon, document.createTextNode("Adicionar link"));
+    button.addEventListener("click", () => { this.close(false); this.onAddDriveLink?.(); }); return button;
   }
 }

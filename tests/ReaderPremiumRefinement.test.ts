@@ -12,7 +12,8 @@ describe("abertura sem quadrado branco", () => {
   it("a tela de leitura só existe para livros em imagem; EPUB/Lima nunca a mostra", () => {
     const source = reader();
     assert.match(source, /this\.canvas\.hidden = true;/, "o placeholder branco fica escondido por padrão");
-    assert.match(source, /this\.canvas\.hidden=false;this\.stage\.append\(this\.createElement\("p","reader-image-mode-notice"/, "só reaparece no ramo de imagem/PDF escaneado");
+    assert.match(source, /classList\.add\("reader--image-mode"\);this\.canvas\.hidden=false;/, "só reaparece no ramo de imagem/PDF escaneado");
+    assert.equal(source.includes("reader-image-mode-notice"), false, "nenhuma faixa de aviso escura sobre a página em modo imagem");
   });
   it("o palco de leitura usa o papel escolhido, não branco fixo, enquanto o livro carrega", () => {
     assert.match(css(), /\.reader-stage \{[^}]*background: var\(--reader-paper-lit,var\(--reader-bg\)\);/, "o fundo do carregamento acompanha o tema de papel");

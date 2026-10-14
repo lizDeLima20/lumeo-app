@@ -6,7 +6,7 @@ import { comicDistanceToBounds, comicDistanceToContour } from "./ComicSilhouette
 
 /** A page on screen: its index in the .lima (0-based) and where its artwork is drawn, in
  *  stage pixels - the contained art rect, never the slot or the screen. */
-export interface ComicPageArt { pageIndex: number; rect: ComicRect; }
+export interface ComicPageArt { pageIndex: number; rect: ComicRect; contentBounds?: ComicRect; }
 
 /** `source` is the container on screen: what the touch belongs to and what the enlarged
  *  balloon grows out of - the whole yellow box, not the words inside it. */
@@ -57,18 +57,20 @@ export const COMIC_GROUP_HIT_SLOP_PX = 10;
 export class ComicHitMap {
   public constructor(private readonly pages: readonly ComicPageArt[], private readonly engine: ComicInteractionEngine) {}
 
-  public static regionRect(art: ComicRect, region: NormalizedBounds): ComicRect {
-    return { x: art.x + region.x * art.width, y: art.y + region.y * art.height, width: region.width * art.width, height: region.height * art.height };
+  public static regionRect(art: ComicRect, region: NormalizedBounds, contentBounds?: ComicRect): ComicRect {
+    const bounds = contentBounds ?? { x: 0, y: 0, width: 1, height: 1 };
+    return { x: art.x + ((region.x - bounds.x) / bounds.width) * art.width, y: art.y + ((region.y - bounds.y) / bounds.height) * art.height,
+      width: (region.width / bounds.width) * art.width, height: (region.height / bounds.height) * art.height };
   }
 
   /** Where a region may be touched, on screen. */
-  public static hitRect(art: ComicRect, region: ComicTextRegion): ComicRect {
-    return ComicHitMap.regionRect(art, comicRegionBounds(region).hit);
+  public static hitRect(art: ComicRect, region: ComicTextRegion, contentBounds?: ComicRect): ComicRect {
+    return ComicHitMap.regionRect(art, comicRegionBounds(region).hit, contentBounds);
   }
 
   /** The container itself, on screen: the balloon or box the balloon is enlarged from. */
-  public static visualRect(art: ComicRect, region: ComicTextRegion): ComicRect {
-    return ComicHitMap.regionRect(art, comicRegionBounds(region).visual);
+  public static visualRect(art: ComicRect, region: ComicTextRegion, contentBounds?: ComicRect): ComicRect {
+    return ComicHitMap.regionRect(art, comicRegionBounds(region).visual, contentBounds);
   }
 
   /** The page whose artwork contains the point, and the point in that page's 0..1 space. */
@@ -77,7 +79,8 @@ export class ComicHitMap {
       const { x, y, width, height } = page.rect;
       if (width <= 0 || height <= 0) continue;
       if (point.x < x - COMIC_HIT_SLOP_PX || point.x > x + width + COMIC_HIT_SLOP_PX || point.y < y - COMIC_HIT_SLOP_PX || point.y > y + height + COMIC_HIT_SLOP_PX) continue;
-      return { pageIndex: page.pageIndex, x: (point.x - x) / width, y: (point.y - y) / height };
+      const bounds = page.contentBounds ?? { x: 0, y: 0, width: 1, height: 1 };
+      return { pageIndex: page.pageIndex, x: bounds.x + ((point.x - x) / width) * bounds.width, y: bounds.y + ((point.y - y) / height) * bounds.height };
     }
     return null;
   }
@@ -99,7 +102,8 @@ export class ComicHitMap {
   public hit(point: { x: number; y: number }): ComicHit | null {
     const located = this.locate(point); if (!located) return null;
     const page = this.pages.find(value => value.pageIndex === located.pageIndex)!;
-    const scale = Math.max(1, Math.min(page.rect.width, page.rect.height));
+    const content = page.contentBounds ?? { x: 0, y: 0, width: 1, height: 1 };
+    const scale = Math.max(1, Math.min(page.rect.width / content.width, page.rect.height / content.height));
     let silhouette: { region: ComicTextRegion; area: number } | null = null;
     let boxed: { region: ComicTextRegion; area: number } | null = null;
     let nearest: { region: ComicTextRegion; distance: number } | null = null;
@@ -124,7 +128,7 @@ export class ComicHitMap {
       else if (boxDistance <= slop && (!nearest || boxDistance < nearest.distance)) nearest = { region, distance: boxDistance };
     }
     const chosen = silhouette?.region ?? boxed?.region ?? nearest?.region ?? null;
-    if (chosen) return { region: chosen, pageIndex: located.pageIndex, source: ComicHitMap.visualRect(page.rect, chosen) };
+    if (chosen) return { region: chosen, pageIndex: located.pageIndex, source: ComicHitMap.regionRect(page.rect, comicRegionBounds(chosen).visual, page.contentBounds) };
 
     // Nothing answered for the point on its own terms. A grouped conversation still might,
     // within its own wider halo - the point is in the gap the artist actually left between
@@ -137,7 +141,7 @@ export class ComicHitMap {
       const distance = outline ? comicDistanceToContour(outline, located) : comicDistanceToBounds(comicRegionBounds(region).hit, located);
       if (distance <= groupSlop && (!group || distance < group.distance)) group = { region, distance };
     }
-    return group ? { region: group.region, pageIndex: located.pageIndex, source: ComicHitMap.visualRect(page.rect, group.region) } : null;
+    return group ? { region: group.region, pageIndex: located.pageIndex, source: ComicHitMap.regionRect(page.rect, comicRegionBounds(group.region).visual, page.contentBounds) } : null;
   }
 
   public regions(): { pageIndex: number; art: ComicRect; regions: readonly ComicTextRegion[] }[] {

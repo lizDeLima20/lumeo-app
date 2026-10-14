@@ -28,7 +28,7 @@ export const COMIC_BUBBLE_ZOOM = {
    *  pixels of capital left several balloons no bigger than they were on the page; the
    *  wide reading is twice that, and the screen still has the last word below. */
   capHeightPx: { compact: 15, wide: 34 },
-  min: 1.15, max: 10,
+  min: 1.15, max: 12,
   compact: { margin: 10, widthShare: .96, heightShare: .82 },
   wide: { margin: 20, widthShare: .78, heightShare: .88 },
 } as const;
@@ -58,7 +58,8 @@ export function comicCapShare(region: ComicTextRegion): number {
  *  a half for something already large. The screen then has the final word. */
 export function comicBubbleZoom(source: ComicRect, viewport: { width: number; height: number }, compact: boolean, region?: ComicTextRegion): number {
   const capPx = Math.max(.5, (region ? comicCapShare(region) : .2) * source.height);
-  const wanted = (compact ? COMIC_BUBBLE_ZOOM.capHeightPx.compact : COMIC_BUBBLE_ZOOM.capHeightPx.wide) / capPx;
+  const smallBalloonBoost = compact && Math.min(source.width, source.height) < 44 ? 1.3 : 1;
+  const wanted = ((compact ? COMIC_BUBBLE_ZOOM.capHeightPx.compact : COMIC_BUBBLE_ZOOM.capHeightPx.wide) / capPx) * smallBalloonBoost;
 
   const limits = compact ? COMIC_BUBBLE_ZOOM.compact : COMIC_BUBBLE_ZOOM.wide;
   const margin = Math.min(limits.margin, viewport.width / 12);

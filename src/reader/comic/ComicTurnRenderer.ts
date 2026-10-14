@@ -5,7 +5,10 @@ import type { ComicRestPages, ComicTurnPlan } from "./ComicSpreadMap";
 export type ComicTheme = "light" | "dark";
 
 /** Page bitmaps by page number, already rendered for the current geometry. */
-export interface ComicBitmaps { get(page: number): HTMLCanvasElement | undefined; }
+export interface ComicBitmaps {
+  get(page: number): HTMLCanvasElement | undefined;
+  contentBounds?(page: number): ComicRect | undefined;
+}
 
 interface Palette { stage: string; paper: string; shade: string; }
 const PALETTES: Record<ComicTheme, Palette> = {
@@ -43,8 +46,8 @@ export class ComicTurnRenderer {
     const palette = PALETTES[theme];
     const left = ComicLayout.slot(geometry, "left"), right = ComicLayout.slot(geometry, "right");
     this.bookShadow(context, geometry, pages.left !== null, pages.right !== null, palette);
-    if (pages.left !== null) this.page(context, left, bitmaps.get(pages.left), palette);
-    if (pages.right !== null) this.page(context, right, bitmaps.get(pages.right), palette);
+    if (pages.left !== null) this.page(context, left, bitmaps.get(pages.left), palette, bitmaps.contentBounds?.(pages.left));
+    if (pages.right !== null) this.page(context, right, bitmaps.get(pages.right), palette, bitmaps.contentBounds?.(pages.right));
     if (geometry.mode === "spread") this.gutter(context, geometry, pages.left !== null, pages.right !== null, palette);
   }
 
@@ -58,15 +61,15 @@ export class ComicTurnRenderer {
 
     // 1. What never moves: the left page, and the page below the leaf (whole - the leaf
     //    about to be drawn over it is what keeps it covered until uncovered).
-    if (spread && plan.staticLeft !== null) this.page(context, left, bitmaps.get(plan.staticLeft), palette);
-    if (plan.under !== null) this.page(context, right, bitmaps.get(plan.under), palette);
+    if (spread && plan.staticLeft !== null) this.page(context, left, bitmaps.get(plan.staticLeft), palette, bitmaps.contentBounds?.(plan.staticLeft));
+    if (plan.under !== null) this.page(context, right, bitmaps.get(plan.under), palette, bitmaps.contentBounds?.(plan.under));
     else this.empty(context, right, palette);
     if (spread) this.gutter(context, geometry, plan.staticLeft !== null, true, palette);
 
     // 2. The front, only where it still lies flat.
     if (fold.front.length) {
       context.save(); this.path(context, fold.front); context.clip();
-      this.page(context, right, bitmaps.get(plan.front), palette);
+      this.page(context, right, bitmaps.get(plan.front), palette, bitmaps.contentBounds?.(plan.front));
       this.foldShade(context, fold, -1, geometry.pageWidth * .07, .16, palette);
       context.restore();
     }
@@ -119,15 +122,16 @@ export class ComicTurnRenderer {
     if (plan.back !== null) {
       context.save();
       context.translate(slot.x * 2 + slot.width, 0); context.scale(-1, 1);
-      this.page(context, slot, bitmaps.get(plan.back), palette);
+      this.page(context, slot, bitmaps.get(plan.back), palette, bitmaps.contentBounds?.(plan.back));
       context.restore();
       return;
     }
     const front = bitmaps.get(plan.front);
     if (!front) return;
     context.save(); context.globalAlpha = .1;
-    const drawn = ComicLayout.contain(slot, front.width, front.height);
-    context.drawImage(front, drawn.x, drawn.y, drawn.width, drawn.height);
+    const bounds = bitmaps.contentBounds?.(plan.front);
+    const drawn = ComicLayout.presentationFit(slot, front.width, front.height, bounds);
+    this.drawBitmap(context, front, drawn, bounds);
     context.restore();
   }
 
@@ -140,11 +144,17 @@ export class ComicTurnRenderer {
     return context;
   }
 
-  private page(context: CanvasRenderingContext2D, slot: ComicRect, bitmap: HTMLCanvasElement | undefined, palette: Palette): void {
+  private page(context: CanvasRenderingContext2D, slot: ComicRect, bitmap: HTMLCanvasElement | undefined, palette: Palette, bounds?: ComicRect): void {
     if (!bitmap) { this.empty(context, slot, palette); return; }
-    const drawn = ComicLayout.contain(slot, bitmap.width, bitmap.height);
+    const drawn = ComicLayout.presentationFit(slot, bitmap.width, bitmap.height, bounds);
     if (drawn.width < slot.width - .5 || drawn.height < slot.height - .5) this.empty(context, slot, palette);
-    context.drawImage(bitmap, drawn.x, drawn.y, drawn.width, drawn.height);
+    this.drawBitmap(context, bitmap, drawn, bounds);
+  }
+
+  private drawBitmap(context: CanvasRenderingContext2D, bitmap: HTMLCanvasElement, drawn: ComicRect, bounds?: ComicRect): void {
+    const source = bounds ?? { x: 0, y: 0, width: 1, height: 1 };
+    context.drawImage(bitmap, source.x * bitmap.width, source.y * bitmap.height, source.width * bitmap.width, source.height * bitmap.height,
+      drawn.x, drawn.y, drawn.width, drawn.height);
   }
 
   private empty(context: CanvasRenderingContext2D, slot: ComicRect, palette: Palette): void {

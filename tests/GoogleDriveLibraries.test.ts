@@ -41,11 +41,20 @@ it("unconfiguredGoogleErrorsOnlyWhenOpeningNotWhenSaving", async () => {
   await new GoogleDriveLibraryRepository(new Memory(), "u").save("Works", url);
   await assert.rejects(new GoogleDriveLibraryService("").prepare(), /Google Drive ainda não está configurado/);
 });
-it("mainImportHasDeviceComicAndDriveSourcesAndPersonalDriveLinkInput", async () => {
+it("native Android Drive preparation does not load browser OAuth", async () => {
+  const source = await readFile("src/external/GoogleDriveLibraryService.ts", "utf8");
+  assert.match(source, /NativeGoogleDriveAuthorization\.available \|\|/);
+  assert.match(source, /must never load Google Identity Services in the embedded WebView/);
+});
+it("Drive service binds fetch through globalThis for Android WebView", async () => {
+  const source = await readFile("src/external/GoogleDriveLibraryService.ts", "utf8");
+  assert.match(source, /globalThis\.fetch\(input, init\)/);
+});
+it("mainImportHasDeviceComicAndDriveSourcesAndOpensThePersonalDriveShelf", async () => {
   const source = await readFile("src/views/BookImportView.ts", "utf8");
   assert.match(source, /sourceChoices.append\(device, comic, drive\)/);
-  assert.match(source, /Link de arquivo ou pasta do Google Drive/);
-  assert.match(source, /Importar link do Google Drive/);
+  assert.match(source, /openPersonalDrive/);
+  assert.match(source, /this\.openPersonalDrive\(\)/);
 });
 it("listTargetsSavedFolderAndDownloadIsDirectWithoutBackend", async () => {
   const calls: string[] = [];

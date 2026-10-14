@@ -1,9 +1,25 @@
 import type { StorageAdapter } from "../services/StorageService";
 import { I18nManager } from "../i18n/I18nManager";
 
+export type GoogleDriveLibraryContentType = "book" | "comic";
 export interface GoogleDriveLibrarySource {
   id: string; userId: string; name: string; folderUrl: string; folderId: string;
+  /** The owner's local choice for PDFs in this Drive folder. Older records mean book. */
+  contentType?: GoogleDriveLibraryContentType;
   createdAt: string; updatedAt: string;
+}
+/** A cached, metadata-only Drive item. Its presence never means the file was copied to
+ * the device; the local Book record is created only after the person taps Baixar. */
+export interface GoogleDriveLibraryEntry {
+  sourceId: string; fileId: string; name: string; mimeType: string; size?: string;
+  modifiedTime?: string; resourceKey?: string; genre: string; thumbnailUrl: string;
+  contentType?: GoogleDriveLibraryContentType;
+}
+export interface GoogleDriveSyncTask { folderId: string; genre: string; resourceKey?: string; pageToken?: string; }
+export interface GoogleDriveLibrarySyncState {
+  queue: GoogleDriveSyncTask[]; completed: boolean; updatedAt: string;
+  /** Durable foreground-resume counters. Results themselves live in the entry cache. */
+  folders?: number; files?: number; current?: string;
 }
 export class GoogleDriveLibraryRepository {
   private queue: Promise<unknown> = Promise.resolve();
@@ -40,11 +56,64 @@ export class GoogleDriveLibraryRepository {
       const parsed = GoogleDriveLibraryRepository.parse(link), rows = await this.all();
       const previous = rows.find(row => row.id === id), now = new Date().toISOString();
       const source: GoogleDriveLibrarySource = { ...parsed, id: previous?.id ?? crypto.randomUUID(), userId: this.owner,
-        name: name.trim(), createdAt: previous?.createdAt ?? now, updatedAt: now };
+        name: name.trim(), contentType: previous?.contentType ?? "book", createdAt: previous?.createdAt ?? now, updatedAt: now };
       await this.storage.save(`googleLibraries:${this.owner}`, [...rows.filter(row => row.id !== source.id), source]); return source;
     });
   }
+  /** New personal-library flow: labels are deliberately local and automatic.  Keep the
+   * older save(name, link) API above for existing non-Android callers and migrations. */
+  public saveLink(link: string, contentType: GoogleDriveLibraryContentType = "book"): Promise<{ source: GoogleDriveLibrarySource; created: boolean }> {
+    return this.mutate(async () => {
+      const parsed = GoogleDriveLibraryRepository.parse(link), rows = await this.all();
+      const duplicate = rows.find(row => row.folderId === parsed.folderId);
+      if (duplicate) {
+        // A person can paste the same shared folder later with its resource key. Keep
+        // that key locally; otherwise a stale saved URL would fail authorization while
+        // the UI misleadingly calls the repeated link a successful update.
+        const refreshed = duplicate.folderUrl === parsed.folderUrl && (duplicate.contentType ?? "book") === contentType ? duplicate : { ...duplicate, folderUrl: parsed.folderUrl, contentType, updatedAt: new Date().toISOString() };
+        if (refreshed !== duplicate) await this.storage.save(`googleLibraries:${this.owner}`, rows.map(row => row.id === duplicate.id ? refreshed : row));
+        return { source: refreshed, created: false };
+      }
+      const now = new Date().toISOString();
+      const source: GoogleDriveLibrarySource = { ...parsed, id: crypto.randomUUID(), userId: this.owner,
+        name: `Link ${rows.length + 1}`, contentType, createdAt: now, updatedAt: now };
+      await this.storage.save(`googleLibraries:${this.owner}`, [...rows, source]);
+      return { source, created: true };
+    });
+  }
+  /** Changes only local routing metadata. Files, covers, downloads and Drive folders stay untouched. */
+  public updateContentType(id: string, contentType: GoogleDriveLibraryContentType): Promise<GoogleDriveLibrarySource | null> {
+    return this.mutate(async () => {
+      const rows = await this.all(), previous = rows.find(row => row.id === id);
+      if (!previous) return null;
+      const source = { ...previous, contentType, updatedAt: new Date().toISOString() };
+      await this.storage.save(`googleLibraries:${this.owner}`, rows.map(row => row.id === id ? source : row));
+      const entries = await this.entries(id);
+      await this.storage.save(`googleLibraryEntries:${this.owner}:${id}`, entries.map(entry => ({ ...entry, contentType })));
+      return source;
+    });
+  }
+  public async entries(sourceId?: string): Promise<GoogleDriveLibraryEntry[]> {
+    if (sourceId) return await this.storage.load<GoogleDriveLibraryEntry[]>(`googleLibraryEntries:${this.owner}:${sourceId}`) ?? [];
+    const groups = await Promise.all((await this.all()).map(source => this.entries(source.id)));
+    return groups.flat();
+  }
+  public async saveEntries(sourceId: string, entries: GoogleDriveLibraryEntry[]): Promise<void> {
+    await this.storage.save(`googleLibraryEntries:${this.owner}:${sourceId}`, entries);
+  }
+  public async appendEntries(sourceId: string, incoming: GoogleDriveLibraryEntry[]): Promise<GoogleDriveLibraryEntry[]> {
+    return this.mutate(async () => {
+      const current = await this.entries(sourceId), byId = new Map(current.map(entry => [entry.fileId, entry]));
+      incoming.forEach(entry => byId.set(entry.fileId, entry)); const saved = [...byId.values()];
+      await this.storage.save(`googleLibraryEntries:${this.owner}:${sourceId}`, saved); return saved;
+    });
+  }
+  public async syncState(sourceId: string): Promise<GoogleDriveLibrarySyncState | null> { return await this.storage.load<GoogleDriveLibrarySyncState>(`googleLibrarySync:${this.owner}:${sourceId}`); }
+  public async saveSyncState(sourceId: string, state: GoogleDriveLibrarySyncState): Promise<void> { await this.storage.save(`googleLibrarySync:${this.owner}:${sourceId}`, state); }
+  public async clearSyncState(sourceId: string): Promise<void> { await this.storage.remove(`googleLibrarySync:${this.owner}:${sourceId}`); }
   public remove(id: string): Promise<void> { return this.mutate(async () => {
     await this.storage.save(`googleLibraries:${this.owner}`, (await this.all()).filter(row => row.id !== id));
+    await this.storage.remove(`googleLibraryEntries:${this.owner}:${id}`);
+    await this.storage.remove(`googleLibrarySync:${this.owner}:${id}`);
   }); }
 }

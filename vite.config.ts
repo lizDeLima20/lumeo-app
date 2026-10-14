@@ -1,19 +1,14 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig } from "vite";
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
-  // Android is an offline-first personal library. It must never require a BFF URL
-  // merely to package the local reader and its Google Drive OAuth flow.
-  return {
-    server: {
-      port: 5173,
-      strictPort: true,
-      proxy: {
-        "/api": {
-          target: "http://127.0.0.1:3000",
-          changeOrigin: false,
-        },
-      },
-    },
-  };
+/**
+ * Lumeo's Android bundle is a personal, offline-first library.  It speaks to
+ * Google Drive directly after native consent and deliberately has no /api
+ * proxy: a WebView must never turn a relative request into an accidental
+ * dependency on a local or Vercel BFF.
+ */
+export default defineConfig({
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
 });

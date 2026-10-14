@@ -22,8 +22,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Reserved for native OAuth redirects. The current Google Identity
-                 flow returns its credential in the WebView popup. -->
+            <!-- Reserved for a future native OAuth redirect. The current Google
+                 Identity authorization flow returns from Google Play services,
+                 never from an app-controlled WebView. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

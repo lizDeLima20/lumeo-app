@@ -26,13 +26,12 @@ export class EnvironmentConfig {
   }
 
   private apiBaseUrl(): string {
-    // A Capacitor WebView is served from its own localhost origin. Unlike the
-    // deployed PWA, it needs the public HTTPS BFF URL at build time.
-    const capacitorApi = this.env.VITE_CAPACITOR_API_URL?.replace(/\/$/, "");
+    // The Android app is a personal library. Its local-file and Google Drive
+    // flows never use a BFF, regardless of values left in a developer shell.
+    // Keeping this empty also prevents a Capacitor WebView from resolving an
+    // accidental relative /api request against https://localhost.
     if (this.isNativeAndroid()) {
-      // A sideloaded APK may have been synced from a Web build that omitted the
-      // Android env. Never resolve /api against the WebView's https://localhost.
-      return capacitorApi || "";
+      return "";
     }
     // Production BFF is served by the same Vercel deployment. Never bake a
     // developer's localhost override into production requests.

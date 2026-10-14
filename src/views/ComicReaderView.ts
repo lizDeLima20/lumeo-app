@@ -6,6 +6,7 @@ import { ComicLayout, type ComicGeometry, type ComicRect } from "../reader/comic
 import { ComicArchiveSource } from "../reader/comic/ComicArchiveSource";
 import type { ComicPageSource } from "../reader/comic/ComicPageSource";
 import { ComicPageEngine, type ComicStageSize } from "../reader/comic/ComicPageEngine";
+import { detectComicPageContent } from "../reader/comic/ComicPageMarginDetector";
 import { ComicPagePrefetchPlanner } from "../reader/comic/ComicPagePrefetchPlanner";
 import { ComicPageProcessor } from "../reader/comic/ComicPageProcessor";
 import { ComicSpreadMap, type ComicTurnPlan } from "../reader/comic/ComicSpreadMap";
@@ -28,6 +29,15 @@ import { comicRegionBounds } from "../reader/comic/interaction/ComicRegionBounds
 import type { ComicPoint } from "../reader/comic/ComicFoldGeometry";
 import { ReaderFileMissingError, type ReaderManager } from "../reader/ReaderManager";
 import { ReaderImmersive } from "../services/ReaderImmersive";
+import { ReaderSettingsPanel } from "./ReaderSettingsPanel";
+import { FontSettingsController } from "../reader/settings/FontSettingsController";
+import { PaperSettingsController } from "../reader/settings/PaperSettingsController";
+import { LayoutSettingsController } from "../reader/settings/LayoutSettingsController";
+import { AnimationSettingsController } from "../reader/settings/AnimationSettingsController";
+import { ImageSettingsController } from "../reader/settings/ImageSettingsController";
+import { PomodoroSettingsController } from "../reader/settings/PomodoroSettingsController";
+import { ReadingDayTracker } from "../reader/pomodoro/ReadingDayTracker";
+import { StorageService } from "../services/StorageService";
 import { BaseView } from "./BaseView";
 
 const THEME_KEY = "lumeo.comic.theme";
@@ -48,7 +58,7 @@ export class ComicReaderView extends BaseView {
   private readonly overlay = new ComicBlockOverlay();
   private readonly planner = new ComicPagePrefetchPlanner();
   private readonly processor: ComicPageProcessor;
-  private readonly bitmaps = new Map<number, { canvas: HTMLCanvasElement; key: string }>();
+  private readonly bitmaps = new Map<number, { canvas: HTMLCanvasElement; key: string; contentBounds: ComicRect }>();
   private stage: HTMLElement | null = null;
   private canvas: HTMLCanvasElement | null = null;
   private overlaySlot: HTMLElement | null = null;
@@ -62,6 +72,8 @@ export class ComicReaderView extends BaseView {
   private totalPages = 0;
   private aspect = 2 / 3;
   private position = 0;
+  /** The page the reader had in focus before an orientation changes the spread map. */
+  private readingPage = 1;
   private queue: Promise<void> = Promise.resolve();
   private resizeTimer = 0;
   private labelTimer = 0;
@@ -85,10 +97,13 @@ export class ComicReaderView extends BaseView {
   private hints: ComicHintAnimator | null = null;
   private hitMapKey = "";
   private readonly debug = ComicReaderView.debugEnabled();
+  private settingsPanel: ReaderSettingsPanel | null = null;
+  private readonly readingDays = new ReadingDayTracker(new StorageService());
 
   public constructor(private readonly bookId: string, private readonly manager: ReaderManager,
     globalTheme: "light" | "dark", private readonly onBack: () => void,
-    private readonly onBookUpdated: (book: Book) => void) {
+    private readonly onBookUpdated: (book: Book) => void,
+    private readonly reminderBooks: readonly Pick<Book, "id" | "title" | "author" | "cover">[] = []) {
     super();
     this.processor = new ComicPageProcessor([new PdfTextLayerFragmentSource(), new TesseractComicOcrSource()]);
     this.theme = ComicReaderView.storedTheme() ?? globalTheme;
@@ -120,7 +135,7 @@ export class ComicReaderView extends BaseView {
     // The discovery nudge lives under the balloon layer: it is artwork, not furniture.
     this.hints = new ComicHintAnimator(this.bubbleLayer, {
       targets: () => this.pageArts().flatMap(art => this.interaction.regionsForPage(art.pageIndex)
-        .map(region => ({ region, rect: ComicHitMap.visualRect(art.rect, region) }))),
+        .map(region => ({ region, rect: ComicHitMap.visualRect(art.rect, region, art.contentBounds) }))),
       art: region => this.regionArt(region),
       idle: () => !this.disposed && this.bubble?.isOpen !== true && this.controller?.state === "IDLE" && this.interaction.isOpen,
     });
@@ -130,6 +145,7 @@ export class ComicReaderView extends BaseView {
        gestures inside it belong to it (reading and scrolling a long one). */
     this.progressLabel = this.createElement("span", "comic-progress"); this.progressLabel.setAttribute("aria-live", "polite");
     reader.append(this.stage, ...this.chrome(), this.progressLabel);
+    this.mountSettings(reader);
     this.renderer = new ComicTurnRenderer(this.canvas);
     this.controller = new ComicTurnController(this.stage, this.host);
     this.controller.bind();
@@ -176,7 +192,21 @@ export class ComicReaderView extends BaseView {
     theme.title = this.i18n.t(this.theme === "dark" ? "reader.theme.light" : "reader.theme.dark");
     const previous = this.button("←", this.i18n.t("reader.previousPage"), () => void this.controller?.turn(-1), "comic-arrow comic-arrow--previous");
     const next = this.button("→", this.i18n.t("reader.nextPage"), () => void this.controller?.turn(1), "comic-arrow comic-arrow--next");
-    return [back, theme, previous, next];
+    const settings = this.button("⚙", this.i18n.t("reader.customization"), () => this.settingsPanel?.toggle(), "comic-fab comic-fab--settings");
+    return [back, theme, settings, previous, next];
+  }
+
+  /** HQs use their own canvas and balloons, but reminders/preferences must stay identical
+   * to the book reader.  The shared panel is mounted as chrome, never in the comic stage. */
+  private mountSettings(reader: HTMLElement): void {
+    const service = this.manager.settings.preferencesService;
+    this.settingsPanel = new ReaderSettingsPanel(
+      () => service.preferences, false,
+      new FontSettingsController(service), new PaperSettingsController(service), new LayoutSettingsController(service),
+      new AnimationSettingsController(service), new ImageSettingsController(service),
+      () => { this.manager.settings.syncPreferences(); this.drawRest(); }, () => undefined,
+      { controller: new PomodoroSettingsController(service), today: () => this.readingDays.today() }, this.reminderBooks);
+    reader.append(this.settingsPanel.render());
   }
 
   private button(label: string, ariaLabel: string, action: () => void, className: string): HTMLButtonElement {
@@ -301,16 +331,18 @@ export class ComicReaderView extends BaseView {
   private layout(page: number): void {
     if (!this.stage || !this.renderer) return;
     const width = this.stage.clientWidth || window.innerWidth, height = this.stage.clientHeight || window.innerHeight;
+    const nativeLandscape = Capacitor.isNativePlatform() && width > height;
     const mode = ComicLayout.mode(width, height, { native: Capacitor.isNativePlatform(), finePointer: matchMedia("(pointer: fine)").matches });
-    this.geometry = ComicLayout.geometry(mode, width, height, this.aspect);
+    this.geometry = ComicLayout.geometry(mode, width, height, this.aspect, nativeLandscape ? "native-landscape" : "desktop");
     this.map = new ComicSpreadMap(this.totalPages, mode);
-    this.position = this.map.positionOfPage(page);
+    this.readingPage = Math.min(Math.max(1, page), Math.max(1, this.totalPages));
+    this.position = this.map.positionOfPage(this.readingPage);
     this.renderer.resize(width, height, window.devicePixelRatio || 1);
     this.renderer.clear(this.geometry, this.theme);
-    if (this.element) this.element.dataset.mode = mode;
+    if (this.element) { this.element.dataset.mode = mode; this.element.dataset.nativeLandscape = String(nativeLandscape && mode === "spread"); }
   }
 
-  private get currentPage(): number { return this.map?.pageOfPosition(this.position) ?? 1; }
+  private get currentPage(): number { return this.readingPage; }
 
   private get slotSize(): ComicStageSize {
     return { width: this.geometry?.pageWidth ?? 1, height: this.geometry?.pageHeight ?? 1 };
@@ -326,7 +358,7 @@ export class ComicReaderView extends BaseView {
         const known = this.bitmaps.get(page);
         if (known && known.key === key && known.canvas.width > 0) continue;
         const canvas = await this.engine.render(page, size).catch(() => null);
-        if (canvas && !this.disposed) this.bitmaps.set(page, { canvas, key });
+        if (canvas && !this.disposed) this.bitmaps.set(page, { canvas, key, contentBounds: detectComicPageContent(canvas) });
       }
     });
     this.queue = work.catch(() => undefined);
@@ -338,7 +370,9 @@ export class ComicReaderView extends BaseView {
     return known && known.canvas.width > 0 ? known.canvas : undefined;
   }
 
-  private readonly bitmapSource = { get: (page: number) => this.bitmap(page) };
+  private contentBounds(page: number): ComicRect | undefined { return this.bitmaps.get(page)?.contentBounds; }
+
+  private readonly bitmapSource = { get: (page: number) => this.bitmap(page), contentBounds: (page: number) => this.contentBounds(page) };
 
   private pagesOf(plan: ComicTurnPlan): number[] {
     return [plan.staticLeft, plan.front, plan.back, plan.under].filter((page): page is number => page !== null);
@@ -354,7 +388,7 @@ export class ComicReaderView extends BaseView {
       if (this.geometry) this.renderer?.drawTurn(this.geometry, plan, fold, this.bitmapSource, this.theme);
     },
     drawRest: (): void => this.drawRest(),
-    commit: (plan: ComicTurnPlan): void => { this.position = plan.target; this.arrived(true); },
+    commit: (plan: ComicTurnPlan): void => { this.position = plan.target; this.readingPage = this.map?.pageOfPosition(plan.target) ?? this.readingPage; this.arrived(true); },
     turning: (active: boolean): void => {
       // A page is about to move: the balloon and the old page's targets go first.
       if (active) { this.overlay.close(); this.bubble?.closeNow(); this.hints?.interrupt(); }
@@ -372,7 +406,8 @@ export class ComicReaderView extends BaseView {
     for (const [side, page] of [["left", rest.left], ["right", rest.right]] as const) {
       if (page === null) continue;
       const slot = ComicLayout.slot(this.geometry, side), bitmap = this.bitmap(page);
-      arts.push({ pageIndex: page - 1, rect: bitmap ? ComicLayout.contain(slot, bitmap.width, bitmap.height) : slot });
+      const contentBounds = this.contentBounds(page);
+      arts.push({ pageIndex: page - 1, rect: bitmap ? ComicLayout.presentationFit(slot, bitmap.width, bitmap.height, contentBounds) : slot, contentBounds });
     }
     return arts;
   }
@@ -429,7 +464,7 @@ export class ComicReaderView extends BaseView {
   private otherRegions(region: ComicTextRegion): ComicRect[] {
     return this.pageArts().flatMap(art => this.interaction.regionsForPage(art.pageIndex)
       .filter(other => other.id !== region.id)
-      .map(other => ComicHitMap.visualRect(art.rect, other)));
+      .map(other => ComicHitMap.visualRect(art.rect, other, art.contentBounds)));
   }
 
   /** The piece of page artwork a region covers, in the decoded page's own pixels: what the
@@ -461,10 +496,10 @@ export class ComicReaderView extends BaseView {
         const target = this.createElement("button", "comic-hitmap__target");
         target.type = "button"; target.dataset.regionId = region.id; target.dataset.review = region.recognitionStatus ?? "recognized";
         target.setAttribute("aria-label", region.text.replace(/\s+/g, " ").trim().slice(0, 120));
-        const hit = comicRegionBounds(region).hit;
-        Object.assign(target.style, { left: `${hit.x * 100}%`, top: `${hit.y * 100}%`, width: `${hit.width * 100}%`, height: `${hit.height * 100}%` });
+        const hit = ComicHitMap.hitRect(art.rect, region, art.contentBounds);
+        Object.assign(target.style, { left: `${hit.x - art.rect.x}px`, top: `${hit.y - art.rect.y}px`, width: `${hit.width}px`, height: `${hit.height}px` });
         target.addEventListener("click", () => {
-          this.bubble?.open(region, ComicHitMap.visualRect(art.rect, region));
+          this.bubble?.open(region, ComicHitMap.visualRect(art.rect, region, art.contentBounds));
           this.hints?.noteOpened(region);
         });
         page.append(target);
@@ -534,7 +569,7 @@ export class ComicReaderView extends BaseView {
     const side = rest.left === page ? "left" : "right";
     const box: ComicRect = ComicLayout.slot(this.geometry, side);
     const bitmap = this.bitmap(page);
-    const art = bitmap ? ComicLayout.contain(box, bitmap.width, bitmap.height) : box;
+    const art = bitmap ? ComicLayout.presentationFit(box, bitmap.width, bitmap.height, this.contentBounds(page)) : box;
     Object.assign(slot.style, { left: `${art.x}px`, top: `${art.y}px`, width: `${art.width}px`, height: `${art.height}px` });
   }
 
@@ -572,6 +607,7 @@ export class ComicReaderView extends BaseView {
   private showBlocks(pageNumber: number): void {
     if (pageNumber !== this.currentPage) return;
     const prepared = this.processor.cached(pageNumber); if (!prepared) return;
+    this.overlay.setContentBounds(this.contentBounds(pageNumber));
     this.overlay.setBlocks(prepared.blocks);
     if (this.stage) this.stage.dataset.blocks = prepared.blocks.length ? "ready" : "none";
   }
@@ -619,6 +655,7 @@ export class ComicReaderView extends BaseView {
    *  has (contained, so never deformed), then redrawn sharp for its new size. */
   private readonly handleResize = (): void => {
     if (!this.map || !this.geometry) return;
+    const openRegion = this.bubble?.activeRegion ?? null;
     this.controller?.interrupt();
     this.bubble?.closeNow();
     this.layout(this.currentPage);
@@ -626,7 +663,19 @@ export class ComicReaderView extends BaseView {
     window.clearTimeout(this.resizeTimer);
     this.resizeTimer = window.setTimeout(() => {
       this.engine.invalidate();
-      void this.ensure(this.map?.neededPages(this.position) ?? []).then(() => { if (!this.disposed && this.controller?.state === "IDLE") this.drawRest(); });
+      void this.ensure(this.map?.neededPages(this.position) ?? []).then(() => {
+        if (this.disposed || this.controller?.state !== "IDLE") return;
+        this.drawRest(); this.restoreBubbleAfterLayout(openRegion);
+      });
     }, 180);
   };
+
+  /** The artwork is re-rendered after rotation, so an open balloon must be re-anchored to
+   * its new page rectangle rather than left at stale portrait coordinates. */
+  private restoreBubbleAfterLayout(region: ComicTextRegion | null): void {
+    if (!region || !this.interaction.isOpen) return;
+    const art = this.pageArts().find(page => page.pageIndex === region.pageIndex);
+    if (!art) return;
+    void this.bubble?.open(region, ComicHitMap.visualRect(art.rect, region, art.contentBounds));
+  }
 }

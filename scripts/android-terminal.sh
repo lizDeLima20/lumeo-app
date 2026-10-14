@@ -4,7 +4,7 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-default_java_home="/home/delima/.local/share/lumeo/jdk-21/usr/lib/jvm/java-21-openjdk-amd64"
+default_java_home="/home/delima/.local/jdks/lumeo-jdk21/usr/lib/jvm/java-21-openjdk-amd64"
 export JAVA_HOME="${LUMEO_JAVA_HOME:-$default_java_home}"
 export PATH="$JAVA_HOME/bin:$PATH"
 apk_path="$project_root/android/app/build/outputs/apk/debug/app-debug.apk"

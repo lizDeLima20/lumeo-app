@@ -23,25 +23,12 @@ const balloon = (over: Partial<ComicVisualContainer> & { bbox: ComicVisualContai
 /** The task's own diagram: an upper balloon, a lower balloon, a short gap between them -
  *  the case two connected balloons used to open together and, after the last change,
  *  stopped. */
-test("uma cadeia vertical de dois balões separados por um vão curto é lida como um grupo", () => {
+test("dois balões completos separados por um vão curto continuam independentes", () => {
   const upper = balloon({ bbox: { x0: 100, y0: 100, x1: 300, y1: 200 } });
   const lower = balloon({ bbox: { x0: 100, y0: 206, x1: 300, y1: 300 } });
-  assert.ok(comicContainersLookConnected(upper, lower));
+  assert.equal(comicContainersLookConnected(upper, lower), false);
   const grouped = comicGroupConnectedContainers([upper, lower]);
-  assert.equal(grouped.length, 1, "as duas viram um único contêiner");
-  const merged = grouped[0]!;
-  // The union covers both balloons and the bridge between them.
-  assert.ok(merged.bbox.x0 <= 100 && merged.bbox.x1 >= 300);
-  assert.ok(merged.bbox.y0 <= 100 && merged.bbox.y1 >= 300);
-  for (const point of [{ x: 200, y: 130 }, { x: 200, y: 260 }, { x: 200, y: 203 }]) {
-    let inside = false;
-    for (let index = 0, previous = merged.contour.length - 1; index < merged.contour.length; previous = index++) {
-      const a = merged.contour[index]!, b = merged.contour[previous]!;
-      if ((a.y > point.y) === (b.y > point.y)) continue;
-      if (point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
-    }
-    assert.ok(inside, `ponto (${point.x},${point.y}) deveria estar dentro do contorno unido`);
-  }
+  assert.equal(grouped.length, 2);
 });
 
 test("um balão independente entre dois conectados continua fora do grupo", () => {
@@ -49,13 +36,20 @@ test("um balão independente entre dois conectados continua fora do grupo", () =
   const lower = balloon({ bbox: { x0: 100, y0: 206, x1: 300, y1: 300 } });
   const middle = balloon({ bbox: { x0: 340, y0: 150, x1: 420, y1: 190 }, backgroundColor: "#ffe9a8" });
   const grouped = comicGroupConnectedContainers([upper, lower, middle]);
-  assert.equal(grouped.length, 2, "o balão do meio não entra no grupo");
+  assert.equal(grouped.length, 3, "nenhum balão separado entra em outro grupo por proximidade");
   assert.ok(grouped.some(container => container.bbox.x0 === 340));
 });
 
 test("balões distantes, mesmo da mesma cor, não são unidos", () => {
   const a = balloon({ bbox: { x0: 100, y0: 100, x1: 200, y1: 160 } });
   const b = balloon({ bbox: { x0: 100, y0: 900, x1: 200, y1: 960 } });
+  assert.equal(comicGroupConnectedContainers([a, b]).length, 2);
+});
+
+test("dois balões completos que apenas encostam continuam independentes", () => {
+  const a = balloon({ bbox: { x0: 100, y0: 100, x1: 200, y1: 180 } });
+  const b = balloon({ bbox: { x0: 200, y0: 100, x1: 300, y1: 180 } });
+  assert.equal(comicContainersLookConnected(a, b), false);
   assert.equal(comicGroupConnectedContainers([a, b]).length, 2);
 });
 
@@ -77,11 +71,11 @@ test("cores muito diferentes não são a mesma fala", () => {
   assert.equal(comicGroupConnectedContainers([a, b]).length, 2);
 });
 
-test("três balões em cadeia viram um só grupo", () => {
+test("três balões apenas próximos continuam três alvos", () => {
   const top = balloon({ bbox: { x0: 100, y0: 100, x1: 300, y1: 180 } });
   const mid = balloon({ bbox: { x0: 100, y0: 186, x1: 300, y1: 266 } });
   const bottom = balloon({ bbox: { x0: 100, y0: 272, x1: 300, y1: 352 } });
-  assert.equal(comicGroupConnectedContainers([top, mid, bottom]).length, 1);
+  assert.equal(comicGroupConnectedContainers([top, mid, bottom]).length, 3);
 });
 
 test("OCR e o recorte final leem os mesmos contêineres, já agrupados", () => {
@@ -209,7 +203,7 @@ test("segmentos degenerados (comprimento zero) não geram NaN nem Infinity", () 
   assert.ok(!Number.isNaN(result.distance));
 });
 
-test("na página real, dois balões separados por um vão curto são detectados soltos e depois lidos como um só", async () => {
+test("na página sintética, dois balões separados permanecem dois", async () => {
   const { detectComicContainers } = await import("../src/reader/comic/interaction/ComicContainerDetector");
   const page = paintedPage(400, 520, [30, 60, 110]);
   letteredOval(page, 160, 120, 100, 65);
@@ -218,7 +212,7 @@ test("na página real, dois balões separados por um vão curto são detectados 
   assert.equal(found.length, 2, `o detector real encontra os dois balões separados, sem ligação entre eles: ${JSON.stringify(found.map(c => ({ type: c.type, shape: c.shape })))}`);
   assert.ok(found.every(c => c.type === "speech" || c.type === "thought"), "ambos lidos como fala, não legenda");
   const grouped = comicGroupConnectedContainers(found);
-  assert.equal(grouped.length, 1, "o agrupamento reúne o que o detector separou");
+  assert.equal(grouped.length, 2, "proximidade sem conexão estrutural não reúne falas distintas");
 });
 
 // Reproduces the reported bug: a balloon whose fill got cut in two by something inside it

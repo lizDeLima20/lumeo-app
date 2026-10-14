@@ -45,6 +45,14 @@ describe("HQ: o mapa de regiões acompanha a página, não a tela", () => {
     assert.deepEqual(rect, { x: 103, y: 449, width: 82.4, height: 61.800000000000004 });
   });
 
+  it("o crop lateral mantém as coordenadas dos balões alinhadas", () => {
+    const cropped: ComicPageArt = { pageIndex: 0, rect: { x: 0, y: 100, width: 400, height: 600 }, contentBounds: { x: .1, y: 0, width: .8, height: 1 } };
+    const map = new ComicHitMap([cropped], engineWith(region("r1", 0, [.2, .4, .2, .1])));
+    // Original x=.3 becomes (.3-.1)/.8 = .25 of the cropped art.
+    assert.equal(map.hit({ x: 100, y: 370 })?.region.id, "r1");
+    assert.deepEqual(map.locate({ x: 100, y: 370 }), { pageIndex: 0, x: .30000000000000004, y: .45 });
+  });
+
   it("no livro aberto cada página usa as suas próprias regiões", () => {
     const left = { x: 100, y: 50, width: 300, height: 450 }, right = { x: 400, y: 50, width: 300, height: 450 };
     const map = new ComicHitMap([{ pageIndex: 2, rect: left }, { pageIndex: 3, rect: right }],
@@ -91,6 +99,12 @@ describe("HQ: o asset original é ampliado sem distorcer ou reescrever sua arte"
     assert.ok(target.zoom > 1);
   });
 
+  it("balões pequenos recebem ampliação extra no celular", () => {
+    const small = comicBubbleZoom({ x: 10, y: 10, width: 30, height: 20 }, viewport, true);
+    const regular = comicBubbleZoom({ x: 10, y: 10, width: 60, height: 40 }, viewport, true);
+    assert.ok(small > regular, `pequeno ${small.toFixed(2)}x; regular ${regular.toFixed(2)}x`);
+  });
+
   it("qualquer origem termina dentro da tela, com margem", () => {
     for (const source of [{ x: 0, y: 0, width: 20, height: 14 }, { x: 392, y: 900, width: 20, height: 14 },
       { x: 10, y: 450, width: 390, height: 300 }, { x: 200, y: 450, width: 40, height: 30 }]) {
@@ -126,7 +140,7 @@ describe("HQ: o asset original é ampliado sem distorcer ou reescrever sua arte"
     assert.equal(comicBubbleFallbackPath("rectangle"), "M 1 1 L 99 1 L 99 99 L 1 99 Z");
 
     const view = source("reader/comic/interaction/ComicBubbleView.ts");
-    assert.match(view, /comicArtworkCanvas\(art, \{ width, height \}\)/);
+    assert.match(view, /comicArtworkCanvas\(art, \{ width: width \* qualityScale, height: height \* qualityScale \}\)/);
     assert.doesNotMatch(view, /paragraph\.textContent|createElementNS|fillText|comicBubbleFallbackPath/);
   });
 });
@@ -528,7 +542,7 @@ describe("HQ: leitura no desktop", () => {
 describe("HQ: mesmo coberto, o vizinho continua clicável", () => {
   it("a arte original usa sua máscara completa sem um segundo recorte simplificado", () => {
     const view = source("reader/comic/interaction/ComicBubbleView.ts");
-    assert.match(view, /comicArtworkCanvas\(art, \{ width, height \}\)/);
+    assert.match(view, /comicArtworkCanvas\(art, \{ width: width \* qualityScale, height: height \* qualityScale \}\)/);
     assert.doesNotMatch(view, /element\.style\.clipPath\s*=/);
   });
 

@@ -119,8 +119,8 @@ export class ReaderView extends BaseView {
          * Nothing past the first page has been read, so the book opens closed on its cover. */
         if(this.reflow.currentPageNumber<=2&&this.reflow.pageAt(1)?.cover){this.reflow.goTo(1);this.desktopState.restore(0);}
         this.renderReflow();void this.offerFirstReadGreeting(hasStartedReading);return;}await reflow.close();await this.manager.saveDocumentCapability(source.book,{documentMode:"scanned",textCapability:"none",limaCapability:"unavailable"});
-      this.element?.classList.add("reader--image-mode");this.canvas.hidden=false;this.stage.append(this.createElement("p","reader-image-mode-notice",this.i18n.t("reader.imageMode.notice")));
-      const book = await this.manager.openImageReader(this.bookId, this.canvas, () => this.stageSize(), (incorrect) => this.requestPassword(incorrect),
+      this.element?.classList.add("reader--image-mode");this.canvas.hidden=false;
+      const book = await this.manager.openImageReader(this.bookId, this.canvas, () => this.imageStageSize(), (incorrect) => this.requestPassword(incorrect),
         (state) => this.onPageRendered(state));
       this.imageBook = book;
       this.element.querySelector(".reader-loading")?.remove(); this.mountControls(book.title);
@@ -461,6 +461,14 @@ export class ReaderView extends BaseView {
   private scheduleControlsHide(): void { this.chrome?.schedule(); }
   private updateProgress():void{this.progressBar?.update(new ReaderProgressModel().build(this.currentPage,this.totalPages,this.currentChapter()?.title));}
   private showResumeHint():void{if(this.currentPage<=1||!this.element)return;const hint=this.createElement("p","reader-resume-hint",this.i18n.t("reader.resume.continuing"));this.element.append(hint);window.setTimeout(()=>hint.remove(),2200);}
+  /** Image pages (scanned PDFs) fill the stage's content box: the
+   *  stage padding left in image mode is only the toolbar and the Android safe area. */
+  private imageStageSize(): { width: number; height: number } {
+    const stage = this.stage; if (!stage) return this.stageSize();
+    const style = getComputedStyle(stage), px = (value: string) => Number.parseFloat(value) || 0;
+    return { width: Math.max(1, stage.clientWidth - px(style.paddingLeft) - px(style.paddingRight)),
+      height: Math.max(1, stage.clientHeight - px(style.paddingTop) - px(style.paddingBottom)) };
+  }
   private stageSize(): { width: number; height: number } { return { width: this.stage?.clientWidth ?? window.innerWidth, height: this.stage?.clientHeight ?? window.innerHeight }; }
   private readonly handleResize = (): void => { window.clearTimeout(this.resizeTimer); this.resizeTimer = window.setTimeout(() => {if(this.reflow){this.remeasure();this.reflow.repaginate(this.paginationMetrics());this.renderReflow();}else void this.manager.rerender();}, 180); };
   private readonly handleKeydown = (event: KeyboardEvent): void => {

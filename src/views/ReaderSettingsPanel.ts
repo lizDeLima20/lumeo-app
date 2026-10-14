@@ -138,7 +138,7 @@ export class ReaderSettingsPanel {
   /** Android-only: the native plugin owns persistence and AlarmManager, so it still fires after WebView shutdown. */
   private readingReminderSection(): HTMLElement {
     const body = this.section(this.i18n.t("reader.reminder.title")); body.classList.add("reader-reminder-settings");
-    const fields = document.createElement("div"); fields.className = "reader-pomodoro-settings__fields";
+    const fields = document.createElement("div"); fields.className = "reader-pomodoro-settings__fields reader-reminder-settings__fields";
     const time = document.createElement("input"); time.type = "time"; time.className = "input"; time.value = "09:00"; time.setAttribute("aria-label", this.i18n.t("reader.reminder.time"));
     const timeField = document.createElement("label"); timeField.className = "reader-setting-field"; timeField.append(this.label(this.i18n.t("reader.reminder.time")), time);
     const days = document.createElement("fieldset"); days.className = "reader-reminder-settings__days"; const legend = document.createElement("legend"); legend.textContent = this.i18n.t("reader.reminder.days"); days.append(legend);
@@ -146,20 +146,45 @@ export class ReaderSettingsPanel {
     const labels = ["reader.reminder.sun", "reader.reminder.mon", "reader.reminder.tue", "reader.reminder.wed", "reader.reminder.thu", "reader.reminder.fri", "reader.reminder.sat"] as const;
     const today = (new Date().getDay() + 1) as ReadingReminderDay;
     labels.forEach((key, index) => { const day = (index + 1) as ReadingReminderDay, label = document.createElement("label"), input = document.createElement("input"); input.type = "checkbox"; input.checked = day === today; input.value = String(day); label.append(input, document.createTextNode(this.i18n.t(key))); inputs.set(day, input); days.append(label); });
-    const target = document.createElement("div"); target.className = "reader-reminder-settings__books";
-    const library = document.createElement("label"), libraryInput = document.createElement("input"); libraryInput.type = "radio"; libraryInput.name = "reading-reminder-target"; libraryInput.value = "library"; libraryInput.checked = true; library.append(libraryInput, document.createTextNode(this.i18n.t("reader.reminder.library")));
-    target.append(library);
-    this.reminderBooks.forEach(book => { const label = document.createElement("label"), input = document.createElement("input"), image = document.createElement("img"), copy = document.createElement("span"); input.type = "radio"; input.name = "reading-reminder-target"; input.value = book.id; image.src = book.cover || "/icons/lumeo-logo.png"; image.alt = ""; image.loading = "lazy"; copy.textContent = `${book.title}${book.author ? ` — ${book.author}` : ""}`; label.append(input, image, copy); target.append(label); });
+    const target = document.createElement("div"); target.className = "reader-reminder-settings__target";
+    const library = document.createElement("label"), libraryInput = document.createElement("input"); libraryInput.type = "checkbox"; libraryInput.value = "library"; libraryInput.checked = true; library.append(libraryInput, document.createTextNode(this.i18n.t("reader.reminder.library")));
+    const books = document.createElement("div"); books.className = "reader-reminder-settings__books";
+    const selectedBookIds = new Set<string>();
+    let visibleBooks = 30;
+    const updateTargetState = (): void => {
+      const useLibrary = libraryInput.checked;
+      books.classList.toggle("reader-reminder-settings__books--disabled", useLibrary);
+      books.querySelectorAll<HTMLInputElement>("input").forEach(input => { input.disabled = useLibrary; });
+    };
+    const renderBooks = (): void => {
+      books.replaceChildren();
+      this.reminderBooks.slice(0, visibleBooks).forEach(book => {
+        const label = document.createElement("label"), input = document.createElement("input"), image = document.createElement("img"), copy = document.createElement("span");
+        input.type = "checkbox"; input.value = book.id; input.checked = selectedBookIds.has(book.id); input.disabled = libraryInput.checked;
+        input.addEventListener("change", () => { if (input.checked) selectedBookIds.add(book.id); else selectedBookIds.delete(book.id); });
+        image.src = book.cover || "/icons/lumeo-logo.png"; image.alt = ""; image.loading = "lazy"; copy.textContent = book.title;
+        label.title = `${book.title}${book.author ? ` — ${book.author}` : ""}`; label.append(input, image, copy); books.append(label);
+      });
+      if (visibleBooks < this.reminderBooks.length) {
+        const more = document.createElement("button"); more.type = "button"; more.className = "reader-reminder-settings__more";
+        more.textContent = `Mostrar mais (${this.reminderBooks.length - visibleBooks})`;
+        more.addEventListener("click", () => { visibleBooks = Math.min(this.reminderBooks.length, visibleBooks + 30); renderBooks(); }); books.append(more);
+      }
+      updateTargetState();
+    };
+    libraryInput.addEventListener("change", () => { if (libraryInput.checked) selectedBookIds.clear(); renderBooks(); });
+    target.append(library, books); renderBooks();
     const actions = document.createElement("div"); actions.className = "reader-reminder-settings__actions";
     const add = document.createElement("button"); add.type = "button"; add.className = "button button--primary"; add.textContent = this.i18n.t("reader.reminder.add");
     const status = document.createElement("p"); status.className = "reader-settings__note"; status.setAttribute("aria-live", "polite");
     const list = document.createElement("div"); list.className = "reader-reminder-settings__list";
     let reminders: ReadingReminderItem[] = [];
-    const value = (): ReadingReminderInput | null => {
+    const values = (): ReadingReminderInput[] | null => {
       const parts = time.value.split(":"), hour = Number(parts[0]), minute = Number(parts[1]), selected = [...inputs].filter(([, input]) => input.checked).map(([day]) => day);
-      const selectedTarget = target.querySelector<HTMLInputElement>("input:checked")?.value ?? "library";
-      const book = this.reminderBooks.find(item => item.id === selectedTarget);
-      return Number.isInteger(hour) && Number.isInteger(minute) && selected.length ? { hour, minute, days: selected, targetType: book ? "book" : "library", bookId: book?.id, bookTitle: book?.title } : null;
+      if (!Number.isInteger(hour) || !Number.isInteger(minute) || !selected.length) return null;
+      if (libraryInput.checked) return [{ hour, minute, days: selected, targetType: "library" }];
+      const choices = this.reminderBooks.filter(book => selectedBookIds.has(book.id));
+      return choices.length ? choices.map(book => ({ hour, minute, days: selected, targetType: "book", bookId: book.id, bookTitle: book.title })) : null;
     };
     const renderList = (): void => {
       list.replaceChildren();
@@ -169,22 +194,22 @@ export class ReaderSettingsPanel {
         const toggle = document.createElement("input"); toggle.type = "checkbox"; toggle.checked = reminder.enabled; toggle.setAttribute("aria-label", this.i18n.t("reader.reminder.enable"));
         toggle.addEventListener("change", async () => { const state = await ReadingReminder.setReminderEnabled(reminder.id, toggle.checked); if (state?.reminders) { reminders = [...state.reminders]; renderList(); } });
         const text = document.createElement("span"); text.textContent = `${String(reminder.hour).padStart(2, "0")}:${String(reminder.minute).padStart(2, "0")} · ${reminder.targetType === "book" ? reminder.bookTitle ?? this.i18n.t("reader.reminder.book") : this.i18n.t("reader.reminder.library")}`;
-        const edit = document.createElement("button"); edit.type = "button"; edit.textContent = this.i18n.t("ui.common.edit"); edit.addEventListener("click", () => { fields.hidden = false; time.value = `${String(reminder.hour).padStart(2, "0")}:${String(reminder.minute).padStart(2, "0")}`; inputs.forEach((input, day) => { input.checked = reminder.days.includes(day); }); const radio = target.querySelector<HTMLInputElement>(`input[value="${CSS.escape(reminder.bookId ?? "library")}"]`) ?? libraryInput; radio.checked = true; add.dataset.editing = reminder.id; add.textContent = this.i18n.t("ui.common.save"); });
+        const edit = document.createElement("button"); edit.type = "button"; edit.textContent = this.i18n.t("ui.common.edit"); edit.addEventListener("click", () => { fields.hidden = false; time.value = `${String(reminder.hour).padStart(2, "0")}:${String(reminder.minute).padStart(2, "0")}`; inputs.forEach((input, day) => { input.checked = reminder.days.includes(day); }); libraryInput.checked = reminder.targetType === "library"; selectedBookIds.clear(); if (reminder.bookId) selectedBookIds.add(reminder.bookId); visibleBooks = Math.max(visibleBooks, this.reminderBooks.findIndex(book => book.id === reminder.bookId) + 1); renderBooks(); add.dataset.editing = reminder.id; add.textContent = this.i18n.t("ui.common.save"); });
         const remove = document.createElement("button"); remove.type = "button"; remove.textContent = this.i18n.t("ui.common.delete"); remove.addEventListener("click", async () => { const state = await ReadingReminder.deleteReminder(reminder.id); reminders = [...(state?.reminders ?? [])]; renderList(); });
         row.append(toggle, text, edit, remove); list.append(row);
       });
     };
     add.addEventListener("click", async () => {
-      const next = value(); if (!next) { status.textContent = this.i18n.t("reader.reminder.chooseDay"); return; }
+      const next = values(); if (!next) { status.textContent = this.i18n.t("reader.reminder.chooseDay"); return; }
       const editing = add.dataset.editing;
-      const updated = editing ? reminders.map(item => item.id === editing ? { ...next, id: editing, enabled: true } : item) : [...reminders, { ...next, enabled: true }];
+      const updated = editing ? reminders.flatMap(item => item.id === editing ? next.map((value, index) => ({ ...value, id: index === 0 ? editing : undefined, enabled: true })) : [item]) : [...reminders, ...next.map(value => ({ ...value, enabled: true }))];
       const saved = await ReadingReminder.saveReminders(updated);
       if (!saved) { status.textContent = this.i18n.t("reader.reminder.permission"); return; }
       reminders = [...(saved.state.reminders ?? [])]; delete add.dataset.editing; add.textContent = this.i18n.t("reader.reminder.add");
       status.textContent = this.i18n.t("reader.reminder.saved"); renderList();
     });
     actions.append(add);
-    fields.append(timeField, days, target); body.append(fields, actions, list, status);
+    fields.append(timeField, days); body.append(fields, actions, target, list, status);
     void ReadingReminder.state().then(saved => { reminders = [...(saved?.reminders ?? [])]; renderList(); }).catch(() => renderList());
     return body;
   }

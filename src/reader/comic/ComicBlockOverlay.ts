@@ -10,6 +10,7 @@ export class ComicBlockOverlay {
   private root: HTMLElement | null = null;
   private readonly panels = new Map<string, HTMLElement>();
   private readonly hotspots = new Map<string, HTMLElement>();
+  private contentBounds = { x: 0, y: 0, width: 1, height: 1 };
 
   public render(): HTMLElement {
     const root = document.createElement("div");
@@ -21,6 +22,9 @@ export class ComicBlockOverlay {
 
   public get openBlockId(): string | null { return this.selection.openId; }
   public get blockCount(): number { return this.panels.size; }
+  public setContentBounds(bounds?: { x: number; y: number; width: number; height: number }): void {
+    this.contentBounds = bounds ?? { x: 0, y: 0, width: 1, height: 1 };
+  }
 
   public setBlocks(blocks: readonly ComicTextBlock[]): void {
     this.clear();
@@ -38,7 +42,7 @@ export class ComicBlockOverlay {
       panel.hidden = true; panel.setAttribute("aria-hidden", "true");
       panel.style.setProperty("--comic-block-background", block.background);
       panel.style.setProperty("--comic-block-ink", block.ink);
-      panel.style.top = `${this.clampPercent(block.y + block.height / 2)}%`;
+      panel.style.top = `${this.clampPercent((block.y + block.height / 2 - this.contentBounds.y) / this.contentBounds.height)}%`;
       const text = document.createElement("p"); text.className = "comic-block__text";
       block.lines.forEach((line, index) => { if (index) text.append(document.createElement("br")); text.append(line); });
       panel.append(text);
@@ -70,8 +74,10 @@ export class ComicBlockOverlay {
   }
 
   private place(hotspot: HTMLElement, block: ComicTextBlock): void {
-    hotspot.style.left = `${block.x * 100}%`; hotspot.style.top = `${block.y * 100}%`;
-    hotspot.style.width = `${block.width * 100}%`; hotspot.style.height = `${block.height * 100}%`;
+    hotspot.style.left = `${((block.x - this.contentBounds.x) / this.contentBounds.width) * 100}%`;
+    hotspot.style.top = `${((block.y - this.contentBounds.y) / this.contentBounds.height) * 100}%`;
+    hotspot.style.width = `${(block.width / this.contentBounds.width) * 100}%`;
+    hotspot.style.height = `${(block.height / this.contentBounds.height) * 100}%`;
   }
   private clampPercent(value: number): number { return Math.min(92, Math.max(8, value * 100)); }
 }

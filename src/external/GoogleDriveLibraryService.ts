@@ -2,6 +2,7 @@ import { I18nManager } from "../i18n/I18nManager";
 import { BookDownloadError, StartTelemetry } from "../diagnostics/StartTelemetry";
 import { GoogleDriveAuthorizationError, GoogleDriveAuthorizationProvider } from "../services/GoogleDriveAuthorizationProvider";
 import { GoogleIdentityServices } from "../services/GoogleIdentityServices";
+import { NativeGoogleDriveAuthorization } from "../services/NativeGoogleDriveAuthorization";
 export interface GoogleLibraryFile { id: string; name: string; mimeType: string; size?: string; modifiedTime?: string; resourceKey?: string; }
 class GoogleDriveRequestError extends Error {
   public constructor(public readonly status: number, cause?: unknown) { super("Google Drive request failed"); this.name = "GoogleDriveRequestError"; Object.defineProperty(this, "cause", { value: cause, enumerable: false }); }
@@ -14,13 +15,17 @@ export class GoogleDriveLibraryService {
   private token = ""; private expires = 0; private loading: Promise<void> | null = null;
   private readonly downloads = new Map<string, Promise<File>>();
   private readonly authorization: GoogleDriveAuthorizationProvider;
-  public constructor(private readonly clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "", private readonly fetcher: typeof fetch = fetch) { this.authorization = new GoogleDriveAuthorizationProvider(clientId); }
+  // Keep Window as the receiver on Android WebView. Passing bare `fetch` and invoking it
+  // as a class property throws "Illegal invocation" on some Chromium builds.
+  public constructor(private readonly clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "", private readonly fetcher: typeof fetch = (input, init) => globalThis.fetch(input, init)) { this.authorization = new GoogleDriveAuthorizationProvider(clientId); }
   public get configured(): boolean { return this.authorization.configured; }
   public get authorized(): boolean { return !!this.token && Date.now() < this.expires; }
   private error(): Error { return new Error(I18nManager.shared.t("google.failed")); }
   public prepare(): Promise<void> {
     if (!this.configured) return Promise.reject(new Error(I18nManager.shared.t("google.notConfigured")));
-    if (this.authorization.configured && !this.clientId) return Promise.resolve();
+    // Android must never load Google Identity Services in the embedded WebView.
+    // The native plugin owns consent and returns the short-lived Drive token.
+    if (NativeGoogleDriveAuthorization.available || (this.authorization.configured && !this.clientId)) return Promise.resolve();
     return this.loading ??= GoogleIdentityServices.load().then(() => undefined).catch(() => { this.loading = null; throw this.error(); });
   }
   /** Called by the explicit Connect button; native Android uses Google Identity. */
@@ -97,6 +102,7 @@ export class GoogleDriveLibraryService {
     try {
       const response = await this.request(`files/${encodeURIComponent(file.id)}?alt=media&supportsAllDrives=true`, timed.signal, { id: file.id, key: file.resourceKey });
       const reader = response.body?.getReader(); if (!reader) throw new BookDownloadError("MOBILE_API_UNSUPPORTED", "DOWNLOADING", file.id);
+      progress(size ? 0 : null);
       let bytes = 0; const chunks: BlobPart[] = [];
       try { while (true) { assertNotAborted(timed.signal); const { done, value } = await reader.read(); if (done) break;
         bytes += value.byteLength; if (bytes > max) throw new BookDownloadError("EPUB_INVALID", "VALIDATING", file.id);

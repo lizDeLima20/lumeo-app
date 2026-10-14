@@ -10,19 +10,6 @@ import { dilateMask, emptyMask, erodeMask, simplifyContour, traceMaskContour, ty
  *  middle. Nothing here touches how a container is found; it only decides, afterwards,
  *  which of the found containers belong to the same speech. */
 
-/** How close two containers' own outlines may sit, and still be read as a stray gap
- *  between two speakers rather than a connector - a few grid cells at their own
- *  resolution, capped by a share of how big the smaller one is so two large boxes never
- *  bridge across a whole panel. */
-function gapLimit(a: ComicVisualContainer, b: ComicVisualContainer): number {
-  // A simplified contour cuts corners on a curve, so a real gap this size can measure a
-  // little larger than it is - the margin below is headroom for that rounding, not an
-  // invitation to bridge a genuine gap between two unrelated balloons.
-  const steps = Math.max(a.stencil.step, b.stencil.step) * 14;
-  const smaller = Math.min(a.bbox.x1 - a.bbox.x0, a.bbox.y1 - a.bbox.y0, b.bbox.x1 - b.bbox.x0, b.bbox.y1 - b.bbox.y0);
-  return Math.min(steps, Math.max(6, smaller * .35));
-}
-
 /** The point on segment (a,b) nearest to `point`, and how far it is - the same projection
  *  for every segment regardless of its slope, and exact for a segment collapsed to a
  *  single point (length 0), where the projection settles on that point itself. */
@@ -137,7 +124,10 @@ export function comicContainersLookConnected(a: ComicVisualContainer, b: ComicVi
   if (!styleMatches(a, b)) return false;
   const gap = nearestPoints(a.contour, b.contour).distance;
   if (crossAxisOverlap(a, b) < .18) return false;
-  if (gap <= gapLimit(a, b) && a.type === b.type && (a.type === "speech" || a.type === "thought") && a.shape !== "rectangle" && b.shape !== "rectangle") return true;
+  // Proximity - even outlines that touch - is not by itself a connector. A continuous
+  // multi-lobed fill has already arrived from the detector as one container. At this stage
+  // only a substantially smaller wall-split fragment may be folded back into its parent;
+  // two complete balloons always keep two independent targets.
   // A wall inside a single balloon - heavy lettering, a drop shadow around one word, a
   // highlight the fill tolerance would not cross - can split its fill into pieces whose own
   // outlines sit only a sliver apart. Right at that hairline, a piece's own small silhouette
@@ -151,7 +141,10 @@ export function comicContainersLookConnected(a: ComicVisualContainer, b: ComicVi
   // near a real gap. Allowing a merge here only when the two are essentially touching,
   // same-coloured, and at least one side is already confirmed speech/thought keeps a real
   // nearby caption - which never sits this close - from being swallowed by mistake.
-  return gap <= hairlineGap(a, b) && (a.type === "speech" || a.type === "thought" || b.type === "speech" || b.type === "thought");
+  const area = (value: ComicVisualContainer): number => (value.bbox.x1 - value.bbox.x0) * (value.bbox.y1 - value.bbox.y0);
+  const fragmentShare = Math.min(area(a), area(b)) / Math.max(1, Math.max(area(a), area(b)));
+  return fragmentShare <= .35 && gap <= hairlineGap(a, b)
+    && (a.type === "speech" || a.type === "thought" || b.type === "speech" || b.type === "thought");
 }
 
 /** The bridge between two containers: the strip of page they both come close to. Two
@@ -232,12 +225,9 @@ function mergeContainers(a: ComicVisualContainer, b: ComicVisualContainer): Comi
   };
 }
 
-/** Every container, with the ones that read as one connected speech folded into a single
- *  container each - so the rest of the pipeline (line grouping, `bubbleGroup` members,
- *  cutout, hit-test) sees exactly what it already knows how to read: one outline holding
- *  more than one line group, the same shape a single pinched fill produces. Independent
- *  containers, including a small balloon sitting between two connected ones, are returned
- *  exactly as they were found. */
+/** Fold only small wall-split fragments back into their parent. A true continuous
+ * multi-lobed balloon already arrives as one container; complete neighbouring balloons
+ * remain independent regardless of proximity. */
 export function comicGroupConnectedContainers(containers: readonly ComicVisualContainer[]): ComicVisualContainer[] {
   const remaining = [...containers];
   const result: ComicVisualContainer[] = [];

@@ -26,9 +26,9 @@ describe("produção e segurança do frontend", () => {
   it("developmentKeepsLocalBff", () => {
     assert.equal(new EnvironmentConfig({ MODE: "development" } as ImportMetaEnv).read().bffBaseUrl, "http://localhost:3000/api");
   });
-  it("androidBuildUsesExplicitPublicBffInsteadOfWebViewLocalhost", () => {
+  it("androidBuildNeverUsesABffOrWebViewLocalhost", () => {
     const config = new EnvironmentConfig({ MODE: "production", PROD: true, VITE_CAPACITOR_API_URL: "https://lumeo-livros.vercel.app/api/" } as ImportMetaEnv, () => true).read();
-    assert.equal(config.bffBaseUrl, "https://lumeo-livros.vercel.app/api");
+    assert.equal(config.bffBaseUrl, "");
   });
   it("frontendDoesNotContainServiceRoleKey", () => {
     const config = new EnvironmentConfig({ MODE: "production", VITE_APP_ENV: "production" } as ImportMetaEnv);
@@ -90,7 +90,7 @@ describe("produção e segurança do frontend", () => {
     const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
     assert.match(sw, /BOOK_FILE_PATTERN/);
     assert.match(sw, /request\.headers\.has\("Authorization"\)/);
-    assert.doesNotMatch(sw, /url\.pathname\.startsWith\("\/api\/"\)/);
+    assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)/);
   });
 
   it("permite o popup e os estilos oficiais do Google Identity", async () => {

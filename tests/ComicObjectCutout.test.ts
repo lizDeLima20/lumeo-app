@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { unzipSync } from "fflate";
-import { comicMaskedPixels, comicMaskCutsInk } from "../src/reader/comic/interaction/ComicObjectCutout";
+import { comicCutoutMask, comicMaskedPixels, comicMaskCutsInk } from "../src/reader/comic/interaction/ComicObjectCutout";
+import type { ComicVisualContainer } from "../src/reader/comic/interaction/ComicContainerDetector";
 import { emptyMask, sealComicArtMask } from "../src/reader/comic/interaction/ComicShapeMask";
 import { ComicConverter } from "../src/reader/comic/interaction/ComicConverter";
 import { ComicLimaDeserializer } from "../src/reader/comic/interaction/ComicLimaDeserializer";
@@ -56,4 +57,47 @@ test("frestas da amostragem não transformam letras internas em buracos", () => 
   const sealed=sealComicArtMask(mask);
   assert.equal(sealed.data[15*30+15],1);
   assert.equal(sealed.data[1*30+1],0);
+});
+
+const cutoutContainer = (stencil: Uint8Array): ComicVisualContainer => ({
+  bbox: { x0: 3, y0: 2, x1: 13, y1: 10 }, ink: { x0: 6, y0: 4, x1: 10, y1: 8 },
+  contour: [{x:3,y:2},{x:13,y:2},{x:13,y:10},{x:3,y:10}],
+  stencil: { data: stencil, width: 10, height: 8, step: 1, x: 3, y: 2 },
+  artStencil: { data: stencil, width: 10, height: 8, step: 1, x: 3, y: 2 },
+  artBbox: { x0: 3, y0: 2, x1: 13, y1: 10 }, type: "speech", shape: "balloon", tail: "none",
+  styleConfidence: .9, backgroundColor: "#ffffff", textColor: "#101010", inkShare: .2,
+  blockShare: .3, runs: 60, glyphShare: .95, bands: 2, darkOnLight: true,
+  typography: { family:"comic",weight:"normal",italic:false,align:"center",capHeight:.02,lines:2 },
+});
+
+test("máscara de componente preserva texto e remove a página e o balão vizinho", () => {
+  const width = 20, height = 12, data = new Uint8ClampedArray(width * height * 4).fill(255);
+  // Texto original dentro do balão; uma mancha colorida vizinha deve ficar de fora.
+  for (let y=4;y<8;y++) for (let x=7;x<9;x++) {
+    const offset=(y*width+x)*4; data[offset]=data[offset+1]=data[offset+2]=16;
+  }
+  for (let y=3;y<10;y++) for (let x=15;x<19;x++) {
+    const offset=(y*width+x)*4; data[offset]=30;data[offset+1]=90;data[offset+2]=220;
+  }
+  const stencil = new Uint8Array(80).fill(1);
+  // Um buraco interno simula letras/highlight que a cor de fundo não atravessou.
+  stencil[3*10+4]=stencil[3*10+5]=0;
+  const result = comicCutoutMask({width,height,data} as ImageData,{x0:0,y0:0,x1:width,y1:height},cutoutContainer(stencil));
+  assert.equal(result.method,"component-mask");
+  assert.equal(result.alpha[6*width+8],255,"o texto permanece visível");
+  assert.equal(result.alpha[6*width+16],0,"a arte vizinha não entra no recorte");
+  assert.equal(result.alpha[0],0,"o cenário fora do balão fica transparente");
+});
+
+test("segmentação que ainda cortaria texto usa o recorte completo e registra fallback", () => {
+  const width=20,height=12,data=new Uint8ClampedArray(width*height*4).fill(255);
+  for(let y=4;y<8;y++)for(let x=7;x<9;x++){
+    const offset=(y*width+x)*4;data[offset]=data[offset+1]=data[offset+2]=16;
+  }
+  const stencil=new Uint8Array(80);
+  // Um pequeno componente num canto não cobre o bloco de texto conhecido.
+  for(let y=0;y<2;y++)for(let x=0;x<2;x++)stencil[y*10+x]=1;
+  const result=comicCutoutMask({width,height,data} as ImageData,{x0:0,y0:0,x1:width,y1:height},cutoutContainer(stencil));
+  assert.equal(result.method,"original-crop-fallback");
+  assert.ok(result.alpha.every(value=>value===255));
 });

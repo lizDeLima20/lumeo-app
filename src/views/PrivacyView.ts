@@ -8,34 +8,36 @@ export class PrivacyView extends BaseView {
       this.createElement("span", "eyebrow", "Lumeo"),
       this.createElement("h1", "page-title", "Política de Privacidade"),
       this.createElement("p", "privacy-page__updated", "Última atualização: setembro de 2026."),
-      this.createElement("p", "page-subtitle", "O Lumeo respeita a privacidade dos usuários e busca tratar os dados pessoais de forma transparente e segura."),
+      this.createElement("p", "page-subtitle", "O Lumeo Android é uma biblioteca pessoal: seus livros e preferências permanecem no dispositivo, salvo quando você escolhe acessar o Google Drive."),
     );
     main.append(heading);
-    this.section(main, "1. Dados tratados", [
-      "Para disponibilizar autenticação e funcionamento da conta, o Lumeo trata informações fornecidas pelo usuário ou pelo provedor de autenticação utilizado, como nome, endereço de e-mail e identificador da conta.",
-      "Quando o usuário utiliza a opção “Entrar com Google”, o Lumeo recebe as informações necessárias ao processo de autenticação, conforme as permissões apresentadas pelo Google.",
+    this.section(main, "1. Biblioteca pessoal e arquivos locais", [
+      "O Lumeo permite que você escolha arquivos PDF, EPUB, CBR e CBZ armazenados no dispositivo. A seleção é feita pelo seletor de arquivos do Android, que concede ao aplicativo acesso somente aos itens escolhidos; o Lumeo não solicita acesso contínuo a todos os arquivos do aparelho.",
+      "Os livros selecionados, suas capas, organização por gênero, progresso, preferências, marcadores, destaques e anotações são armazenados no espaço privado local do aplicativo para leitura offline.",
     ]);
-    this.section(main, "2. Autenticação e armazenamento", [
-      "O Lumeo utiliza Supabase para autenticação e infraestrutura de dados e pode utilizar o Google como provedor de autenticação.",
-      "Dados necessários ao funcionamento da conta são processados na infraestrutura desses serviços. Dados da biblioteca e de leitura também são armazenados localmente no dispositivo ou navegador usado para acessar o Lumeo.",
+    this.section(main, "2. Google Drive", [
+      "Quando você cola um link de arquivo ou pasta do Google Drive, o Lumeo solicita autorização oficial do Google pelo fluxo nativo do Android. A autorização é separada da biblioteca local e pode ser recusada ou cancelada.",
+      "O aplicativo solicita somente o escopo drive.readonly, usado para listar pastas autorizadas, ler metadados e baixar os arquivos que você escolheu importar. O Lumeo não cria, altera, move ou exclui conteúdo no seu Google Drive.",
+      "As chamadas são feitas diretamente à API oficial do Google Drive. O token de acesso é mantido apenas em memória durante a sessão e não é enviado a um servidor próprio do Lumeo.",
     ]);
-    this.section(main, "3. Livros e arquivos do usuário", [
-      "O Lumeo permite importar arquivos de leitura, como PDF e EPUB, do dispositivo e de serviços escolhidos pelo usuário.",
-      "Os arquivos adicionados à biblioteca são armazenados localmente pelos mecanismos disponibilizados pela plataforma. No Android, downloads do catálogo são salvos no armazenamento privado do aplicativo. O Lumeo também disponibiliza conteúdo proveniente do catálogo da aplicação.",
+    this.section(main, "3. Download, capas e leitura offline", [
+      "Após a importação, os arquivos baixados do Drive e as capas extraídas ficam no armazenamento privado do aplicativo. Isso permite abrir a biblioteca e ler os livros offline sem baixar novamente o conteúdo já salvo.",
+      "O Lumeo não envia PDFs, EPUBs, CBRs, CBZs, capas ou o conteúdo das suas leituras a servidores próprios para importar, baixar ou ler os arquivos.",
     ]);
-    this.section(main, "4. Dados de leitura", [
-      "Progresso de leitura, preferências, marcadores, destaques e anotações podem ser armazenados localmente para permitir o funcionamento das funcionalidades do aplicativo.",
+    this.section(main, "4. Tratamento e exclusão de dados", [
+      "A organização da biblioteca e os gêneros são locais: alterar um gênero no Lumeo não modifica as pastas do Google Drive. Remover um livro pelo aplicativo exclui sua cópia local e dados associados ao livro no armazenamento do aplicativo.",
+      "Você pode revogar o acesso do Lumeo ao Google Drive nas configurações de segurança da sua Conta Google. A desinstalação do aplicativo ou a limpeza de seus dados remove os dados locais que estiverem no dispositivo.",
     ]);
-    this.section(main, "5. Serviços de terceiros", [
-      "O Lumeo utiliza serviços de terceiros necessários ao funcionamento da aplicação, incluindo Supabase, Google e Vercel para autenticação, banco de dados, catálogo, hospedagem e infraestrutura, conforme o recurso utilizado.",
-      "Esses serviços possuem suas próprias políticas e práticas de privacidade.",
+    this.section(main, "5. Uso limitado dos dados Google", [
+      "O acesso aos dados do Google Drive segue a Google API Services User Data Policy, incluindo os requisitos de Limited Use. As informações recebidas do Drive são usadas somente para fornecer a importação solicitada por você e não são vendidas nem usadas para publicidade.",
+      "Os serviços do Google seguem suas próprias políticas de privacidade e segurança.",
     ]);
     this.section(main, "6. Segurança", [
       "O Lumeo adota controles técnicos e limita o acesso a dados e credenciais de servidor de acordo com a finalidade de cada componente. Nenhum sistema, contudo, pode garantir segurança absoluta.",
     ]);
     this.section(main, "7. Compartilhamento", [
       "O Lumeo não vende dados pessoais dos usuários.",
-      "Informações podem ser processadas pelos prestadores de infraestrutura necessários ao funcionamento do serviço ou quando exigido por obrigação legal.",
+      "O fluxo de biblioteca pessoal não depende de Supabase, Vercel, proxy ou catálogo remoto para importar, baixar e ler seus arquivos.",
     ]);
     this.section(main, "8. Direitos do usuário", [
       "O usuário pode solicitar informações relacionadas aos seus dados e, quando aplicável, solicitar correção ou exclusão de informações associadas à sua conta pelo canal oficial de contato da aplicação.",

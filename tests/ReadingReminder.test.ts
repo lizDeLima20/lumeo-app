@@ -23,6 +23,8 @@ describe("lembrete de leitura Android", () => {
     assert.match(activity, /registerPlugin\(ReaderSoundPlugin\.class\)/);
     assert.match(activity, /ReadingReminderScheduler\.ensureNotificationChannel\(this\)/);
     assert.match(activity, /ReadingReminderScheduler\.rescheduleFromSaved\(this\)/);
+    assert.match(activity, /OPEN_READING_REMINDER/); assert.match(activity, /https:\/\/localhost\/reader\?id=/);
+    assert.match(receiver, /putExtra\("bookId", reminder\.bookId\)/);
     const schedulerSource = await readFile("android/app/src/main/java/com/lumeo/reader/ReadingReminderScheduler.java", "utf8");
     assert.match(schedulerSource, /lumeo_reading_reminder_v3/); assert.match(schedulerSource, /notificacao_lembrete/); assert.match(schedulerSource, /ensureNotificationChannel/);
   });
@@ -33,6 +35,17 @@ describe("lembrete de leitura Android", () => {
     ]);
     assert.match(panel, /ReadingReminder\.available/); assert.match(panel, /reader\.reminder\.time/); assert.match(panel, /reader\.reminder\.days/);
     assert.match(panel, /reader\.reminder\.library/); assert.match(panel, /reader\.reminder\.book/); assert.match(panel, /ReadingReminder\.saveReminders/);
+    assert.match(panel, /selectedBookIds/); assert.match(panel, /visibleBooks = 30/); assert.match(panel, /input\.type = "checkbox"/);
     assert.match(bridge, /browser deliberately has no timer fallback/); assert.match(bridge, /NativeReadingReminder\.saveReminders/);
+  });
+
+  it("mantém o formulário de lembretes vertical e limita a grade de livros grandes", async () => {
+    const [css, comic, comicCss] = await Promise.all([readFile("src/styles/reader.css", "utf8"), readFile("src/views/ComicReaderView.ts", "utf8"), readFile("src/styles/comic.css", "utf8")]);
+    assert.match(css, /\.reader-reminder-settings\.reader-settings__section-body\{grid-template-columns:minmax\(0,1fr\)/);
+    assert.match(css, /\.reader-reminder-settings__books\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+    assert.match(css, /max-height:19rem;overflow-y:auto/);
+    assert.match(css, /height:2\.7rem;min-height:2\.7rem;max-height:2\.7rem/);
+    assert.match(comic, /new ReaderSettingsPanel/); assert.match(comic, /comic-fab--settings/);
+    assert.match(comicCss, /\.comic-fab--settings/);
   });
 });

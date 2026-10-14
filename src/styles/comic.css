@@ -13,10 +13,10 @@
 .comic-stage {
   position: relative; flex: 1; min-height: 0; overflow: hidden; outline: none;
   /* The stage owns every gesture: the page follows the finger, the browser does not pan. */
-  touch-action: none; user-select: none; -webkit-user-select: none;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
   background: var(--comic-stage);
 }
-.comic-canvas { position: absolute; left: 0; top: 0; display: block; }
+.comic-canvas { position: absolute; left: 0; top: 0; display: block; user-select: none; -webkit-user-select: none; }
 .comic-loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font-size: .95rem; opacity: .75; }
 
 /* The block overlay sits exactly on the page's artwork (placed by the reader); hidden
@@ -37,6 +37,7 @@
 }
 .comic-fab--back { left: max(.7rem, env(safe-area-inset-left)); font-size: 1.75rem; }
 .comic-fab--theme { right: max(.7rem, env(safe-area-inset-right)); }
+.comic-fab--settings { right: max(3.55rem, calc(env(safe-area-inset-right) + 2.85rem)); }
 
 /* Beside the open book only: a phone turns by swiping or tapping the page's edges. */
 .comic-arrow {
@@ -49,6 +50,19 @@
 .comic-arrow--previous { left: 1rem; }
 .comic-arrow--next { right: 1rem; }
 .comic-reader[data-mode="spread"] .comic-arrow { display: grid; }
+/* Landscape Android reserves the left fifteen-percent gutter for reader chrome. The two
+   pages remain centred in the remaining visual book area; arrows are redundant because
+   the existing drag gesture remains active on either page. */
+.comic-reader[data-native-landscape="true"] .comic-fab { left: max(.7rem, env(safe-area-inset-left)); right: auto; }
+.comic-reader[data-native-landscape="true"] .comic-fab--back { top: max(.7rem, env(safe-area-inset-top)); }
+.comic-reader[data-native-landscape="true"] .comic-fab--settings { top: max(3.6rem, calc(env(safe-area-inset-top) + 3rem)); }
+.comic-reader[data-native-landscape="true"] .comic-fab--theme { top: max(6.5rem, calc(env(safe-area-inset-top) + 5.9rem)); }
+.comic-reader[data-native-landscape="true"] .comic-arrow { display: none; }
+@media (max-width: 360px) and (orientation: landscape) {
+  .comic-reader[data-native-landscape="true"] .comic-fab { width: 2.2rem; height: 2.2rem; }
+  .comic-reader[data-native-landscape="true"] .comic-fab--settings { top: max(3.35rem, calc(env(safe-area-inset-top) + 2.8rem)); }
+  .comic-reader[data-native-landscape="true"] .comic-fab--theme { top: max(6rem, calc(env(safe-area-inset-top) + 5.4rem)); }
+}
 
 /* Where the reader is, for a moment after each turn - then out of the artwork's way. */
 .comic-progress {

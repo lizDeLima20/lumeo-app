@@ -2,6 +2,7 @@
 node_modules/
 dist/
 server-dist/
+public/ocr/
 
 # Android build output and Gradle state
 android/.gradle/

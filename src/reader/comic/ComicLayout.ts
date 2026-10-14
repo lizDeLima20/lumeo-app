@@ -5,7 +5,7 @@ export interface ComicPageFit extends ComicRect {
   viewportAspectRatio: number;
   pageAspectRatio: number;
   scale: number;
-  /** Reserved analysis hint; it never changes the visible bounds or crops the art. */
+  /** Normalized source area actually presented. */
   contentBounds?: ComicRect;
 }
 
@@ -26,20 +26,26 @@ export interface ComicGeometry {
 }
 
 export interface ComicLayoutEnvironment { native: boolean; finePointer: boolean; }
+export type ComicSpreadPresentation = "desktop" | "native-landscape";
 
 /** Space the desktop spread leaves around the book: room for the Lumeo round buttons on
  *  top and the arrows at the sides, so the book is never a picture wall-to-wall. */
 export const SPREAD_MARGINS = { top: 58, bottom: 26, side: 76 } as const;
+/** Native landscape reserves a true side gutter for the vertical reader chrome. The book
+ * targets seventy percent of the viewport, but its original page ratio always wins when a
+ * short phone cannot physically fit two full portrait pages at that width. */
+export const NATIVE_LANDSCAPE_SPREAD = { sideShare: .15, minSide: 52, top: 8, bottom: 8 } as const;
 
 export class ComicLayout {
-  /** An open book only where there is a desk for it: a wide, landscape browser window
-   *  driven by a mouse. The Android app, phones and tablets always read one page. */
+  /** A native phone opens the existing two-page reader only in landscape. Portrait stays
+   * single-page; desktop still requires a wide fine-pointer surface. */
   public static mode(width: number, height: number, environment: ComicLayoutEnvironment): ComicLayoutMode {
-    return !environment.native && environment.finePointer && width >= 1024 && width > height ? "spread" : "single";
+    if (environment.native) return width > height ? "spread" : "single";
+    return environment.finePointer && width >= 1024 && width > height ? "spread" : "single";
   }
 
   /** `aspect` is page width / page height, shared by the whole comic. */
-  public static geometry(mode: ComicLayoutMode, width: number, height: number, aspect: number): ComicGeometry {
+  public static geometry(mode: ComicLayoutMode, width: number, height: number, aspect: number, presentation: ComicSpreadPresentation = "desktop"): ComicGeometry {
     const ratio = aspect > 0 && Number.isFinite(aspect) ? aspect : 2 / 3;
     if (mode === "single") {
       // Contain: the largest page of this proportion that fits; only the residue left by
@@ -48,11 +54,17 @@ export class ComicLayout {
       return { mode, width, height, pageWidth, pageHeight,
         spineX: Math.round((width - pageWidth) / 2), top: Math.round((height - pageHeight) / 2) };
     }
-    const availableWidth = Math.max(1, width - SPREAD_MARGINS.side * 2);
-    const availableHeight = Math.max(1, height - SPREAD_MARGINS.top - SPREAD_MARGINS.bottom);
+    const nativeLandscape = presentation === "native-landscape";
+    // A very narrow landscape window still needs a real tap target plus its safe inset;
+    // ordinary phones retain the requested 15% gutters exactly.
+    const side = nativeLandscape ? Math.max(width * NATIVE_LANDSCAPE_SPREAD.sideShare, NATIVE_LANDSCAPE_SPREAD.minSide) : SPREAD_MARGINS.side;
+    const topMargin = nativeLandscape ? NATIVE_LANDSCAPE_SPREAD.top : SPREAD_MARGINS.top;
+    const bottomMargin = nativeLandscape ? NATIVE_LANDSCAPE_SPREAD.bottom : SPREAD_MARGINS.bottom;
+    const availableWidth = Math.max(1, width - side * 2);
+    const availableHeight = Math.max(1, height - topMargin - bottomMargin);
     const [pageWidth, pageHeight] = ComicLayout.fit(Math.floor(availableWidth / 2), availableHeight, ratio);
     return { mode, width, height, pageWidth, pageHeight, spineX: Math.round(width / 2),
-      top: Math.round(SPREAD_MARGINS.top + (availableHeight - pageHeight) / 2) };
+      top: Math.round(topMargin + (availableHeight - pageHeight) / 2) };
   }
 
   /** The side that limits keeps its full length; only the other one is derived. */
@@ -76,10 +88,12 @@ export class ComicLayout {
   }
 
   public static presentationFit(slot: ComicRect, width: number, height: number, contentBounds?: ComicRect): ComicPageFit {
-    const scale = Math.min(slot.width / width, slot.height / height);
-    const drawnWidth = width * scale, drawnHeight = height * scale;
+    const bounds = contentBounds ?? { x: 0, y: 0, width: 1, height: 1 };
+    const contentWidth = Math.max(1, width * bounds.width), contentHeight = Math.max(1, height * bounds.height);
+    const scale = Math.min(slot.width / contentWidth, slot.height / contentHeight);
+    const drawnWidth = contentWidth * scale, drawnHeight = contentHeight * scale;
     return { x: slot.x + (slot.width - drawnWidth) / 2, y: slot.y + (slot.height - drawnHeight) / 2, width: drawnWidth, height: drawnHeight,
-      viewportAspectRatio: slot.width / slot.height, pageAspectRatio: width / height, scale, contentBounds };
+      viewportAspectRatio: slot.width / slot.height, pageAspectRatio: contentWidth / contentHeight, scale, contentBounds };
   }
 
   /** The comic's page proportion: the median of the sampled pages, so one odd page (a
