@@ -185,10 +185,7 @@ export class App {
       () => this.router.navigate("library"), (bookId) => this.openLibraryBook(bookId)));
     this.router.register("import", () => {
       return new BookImportView(this.state, this.imports, this.genres, this.collections, this.covers, this.metadataExtractor,
-        (book) => void this.addBook(book), () => this.router.navigate("library"), (bookId) => this.deleteBook(bookId, false), undefined,
-        { importer: new PersonalDriveImporter(new GoogleDriveLibraryService(), this.imports, this.books, this.genres, this.covers),
-          saved: book => void this.addBook(book), refreshGenres: async () => { this.state.library.replaceGenres(await this.genres.getAll()); this.state.notify(); } },
-        this.personalAndroid ? () => this.router.navigate("explore") : undefined);
+        (book) => void this.addBook(book), () => this.router.navigate("library"), (bookId) => this.deleteBook(bookId, false));
     });
     this.router.register("book", (params) => this.detailsView(params.get("id") ?? ""));
     this.router.register("edit-book", (params) => new BookEditView(this.state, this.findBook(params.get("id")), this.genres, this.covers,

@@ -1,10 +1,4 @@
 import type { ImportedFile } from "../importers/BookImporter";
-import { GoogleDriveLibrariesModal } from "./GoogleDriveLibrariesModal";
-import { GoogleDriveLibraryRepository } from "../external/GoogleDriveLibraryRepository";
-import { GoogleDriveLibraryService } from "../external/GoogleDriveLibraryService";
-import { GoogleDriveAccessError } from "../external/GoogleDriveLibraryService";
-import { ExternalLibraryStorage } from "../external/ExternalLibraryStorage";
-import { IndexedDbService } from "../services/IndexedDbService";
 import type { Book, ReadingStatus } from "../models/Book";
 import { Genre } from "../models/Genre";
 import { GenreRepository } from "../repositories/GenreRepository";
@@ -16,7 +10,6 @@ import { GenreSuggestionResolver } from "../metadata/GenreSuggestionResolver";
 import { ApiError } from "../services/ApiClient";
 import { CoverService } from "../services/CoverService";
 import { DuplicateBookImportError, ImportManager } from "../services/ImportManager";
-import { BookDownloadError } from "../diagnostics/StartTelemetry";
 import type { AppState } from "../core/AppState";
 import { BaseView } from "./BaseView";
 import { I18nManager } from "../i18n/I18nManager";
@@ -24,10 +17,8 @@ import { ExternalLibrariesPanel } from "./ExternalLibrariesPanel";
 import type { OneDriveConnections } from "../external/OneDriveConnections";
 import type { OneDriveImportCoordinator } from "../external/OneDriveImportCoordinator";
 import { OneDriveError } from "../external/OneDriveError";
-import type { PersonalDriveImporter } from "../services/PersonalDriveImporter";
 
 export class BookImportView extends BaseView {
-  private googleModal: GoogleDriveLibrariesModal | null = null;
   private externalPanel: ExternalLibrariesPanel | null = null;
   private remoteBusy = false;
   private remotePreview = false;
@@ -44,12 +35,9 @@ export class BookImportView extends BaseView {
     private readonly genres: GenreRepository, private readonly collections: CollectionRepository, private readonly covers: CoverService,
     private readonly metadataExtractor: BookMetadataExtractor,
     private readonly onSaved: (book: Book) => void, private readonly onCancel: () => void, private readonly onReplaceExisting?: (bookId: string) => Promise<void>,
-    private readonly oneDrive?: { connections: OneDriveConnections; coordinator: OneDriveImportCoordinator; initialSourceId?: string; openExisting(id: string): void },
-    private readonly personalDrive?: { importer: PersonalDriveImporter; saved(book: Book): void; refreshGenres(): Promise<void> },
-    private readonly openPersonalDrive?: () => void) { super(); }
+    private readonly oneDrive?: { connections: OneDriveConnections; coordinator: OneDriveImportCoordinator; initialSourceId?: string; openExisting(id: string): void }) { super(); }
 
   public override unmount(): void {
-    this.googleModal?.dispose(); this.googleModal = null;
     this.generation++; this.oneDrive?.coordinator.cancel();
     void this.oneDrive?.coordinator.discard().catch(() => undefined);
     this.externalPanel?.unmount(); this.externalPanel = null; this.imported = null; this.automaticCover = ""; super.unmount();
@@ -63,16 +51,11 @@ export class BookImportView extends BaseView {
     const sourceChoices = this.createElement("div", "import-sources");
     const device = this.sourceButton("▣", I18nManager.shared.t("google.device"), I18nManager.shared.t("google.deviceHelp"));
     const comic = this.sourceButton("▧", "HQ local", "Importar uma HQ CBR ou CBZ deste dispositivo");
-    const drive = this.sourceButton("◆", I18nManager.shared.t("google.title"), I18nManager.shared.t("google.subtitle"));
     // Android personal libraries add Drive folders from the dedicated "+ Adicionar link"
     // flow. Keep this upload screen focused on files that already live on the device.
     sourceChoices.append(device, comic);
-    if (!this.openPersonalDrive) sourceChoices.append(drive);
     const file = this.input("Arquivo PDF, EPUB, CBR ou CBZ", "file"); file.wrapper.classList.add("import-source-panel", "is-hidden"); file.input.required = false; file.input.accept = ".pdf,.epub,.cbr,.cbz,application/pdf,application/epub+zip,application/x-cbr,application/x-cbz";
     const download = this.createElement("p", "download-status"); download.setAttribute("role", "status");
-    const driveLink = this.input("Link de arquivo ou pasta do Google Drive", "url"); driveLink.input.placeholder = "https://drive.google.com/..."; driveLink.input.required = false;
-    const importDriveLink = this.createElement("button", "button button--secondary", "Importar link do Google Drive"); importDriveLink.type = "button";
-    const cancelDriveLink = this.createElement("button", "button button--secondary is-hidden", "Cancelar importação"); cancelDriveLink.type = "button";
     const metadataNote = this.createElement("p", "metadata-note"); metadataNote.setAttribute("role", "status"); this.metadataNote = metadataNote;
     const title = this.input("Título", "text"); const author = this.input("Autor", "text"); this.authorInput = author.input;
     const genreLabel = this.createElement("label", "field"); genreLabel.append(this.createElement("span", "field__label", "Gênero"));
@@ -106,35 +89,7 @@ export class BookImportView extends BaseView {
       file.wrapper.querySelector(".field__label")!.textContent = "Arquivo CBR ou CBZ";
       file.wrapper.classList.remove("is-hidden"); file.input.click();
     });
-    drive.addEventListener("click", () => {
-      if (this.openPersonalDrive) { this.openPersonalDrive(); return; }
-      this.googleModal ??= new GoogleDriveLibrariesModal(new GoogleDriveLibraryRepository(
-        new ExternalLibraryStorage(new IndexedDbService(`lumeo-library-${this.state.currentUser?.id ?? ""}`)), this.state.currentUser?.id ?? ""), new GoogleDriveLibraryService(),
-        async downloaded => {
-          const imported = await this.manager.select(downloaded);
-          const duplicate = await this.manager.inspect(imported, { title: imported.suggestedTitle, author: "" });
-          if (duplicate.kind === "duplicate") throw new Error(I18nManager.shared.t("import.remote.duplicate"));
-          await this.applyImported({ ...imported, source: "google-drive" }, title.input, download, coverPreview, coverImage);
-          error.textContent = ""; download.textContent = I18nManager.shared.t("import.remote.preview");
-        });
-      this.googleModal.open();
-    });
-    let driveImportController: AbortController | null = null;
-    cancelDriveLink.addEventListener("click", () => driveImportController?.abort());
-    importDriveLink.addEventListener("click", () => void (async () => {
-      if (!this.personalDrive || !driveLink.input.value.trim()) return;
-      const controller = driveImportController = new AbortController(); importDriveLink.disabled = true; cancelDriveLink.classList.remove("is-hidden"); error.textContent = "";
-      try {
-        const books = await this.personalDrive.importer.importLink(driveLink.input.value, controller.signal, (done, total, name) => {
-          download.textContent = total === null ? `Importando ${name}` : `Importando ${done}/${total}: ${name}`;
-        });
-        await this.personalDrive.refreshGenres(); books.forEach(book => this.personalDrive!.saved(book));
-        download.textContent = `${books.length} arquivo(s) importado(s) para leitura offline.`;
-      } catch (caught) { error.textContent = this.driveImportMessage(caught); }
-      finally { if (driveImportController === controller) driveImportController = null; importDriveLink.disabled = false; cancelDriveLink.classList.add("is-hidden"); }
-    })());
     form.append(sourceChoices, file.wrapper);
-    if (!this.openPersonalDrive) form.append(driveLink.wrapper, importDriveLink, cancelDriveLink);
     form.append(download, coverPreview, metadataNote, title.wrapper, author.wrapper, genreLabel, genreSuggestion, newGenreRow, collectionLabel, collectionSuggestion, statusLabel, error, actions);
     if (this.oneDrive) {
       const cancelDownload = this.createElement("button", "button button--secondary is-hidden", I18nManager.shared.t("import.download.cancel"));
@@ -182,24 +137,6 @@ export class BookImportView extends BaseView {
     }
     form.addEventListener("submit", (event) => void this.submit(event, { title: title.input, author: author.input, genre, collection, status, error, save,progress:download }));
     section.append(form); return section;
-  }
-  private driveImportMessage(error: unknown): string {
-    if (error instanceof GoogleDriveAccessError) {
-      if (error.code === "DRIVE_ACCOUNT_NOT_AUTHORIZED") return "A conta Google não foi autorizada. Autorize o acesso ao Drive para continuar.";
-      if (error.code === "DRIVE_FOLDER_FORBIDDEN") return "Esta pasta não está compartilhada com a conta Google autorizada.";
-      if (error.code === "DRIVE_ITEM_NOT_FOUND") return "O arquivo ou pasta não foi encontrado. Verifique se o link continua válido.";
-      return "Falha de conexão com o Google Drive. Verifique a internet e tente novamente.";
-    }
-    if (error instanceof BookDownloadError) {
-      if (error.code === "DOWNLOAD_HTTP_403") return "O download foi bloqueado pelo proprietário do arquivo.";
-      if (error.code === "DOWNLOAD_HTTP_401") return "A conta Google não está autorizada para baixar este arquivo.";
-      if (error.code === "DOWNLOAD_HTTP_404") return "O arquivo foi removido ou não está mais disponível.";
-      if (error.code === "DOWNLOAD_NETWORK_FAILED" || error.code === "DOWNLOAD_TIMEOUT") return "Falha de conexão durante o download. Tente novamente.";
-    }
-    if (error instanceof Error && error.message === "DRIVE_FOLDER_EMPTY") return "A pasta não contém arquivos PDF, EPUB, CBR ou CBZ compatíveis.";
-    if (error instanceof Error && error.message.includes("link válido")) return "O link do Google Drive é inválido.";
-    if (globalThis.navigator?.onLine === false) return "Falha de conexão. Verifique a internet e tente novamente.";
-    return error instanceof Error ? error.message : "Não foi possível importar a pasta.";
   }
   private async applyImported(imported: ImportedFile, title: HTMLInputElement, status: HTMLElement, preview: HTMLElement, image: HTMLImageElement): Promise<void> {
     this.remotePreview = false; await this.oneDrive?.coordinator.discard(); if (this.fileSummary) this.fileSummary.textContent = "";
