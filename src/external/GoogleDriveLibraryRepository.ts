@@ -24,6 +24,8 @@ export interface GoogleDriveLibrarySyncState {
   queue: GoogleDriveSyncTask[]; completed: boolean; updatedAt: string;
   /** Durable foreground-resume counters. Results themselves live in the entry cache. */
   folders?: number; files?: number; current?: string;
+  /** Listing version that wrote this state (PERSONAL_DRIVE_SYNC_VERSION); absent = before v2. */
+  version?: number;
 }
 export class GoogleDriveLibraryRepository {
   private queue: Promise<unknown> = Promise.resolve();
@@ -101,6 +103,15 @@ export class GoogleDriveLibraryRepository {
       const entries = await this.entries(id);
       await this.storage.save(`googleLibraryEntries:${this.owner}:${id}`, entries.map(entry => ({ ...entry, contentType })));
       return source;
+    });
+  }
+  /** Gives an automatic "Link N" source the folder's real name once it is known. */
+  public rename(id: string, name: string): Promise<GoogleDriveLibrarySource | null> {
+    return this.mutate(async () => {
+      const clean = name.trim(); if (!clean || clean.length > 100) return null;
+      const rows = await this.all(), current = rows.find(row => row.id === id); if (!current || current.name === clean) return current ?? null;
+      const updated = { ...current, name: clean, updatedAt: new Date().toISOString() };
+      await this.storage.save(`googleLibraries:${this.owner}`, rows.map(row => row.id === id ? updated : row)); return updated;
     });
   }
   public async entries(sourceId?: string): Promise<GoogleDriveLibraryEntry[]> {

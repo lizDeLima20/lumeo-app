@@ -3,7 +3,7 @@ import { GoogleDriveAccessError, GoogleDriveLibraryService } from "../external/G
 import { GoogleDriveLibraryRepository, type GoogleDriveLibraryEntry, type GoogleDriveLibrarySource } from "../external/GoogleDriveLibraryRepository";
 import type { Book } from "../models/Book";
 import { PersonalDriveImporter } from "../services/PersonalDriveImporter";
-import { PersonalDriveLibraryService } from "../services/PersonalDriveLibraryService";
+import { PERSONAL_DRIVE_SYNC_VERSION, PersonalDriveLibraryService } from "../services/PersonalDriveLibraryService";
 import { BaseView } from "./BaseView";
 import { DownloadProgressIcon } from "./DownloadProgressIcon";
 
@@ -50,7 +50,9 @@ export class PersonalDriveLibraryView extends BaseView {
         const book = local(entry), card = this.createElement("article", "catalog-card"), coverFrame = this.createElement("div", "catalog-card__cover-frame"), cover = this.createElement("button", "catalog-card__cover") as HTMLButtonElement;
         const title = entry.title || stripExtension(entry.name); cover.type = "button"; cover.setAttribute("aria-label", `Detalhes de ${title}`);
         const image = this.createElement("img", "") as HTMLImageElement; image.alt = `Capa de ${title}`; image.loading = "lazy"; image.decoding = "async"; image.src = book?.cover || entry.coverUrl || entry.thumbnailUrl;
-        image.addEventListener("error", () => { image.remove(); cover.append(this.createElement("span", "catalog-card__placeholder", "▣")); }, { once: true }); cover.append(image);
+        // No cover in catalog.json and none in covers/: the local placeholder, never a broken image.
+        if (!image.src || image.getAttribute("src") === "") cover.append(this.createElement("span", "catalog-card__placeholder", "▣"));
+        else { image.addEventListener("error", () => { image.remove(); cover.append(this.createElement("span", "catalog-card__placeholder", "▣")); }, { once: true }); cover.append(image); }
         const info = this.createElement("div", "catalog-card__info"); info.append(this.createElement("strong", "catalog-card__title", title)); if (entry.author) info.append(this.createElement("span", "catalog-card__author", entry.author));
         const action = this.createElement("button", "catalog-card__quick-action") as HTMLButtonElement; action.type = "button"; action.title = book ? "Abrir livro" : "Baixar livro"; action.setAttribute("aria-label", action.title);
         const icon = new DownloadProgressIcon(action, Boolean(book));
@@ -76,11 +78,18 @@ export class PersonalDriveLibraryView extends BaseView {
     };
     const sync = async (source: GoogleDriveLibrarySource): Promise<boolean> => {
       this.controller?.abort(); const controller = this.controller = new AbortController(); lastSource = source; retry.classList.add("is-hidden"); status.textContent = "Sincronizando biblioteca…";
-      try { const existing = await this.sources.entries(source.id), resume = await this.sources.syncState(source.id); await this.service.listProgressively(source, existing, resume, controller.signal, async (batch, state, value) => {
+      try { const existing = await this.sources.entries(source.id), resume = await this.sources.syncState(source.id); const listed = await this.service.listProgressively(source, existing, resume, controller.signal, async (batch, state, value) => {
           if (batch.length) { const saved = await this.sources.appendEntries(source.id, batch); entries = [...entries.filter(entry => entry.sourceId !== source.id), ...saved]; drawFilters(); drawGrid(); }
           await this.sources.saveSyncState(source.id, state);
           status.textContent = state.completed ? (value.files > 0 ? `${value.files} livro(s) sincronizado(s).` : "A pasta está vazia ou não possui PDF, EPUB, CBR ou CBZ.") : `Sincronizando: ${value.files} livro(s) encontrados…`;
-        }); return true;
+          if (state.completed) {
+            const byGenre = new Map<string, number>(); entries.filter(entry => entry.sourceId === source.id).forEach(entry => byGenre.set(entry.genre, (byGenre.get(entry.genre) ?? 0) + 1));
+            byGenre.forEach((count, genre) => console.info(`[DriveRender] genre=${genre} booksRendered=${count}`));
+          }
+        });
+        // A source saved as "Link N" takes the folder's real name as soon as it is known.
+        if (/^Link\s+\d+$/i.test(source.name) && listed.folderName) { const renamed = await this.sources.rename(source.id, listed.folderName); if (renamed) lastSource = renamed; }
+        return true;
       } catch (error) { if (controller.signal.aborted) return false; console.warn(JSON.stringify({ event: "PERSONAL_DRIVE_SYNC_FAILED", sourceId: source.id, reason: error instanceof Error ? error.name : "unknown", detail: safeErrorDetail(error) })); status.textContent = message(error); retry.classList.remove("is-hidden"); return false;
       } finally { if (this.controller === controller) this.controller = null; }
     };
@@ -109,17 +118,33 @@ export class PersonalDriveLibraryView extends BaseView {
         paths[name].forEach(value => { const path = document.createElementNS("http://www.w3.org/2000/svg", "path"); path.setAttribute("d", value); path.setAttribute("stroke", "currentColor"); path.setAttribute("stroke-width", "1.8"); path.setAttribute("stroke-linecap", "round"); path.setAttribute("stroke-linejoin", "round"); svg.append(path); });
         return svg;
       };
-      const form = this.createElement("form", "personal-drive-library__link-form"), linkField = this.createElement("label", "personal-drive-library__link-field"), input = this.createElement("input", "") as HTMLInputElement, submit = this.createElement("button", "personal-drive-library__link-submit", "OK"); input.required = true; input.type = "url"; input.placeholder = "Cole o link do Google Drive aqui…"; input.setAttribute("aria-label", input.placeholder); const linkIcon = icon("link"); linkIcon.classList.add("personal-drive-library__link-icon"); linkField.append(linkIcon, input); submit.type = "submit"; form.append(linkField, submit);
+      const form = this.createElement("form", "personal-drive-library__link-form"), linkField = this.createElement("label", "personal-drive-library__link-field"), input = this.createElement("input", "") as HTMLInputElement, submit = this.createElement("button", "personal-drive-library__link-submit", "OK"); input.required = true;
+      // Shown only when the folder could not be read, so its name can be typed.
+      const manualName = this.createElement("input", "input personal-drive-library__manual-name") as HTMLInputElement; manualName.type = "text"; manualName.maxLength = 100;
+      manualName.placeholder = "Nome da pasta"; manualName.setAttribute("aria-label", "Nome da pasta"); manualName.hidden = true; input.type = "url"; input.placeholder = "Cole o link do Google Drive aqui…"; input.setAttribute("aria-label", input.placeholder); const linkIcon = icon("link"); linkIcon.classList.add("personal-drive-library__link-icon"); linkField.append(linkIcon, input); submit.type = "submit"; form.append(linkField, manualName, submit);
       const note = this.createElement("p", "catalog__status"), list = this.createElement("div", "personal-drive-library__source-list"), close = this.createElement("button", "personal-drive-library__close", "← Fechar"); close.type = "button"; close.addEventListener("click", () => dialog.close());
       const reclassify = async (source: GoogleDriveLibrarySource): Promise<void> => { const sourceEntries = await this.sources.entries(source.id), changed = await this.importer.reclassifyListedFiles(sourceEntries.map(entry => entry.fileId), source.contentType ?? "book"); changed.forEach(book => this.reclassified(book)); };
       const renderSources = async (): Promise<void> => { const rows = await this.sources.all(); list.replaceChildren(); rows.forEach((source, index) => { const labelText = source.name || `Link ${index + 1}`, row = this.createElement("div", "personal-drive-library__source"), folder = this.createElement("span", "personal-drive-library__source-folder"), label = this.createElement("span", "personal-drive-library__source-name", labelText), type = this.createElement("button", "personal-drive-library__type") as HTMLButtonElement; folder.append(icon("folder")); type.type = "button"; const updateType = async (): Promise<void> => { const next = (source.contentType ?? "book") === "comic" ? "book" : "comic", updated = await this.sources.updateContentType(source.id, next); if (!updated) return; source = updated; entries = entries.map(entry => entry.sourceId === updated.id ? { ...entry, contentType: updated.contentType } : entry); await reclassify(updated); drawFilters(); drawGrid(); note.textContent = `${updated.name} foi classificado como ${updated.contentType === "comic" ? "HQs e Mangás" : "Livros"}.`; updateTypeButton(); }; const updateTypeButton = (): void => { const comic = (source.contentType ?? "book") === "comic"; type.replaceChildren(icon(comic ? "comic" : "book"), document.createTextNode(comic ? "HQs e Mangás" : "Livros")); type.setAttribute("aria-label", `Alterar ${labelText}: ${comic ? "HQs e Mangás" : "Livros"}`); }; updateTypeButton(); type.addEventListener("click", () => void updateType()); const remove = this.createElement("button", "personal-drive-library__delete"); remove.type = "button"; remove.setAttribute("aria-label", `Remover ${labelText}`); remove.title = "Remover link"; remove.append(icon("trash")); remove.addEventListener("click", () => void (async () => { if (!window.confirm(`Remover ${labelText}? Os livros baixados não serão apagados.`)) return; await this.sources.remove(source.id); entries = entries.filter(entry => entry.sourceId !== source.id); drawFilters(); drawGrid(); await renderSources(); })()); row.append(folder, label, type, remove); list.append(row); }); };
       form.addEventListener("submit", event => void (async () => { event.preventDefault(); submit.disabled = true; try {
-        GoogleDriveLibraryRepository.parse(input.value); note.textContent = "Reconhecendo pasta…"; const result = await this.sources.saveLink(input.value); input.value = ""; await reclassify(result.source); entries = entries.map(entry => entry.sourceId === result.source.id ? { ...entry, contentType: result.source.contentType } : entry); await renderSources(); await chooseInitialMode(); dialog.close(); void sync(result.source);
+        GoogleDriveLibraryRepository.parse(input.value);
+        // The real folder name (and its catalog structure) is read before anything is saved;
+        // "Link N" is never shown for a folder whose name can be discovered.
+        let folderName = manualName.hidden ? "" : manualName.value.trim(), structured = false;
+        if (!folderName) {
+          note.textContent = "Lendo pasta…";
+          try { const described = await this.service.describeLink(input.value, new AbortController().signal); folderName = described.folderName; structured = described.categories.length > 0; }
+          catch (error) {
+            console.warn(JSON.stringify({ event: "PERSONAL_DRIVE_DESCRIBE_FAILED", reason: error instanceof Error ? error.message : "unknown" }));
+            note.textContent = "Não foi possível identificar a pasta. Digite um nome e toque em OK."; manualName.hidden = false; manualName.focus(); return;
+          }
+        }
+        note.textContent = structured ? `${folderName}: catálogo encontrado.` : folderName;
+        const result = await this.sources.saveLink(input.value, "book", folderName); manualName.value = ""; manualName.hidden = true; input.value = ""; await reclassify(result.source); entries = entries.map(entry => entry.sourceId === result.source.id ? { ...entry, contentType: result.source.contentType } : entry); await renderSources(); await chooseInitialMode(); dialog.close(); void sync(result.source);
       } catch (error) { note.textContent = message(error); } finally { submit.disabled = false; } })());
       panel.append(form, note, list, close); dialog.append(panel); dialog.addEventListener("close", () => dialog.remove(), { once: true }); document.body.append(dialog); void renderSources(); dialog.showModal();
     };
     bookChoice.addEventListener("click", () => applyMode("book")); comicChoice.addEventListener("click", () => applyMode("comic")); backToChoice.addEventListener("click", () => applyMode("choice"));
-    retry.addEventListener("click", () => { if (lastSource) void sync(lastSource); }); search.addEventListener("input", () => { visibleLimit = 60; drawGrid(); }); more.addEventListener("click", () => { visibleLimit += 60; drawGrid(); }); applyMode("choice"); void (async () => { await cache(); const savedSources = await this.sources.all(); await chooseInitialMode(); for (const source of savedSources) { const state = await this.sources.syncState(source.id), cached = await this.sources.entries(source.id); if ((state && !state.completed) || (!state && cached.length === 0)) await sync(source); } if (this.openLinkModal) openManager(); })(); return section;
+    retry.addEventListener("click", () => { if (lastSource) void sync(lastSource); }); search.addEventListener("input", () => { visibleLimit = 60; drawGrid(); }); more.addEventListener("click", () => { visibleLimit += 60; drawGrid(); }); applyMode("choice"); void (async () => { await cache(); const savedSources = await this.sources.all(); await chooseInitialMode(); for (const source of savedSources) { const state = await this.sources.syncState(source.id), cached = await this.sources.entries(source.id); if ((state && !state.completed) || (!state && cached.length === 0) || (state && state.version !== PERSONAL_DRIVE_SYNC_VERSION)) await sync(source); } if (this.openLinkModal) openManager(); })(); return section;
   }
   private showDetails(entry: GoogleDriveLibraryEntry, book: Book | undefined, action: () => void): void {
     const dialog = document.createElement("dialog"); dialog.className = "catalog-genre-dialog catalog-genre-dialog--details"; const panel = this.createElement("section", "catalog-genre-dialog__panel"); const title = entry.title || stripExtension(entry.name); const cover = this.createElement("img", "catalog-genre-dialog__cover") as HTMLImageElement; cover.src = book?.cover || entry.coverUrl || entry.thumbnailUrl; cover.alt = `Capa de ${title}`; cover.addEventListener("error", () => cover.remove(), { once: true }); panel.append(cover, this.createElement("h2", "", title), this.createElement("p", "catalog-genre-dialog__book", `Gênero: ${entry.genre}`));

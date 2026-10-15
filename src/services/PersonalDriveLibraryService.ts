@@ -2,6 +2,12 @@ import { GoogleDriveLibraryService, type GoogleLibraryFile } from "../external/G
 import type { GoogleDriveLibraryEntry, GoogleDriveLibrarySource, GoogleDriveLibrarySyncState, GoogleDriveSyncTask } from "../external/GoogleDriveLibraryRepository";
 import { resolvePersonalDriveGenre } from "./PersonalDriveGenreResolver";
 import { PersonalDriveCatalogResolver, driveThumbnailUrl } from "./PersonalDriveCatalogResolver";
+import { describeDriveFolder, readDriveCatalogCategory, type DriveFolderDescription } from "./PersonalDriveCatalogSource";
+import { GoogleDriveLibraryRepository } from "../external/GoogleDriveLibraryRepository";
+
+/** Bumped when listing learns something new; an older completed sync is redone once. v2 reads
+ *  structured catalog folders (books/ + covers/ + catalog.json). */
+export const PERSONAL_DRIVE_SYNC_VERSION = 2;
 
 export interface PersonalDriveListingProgress { folders: number; files: number; current: string; }
 const METADATA_BATCH_SIZE = 24;
@@ -10,14 +16,48 @@ const METADATA_BATCH_SIZE = 24;
  * interrupted foreground sync resumes without ever queuing book downloads. */
 export class PersonalDriveLibraryService {
   public constructor(private readonly drive: GoogleDriveLibraryService) {}
+
+  /** Reads a pasted folder link before it is saved: its real name and whether it is a
+   *  structured catalog source (then always Livros, one genre per category). */
+  public async describeLink(link: string, signal: AbortSignal): Promise<DriveFolderDescription> {
+    const parsed = GoogleDriveLibraryRepository.parse(link), key = keyOf(parsed.folderUrl);
+    await this.drive.prepare(); if (!this.drive.authorized) await this.drive.connect();
+    const root = await this.drive.metadata(parsed.folderId, key, signal);
+    if (root.mimeType !== GoogleDriveLibraryService.FOLDER) throw new Error("DRIVE_LINK_NOT_FOLDER");
+    return describeDriveFolder(this.drive, root, key, signal);
+  }
+
+  /** Lists a source page by page. Resolves with the folder's real name. */
   public async listProgressively(source: GoogleDriveLibrarySource, existing: readonly GoogleDriveLibraryEntry[], resume: GoogleDriveLibrarySyncState | null,
-    signal: AbortSignal, page: (entries: GoogleDriveLibraryEntry[], state: GoogleDriveLibrarySyncState, progress: PersonalDriveListingProgress) => Promise<void>): Promise<void> {
+    signal: AbortSignal, page: (entries: GoogleDriveLibraryEntry[], state: GoogleDriveLibrarySyncState, progress: PersonalDriveListingProgress) => Promise<void>): Promise<{ folderName: string }> {
     console.info(JSON.stringify({ event: "PERSONAL_DRIVE_SYNC_STARTED", sourceId: source.id, resumed: Boolean(resume?.queue.length) }));
     await this.drive.prepare(); if (!this.drive.authorized) await this.drive.connect();
     const root = await this.drive.metadata(source.folderId, resourceKey(source), signal);
     if (root.mimeType !== GoogleDriveLibraryService.FOLDER) throw new Error("DRIVE_LINK_NOT_FOLDER");
+    // Structured catalog folders first: books/ + covers/ + catalog.json at the root, or in each
+    // subfolder. Those books carry their real titles, synopses and covers; the generic folder
+    // walk below would only see bare files and treat books/ and covers/ as genres.
+    const resumable = Boolean(resume?.queue.length) && !resume?.completed && resume?.version === PERSONAL_DRIVE_SYNC_VERSION;
+    if (!resumable && typeof this.drive.listRaw === "function" && typeof this.drive.json === "function") {
+      const description = await describeDriveFolder(this.drive, root, resourceKey(source), signal);
+      if (description.categories.length) {
+        let total = 0;
+        for (const category of description.categories) {
+          if (signal.aborted) throw new DOMException("Listagem cancelada.", "AbortError");
+          const { entries } = await readDriveCatalogCategory(this.drive, category, source.id, "book", signal);
+          total += entries.length;
+          await page(entries, { queue: [], completed: false, version: PERSONAL_DRIVE_SYNC_VERSION, folders: description.categories.length, files: total,
+            current: category.name, updatedAt: new Date().toISOString() }, { folders: description.categories.length, files: total, current: category.name });
+        }
+        await page([], { queue: [], completed: true, version: PERSONAL_DRIVE_SYNC_VERSION, folders: description.categories.length, files: total,
+          current: root.name, updatedAt: new Date().toISOString() }, { folders: description.categories.length, files: total, current: root.name });
+        console.info(JSON.stringify({ event: "PERSONAL_DRIVE_SYNC_FINISHED", sourceId: source.id, files: total, catalogs: description.categories.length }));
+        return { folderName: root.name };
+      }
+    }
     const seen = new Set(existing.map(entry => entry.fileId)); let folders = resume?.folders ?? 0, files = Math.max(existing.length, resume?.files ?? 0);
-    const state: GoogleDriveLibrarySyncState = resume?.queue.length && !resume.completed ? { ...resume, queue: [...resume.queue], completed: false } : {
+    const state: GoogleDriveLibrarySyncState = resumable && resume ? { ...resume, queue: [...resume.queue], completed: false } : {
+      version: PERSONAL_DRIVE_SYNC_VERSION,
       queue: [{ folderId: root.id, genre: /^Link\s+\d+$/i.test(source.name) ? resolvePersonalDriveGenre(root.name) : source.name || resolvePersonalDriveGenre(root.name), resourceKey: root.resourceKey ?? resourceKey(source), collectionPath: [] }], completed: false,
       folders, files, current: root.name, updatedAt: new Date().toISOString(),
     };
@@ -52,7 +92,7 @@ export class PersonalDriveLibraryService {
         if (signal.aborted) throw new DOMException("Listagem cancelada.", "AbortError");
         const chunk = chunks[index]!; files += chunk.length;
         const last = index === chunks.length - 1;
-        const checkpoint: GoogleDriveLibrarySyncState = { queue: last ? [...nextQueue] : [...state.queue], completed: last && nextQueue.length === 0,
+        const checkpoint: GoogleDriveLibrarySyncState = { version: PERSONAL_DRIVE_SYNC_VERSION, queue: last ? [...nextQueue] : [...state.queue], completed: last && nextQueue.length === 0,
           folders: last ? folders : foldersBeforePage, files, current: chunk.at(-1)?.name ?? listing.files.at(-1)?.name ?? task.genre, updatedAt: new Date().toISOString() };
         await page(chunk, checkpoint, { folders: checkpoint.folders ?? folders, files, current: checkpoint.current ?? task.genre });
         // Yield a browser task so even one small Drive response paints progressively.
@@ -61,8 +101,10 @@ export class PersonalDriveLibraryService {
       state.queue = nextQueue; state.completed = nextQueue.length === 0; state.folders = folders; state.files = files; state.updatedAt = new Date().toISOString();
     }
     console.info(JSON.stringify({ event: "PERSONAL_DRIVE_SYNC_FINISHED", sourceId: source.id, files }));
+    return { folderName: root.name };
   }
 }
+function keyOf(folderUrl: string): string | undefined { try { return new URL(folderUrl).searchParams.get("resourcekey") ?? undefined; } catch { return undefined; } }
 function resourceKey(source: GoogleDriveLibrarySource): string | undefined { try { return new URL(source.folderUrl).searchParams.get("resourcekey") ?? undefined; } catch { return undefined; } }
 function toEntry(sourceId: string, file: GoogleLibraryFile, genre: string, contentType: "book" | "comic", collectionPath: string[], metadata?: ReturnType<PersonalDriveCatalogResolver["resolve"]>): GoogleDriveLibraryEntry {
   const value = metadata ?? undefined, resolvedGenre = value?.genre ? resolvePersonalDriveGenre(value.genre) : genre;

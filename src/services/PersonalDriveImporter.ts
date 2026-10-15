@@ -47,7 +47,9 @@ export class PersonalDriveImporter {
     contentType: BookContentType = "book",
     progress: (done: number, total: number | null, name: string, percent?: number | null) => void): Promise<Book> {
     await this.drive.prepare(); if (!this.drive.authorized) await this.drive.connect();
-    return this.importFile(file, resolvePersonalDriveGenre(genre), signal, progress, 0, 1, contentType);
+    // The listed entry already carries its final genre (resolved while listing, or a catalog
+    // folder's exact name); resolving again would rename a catalog genre on download.
+    return this.importFile(file, genre.trim() || "Sem gênero", signal, progress, 0, 1, contentType);
   }
 
   /** Reclassifies only downloaded PDFs from this source. The original file, cover, id and
