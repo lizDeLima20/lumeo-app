@@ -80,8 +80,11 @@ export class GoogleDriveLibraryRepository {
         return { source: refreshed, created: false };
       }
       const now = new Date().toISOString();
-      const displayName = name?.trim();
-      if (!displayName || displayName.length > 100) throw new Error(I18nManager.shared.t("externalLibrary.invalidName"));
+      // The personal Drive sheet deliberately keeps one URL field. A folder name can be
+      // resolved later during listing; until then a stable local fallback keeps the row
+      // useful and editable without forcing people to type duplicate information.
+      const displayName = name?.trim() || `Link ${rows.length + 1}`;
+      if (displayName.length > 100) throw new Error(I18nManager.shared.t("externalLibrary.invalidName"));
       const source: GoogleDriveLibrarySource = { ...parsed, id: crypto.randomUUID(), userId: this.owner,
         name: displayName, contentType, createdAt: now, updatedAt: now };
       await this.storage.save(`googleLibraries:${this.owner}`, [...rows, source]);
