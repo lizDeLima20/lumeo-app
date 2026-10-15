@@ -64,7 +64,10 @@ export class BookImportView extends BaseView {
     const device = this.sourceButton("▣", I18nManager.shared.t("google.device"), I18nManager.shared.t("google.deviceHelp"));
     const comic = this.sourceButton("▧", "HQ local", "Importar uma HQ CBR ou CBZ deste dispositivo");
     const drive = this.sourceButton("◆", I18nManager.shared.t("google.title"), I18nManager.shared.t("google.subtitle"));
-    sourceChoices.append(device, comic, drive);
+    // Android personal libraries add Drive folders from the dedicated "+ Adicionar link"
+    // flow. Keep this upload screen focused on files that already live on the device.
+    sourceChoices.append(device, comic);
+    if (!this.openPersonalDrive) sourceChoices.append(drive);
     const file = this.input("Arquivo PDF, EPUB, CBR ou CBZ", "file"); file.wrapper.classList.add("import-source-panel", "is-hidden"); file.input.required = false; file.input.accept = ".pdf,.epub,.cbr,.cbz,application/pdf,application/epub+zip,application/x-cbr,application/x-cbz";
     const download = this.createElement("p", "download-status"); download.setAttribute("role", "status");
     const driveLink = this.input("Link de arquivo ou pasta do Google Drive", "url"); driveLink.input.placeholder = "https://drive.google.com/..."; driveLink.input.required = false;
