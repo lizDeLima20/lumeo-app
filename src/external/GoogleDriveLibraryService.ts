@@ -3,7 +3,9 @@ import { BookDownloadError, StartTelemetry } from "../diagnostics/StartTelemetry
 import { GoogleDriveAuthorizationError, GoogleDriveAuthorizationProvider } from "../services/GoogleDriveAuthorizationProvider";
 import { GoogleIdentityServices } from "../services/GoogleIdentityServices";
 import { NativeGoogleDriveAuthorization } from "../services/NativeGoogleDriveAuthorization";
-export interface GoogleLibraryFile { id: string; name: string; mimeType: string; size?: string; modifiedTime?: string; resourceKey?: string; }
+export interface GoogleLibraryFile { id: string; name: string; mimeType: string; size?: string; modifiedTime?: string; resourceKey?: string;
+  /** Drive's own short-lived thumbnail URL (hours), when Drive rendered one. */
+  thumbnailLink?: string; hasThumbnail?: boolean; }
 class GoogleDriveRequestError extends Error {
   public constructor(public readonly status: number, cause?: unknown) { super("Google Drive request failed"); this.name = "GoogleDriveRequestError"; Object.defineProperty(this, "cause", { value: cause, enumerable: false }); }
 }
@@ -12,6 +14,8 @@ export class GoogleDriveAccessError extends Error {
 }
 export class GoogleDriveLibraryService {
   public static readonly FOLDER = "application/vnd.google-apps.folder";
+  /** Largest catalog.json accepted (characters): ~4 KB per record leaves room for ~8000 books. */
+  public static readonly MAX_CATALOG_CHARS = 32 * 1024 * 1024;
   private token = ""; private expires = 0; private loading: Promise<void> | null = null;
   private readonly downloads = new Map<string, Promise<File>>();
   private readonly authorization: GoogleDriveAuthorizationProvider;
@@ -37,9 +41,9 @@ export class GoogleDriveLibraryService {
     }
   }
   public dispose(): void { this.token = ""; this.expires = 0; this.authorization.clear(); }
-  private async request(path: string, signal: AbortSignal, resource?: { id: string; key?: string }): Promise<Response> {
+  private async request(path: string, signal: AbortSignal, resource?: { id: string; key?: string }, extra: Record<string, string> = {}): Promise<Response> {
     if (!this.authorized) throw this.error();
-    const headers: Record<string, string> = { Authorization: `Bearer ${this.token}` };
+    const headers: Record<string, string> = { ...extra, Authorization: `Bearer ${this.token}` };
     if (resource?.key) headers["X-Goog-Drive-Resource-Keys"] = `${resource.id}/${resource.key}`;
     const response = await this.fetcher(`https://www.googleapis.com/drive/v3/${path}`, {
       headers, signal, credentials: "omit", referrerPolicy: "no-referrer",
@@ -53,14 +57,14 @@ export class GoogleDriveLibraryService {
   }
   /** Metadata-only folder page used by the local structured-catalog resolver. It is still
    * the official authenticated Drive API; callers must never scrape the Drive HTML UI. */
-  public async listRaw(id: string, key: string | undefined, signal: AbortSignal, pageToken?: string): Promise<{ files: GoogleLibraryFile[]; nextPageToken?: string }> {
+  public async listRaw(id: string, key: string | undefined, signal: AbortSignal, pageToken?: string, pageSize = 100): Promise<{ files: GoogleLibraryFile[]; nextPageToken?: string }> {
     if (!/^[\w-]+$/.test(id)) throw this.error();
     const timed = portableTimeout(signal, 30_000);
     try {
       const folder = await (await this.request(`files/${encodeURIComponent(id)}?fields=mimeType&supportsAllDrives=true`, timed.signal, { id, key })).json() as GoogleLibraryFile;
       if (folder.mimeType !== GoogleDriveLibraryService.FOLDER) throw this.error();
-      const query = new URLSearchParams({ q: `'${id}' in parents and trashed=false`, pageSize: "100",
-        fields: "nextPageToken,files(id,name,mimeType,size,modifiedTime,resourceKey)", orderBy: "folder,name_natural", supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
+      const query = new URLSearchParams({ q: `'${id}' in parents and trashed=false`, pageSize: String(Math.min(1000, Math.max(1, pageSize))),
+        fields: "nextPageToken,files(id,name,mimeType,size,modifiedTime,resourceKey,thumbnailLink,hasThumbnail)", orderBy: "folder,name_natural", supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
       if (pageToken) query.set("pageToken", pageToken);
       const result = await (await this.request(`files?${query}`, timed.signal, { id, key })).json() as { files: GoogleLibraryFile[]; nextPageToken?: string };
       return { ...result, files: Array.isArray(result.files) ? result.files : [] };
@@ -68,6 +72,31 @@ export class GoogleDriveLibraryService {
       if (error instanceof GoogleDriveRequestError) throw this.accessError(error.status);
       throw error;
     } finally { timed.dispose(); }
+  }
+  /** A byte range of a file (inclusive end), for reading only what a cover needs - for
+   *  instance a CBZ's central directory and first image - never the whole file. */
+  public async range(file: Pick<GoogleLibraryFile, "id" | "resourceKey">, start: number, end: number, signal: AbortSignal): Promise<{ bytes: Uint8Array; total: number | null }> {
+    if (!/^[\w-]+$/.test(file.id) || start < 0 || end < start) throw this.error();
+    const timed = portableTimeout(signal, 30_000);
+    try {
+      const response = await this.request(`files/${encodeURIComponent(file.id)}?alt=media&supportsAllDrives=true`, timed.signal, { id: file.id, key: file.resourceKey }, { Range: `bytes=${start}-${end}` });
+      const total = Number(/\/(\d+)$/.exec(response.headers.get("content-range") ?? "")?.[1]) || null;
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      // A server that ignores Range sends the whole file: refuse instead of keeping it.
+      if (response.status !== 206 && bytes.length > end - start + 1) throw new Error("DRIVE_RANGE_UNSUPPORTED");
+      return { bytes, total };
+    } catch (error) { if (error instanceof GoogleDriveRequestError) throw this.accessError(error.status); throw error; }
+    finally { timed.dispose(); }
+  }
+  /** A fresh thumbnail link: the one from the listing expires after a few hours. */
+  public async thumbnailLink(file: Pick<GoogleLibraryFile, "id" | "resourceKey">, signal: AbortSignal): Promise<string | null> {
+    if (!/^[\w-]+$/.test(file.id)) throw this.error();
+    const timed = portableTimeout(signal, 30_000);
+    try {
+      const value = await (await this.request(`files/${encodeURIComponent(file.id)}?fields=thumbnailLink&supportsAllDrives=true`, timed.signal, { id: file.id, key: file.resourceKey })).json() as { thumbnailLink?: string };
+      return value.thumbnailLink ?? null;
+    } catch (error) { if (error instanceof GoogleDriveRequestError) throw this.accessError(error.status); throw error; }
+    finally { timed.dispose(); }
   }
   /** Finds a small structural file without guessing where it lands in paginated order. */
   public async childNamed(folderId: string, name: string, key: string | undefined, signal: AbortSignal): Promise<GoogleLibraryFile | null> {
@@ -84,11 +113,14 @@ export class GoogleDriveLibraryService {
   /** Reads a small Drive metadata document locally. Catalogs never pass through a server. */
   public async json(file: GoogleLibraryFile, signal: AbortSignal): Promise<unknown> {
     if (!/\.json$/i.test(file.name)) throw new Error("DRIVE_CATALOG_NOT_JSON");
-    const timed = portableTimeout(signal, 30_000);
+    // A catalog of a few thousand books with synopses is several MB (Romance: 4234 records,
+    // 8.5 MB); slow mobile links need more than the usual 30 s to bring it.
+    const timed = portableTimeout(signal, 120_000);
     try {
       const response = await this.request(`files/${encodeURIComponent(file.id)}?alt=media&supportsAllDrives=true`, timed.signal, { id: file.id, key: file.resourceKey });
       const body = await response.text();
-      if (body.length > 4 * 1024 * 1024 || /^\s*(?:<!doctype|<html|<head)/i.test(body)) throw new Error("DRIVE_CATALOG_INVALID");
+      if (body.length > GoogleDriveLibraryService.MAX_CATALOG_CHARS) throw new Error("DRIVE_CATALOG_TOO_LARGE");
+      if (/^\s*(?:<!doctype|<html|<head)/i.test(body)) throw new Error("DRIVE_CATALOG_INVALID");
       try { return JSON.parse(body) as unknown; } catch { throw new Error("DRIVE_CATALOG_INVALID"); }
     } catch (error) {
       if (error instanceof GoogleDriveRequestError) throw this.accessError(error.status);

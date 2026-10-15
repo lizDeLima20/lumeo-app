@@ -6,7 +6,18 @@ export interface GoogleDriveLibrarySource {
   id: string; userId: string; name: string; folderUrl: string; folderId: string;
   /** The owner's local choice for PDFs in this Drive folder. Older records mean book. */
   contentType?: GoogleDriveLibraryContentType;
+  /** The folder's own name in Drive, kept apart from `name` (which the person may customise). */
+  driveName?: string;
   createdAt: string; updatedAt: string;
+}
+/** One folder below (or at) a source's root. The tree keeps Drive's real hierarchy at any
+ *  depth; only the root is a category, every other folder is a child of its parent. */
+export interface GoogleDriveFolderNode {
+  sourceId: string; folderId: string; parentFolderId: string | null; name: string; depth: number; resourceKey?: string;
+  /** Every page of this folder has been listed. */
+  listed?: boolean;
+  /** This folder could not be listed (e.g. no permission); the rest of the tree goes on. */
+  error?: string;
 }
 /** A cached, metadata-only Drive item. Its presence never means the file was copied to
  * the device; the local Book record is created only after the person taps Baixar. */
@@ -18,8 +29,15 @@ export interface GoogleDriveLibraryEntry {
    * independent root genres. */
   collectionPath?: string[];
   contentType?: GoogleDriveLibraryContentType;
+  /** Folder that directly holds this file, and its path below the source root. */
+  parentFolderId?: string;
+  folderPath?: Array<{ id: string; name: string }>;
+  /** Drive's short-lived thumbnail URL from the listing, used to build a cached cover. */
+  thumbnailLink?: string;
 }
-export interface GoogleDriveSyncTask { folderId: string; genre: string; resourceKey?: string; pageToken?: string; collectionPath?: string[]; }
+export interface GoogleDriveSyncTask { folderId: string; genre: string; resourceKey?: string; pageToken?: string; collectionPath?: string[];
+  /** Ancestry below the source root (ids and names); empty for the root itself. */
+  folderPath?: Array<{ id: string; name: string }>; }
 export interface GoogleDriveLibrarySyncState {
   queue: GoogleDriveSyncTask[]; completed: boolean; updatedAt: string;
   /** Durable foreground-resume counters. Results themselves live in the entry cache. */
@@ -68,7 +86,7 @@ export class GoogleDriveLibraryRepository {
   }
   /** New personal-library flow: labels are deliberately local and automatic.  Keep the
    * older save(name, link) API above for existing non-Android callers and migrations. */
-  public saveLink(link: string, contentType: GoogleDriveLibraryContentType = "book", name?: string): Promise<{ source: GoogleDriveLibrarySource; created: boolean }> {
+  public saveLink(link: string, contentType: GoogleDriveLibraryContentType = "book", name?: string, driveName?: string): Promise<{ source: GoogleDriveLibrarySource; created: boolean }> {
     return this.mutate(async () => {
       const parsed = GoogleDriveLibraryRepository.parse(link), rows = await this.all();
       const duplicate = rows.find(row => row.folderId === parsed.folderId);
@@ -77,7 +95,8 @@ export class GoogleDriveLibraryRepository {
         // that key locally; otherwise a stale saved URL would fail authorization while
         // the UI misleadingly calls the repeated link a successful update.
         const displayName = name?.trim();
-        const refreshed = duplicate.folderUrl === parsed.folderUrl && (duplicate.contentType ?? "book") === contentType && (!displayName || displayName === duplicate.name) ? duplicate : { ...duplicate, folderUrl: parsed.folderUrl, contentType, name: displayName || duplicate.name, updatedAt: new Date().toISOString() };
+        if (displayName && displayName !== duplicate.name && nameTaken(rows, displayName, duplicate.id)) throw new Error("DRIVE_SOURCE_NAME_TAKEN");
+        const refreshed = duplicate.folderUrl === parsed.folderUrl && (duplicate.contentType ?? "book") === contentType && (!displayName || displayName === duplicate.name) ? duplicate : { ...duplicate, folderUrl: parsed.folderUrl, contentType, name: displayName || duplicate.name, driveName: driveName?.trim() || duplicate.driveName, updatedAt: new Date().toISOString() };
         if (refreshed !== duplicate) await this.storage.save(`googleLibraries:${this.owner}`, rows.map(row => row.id === duplicate.id ? refreshed : row));
         return { source: refreshed, created: false };
       }
@@ -87,8 +106,9 @@ export class GoogleDriveLibraryRepository {
       // useful and editable without forcing people to type duplicate information.
       const displayName = name?.trim() || `Link ${rows.length + 1}`;
       if (displayName.length > 100) throw new Error(I18nManager.shared.t("externalLibrary.invalidName"));
+      if (nameTaken(rows, displayName)) throw new Error("DRIVE_SOURCE_NAME_TAKEN");
       const source: GoogleDriveLibrarySource = { ...parsed, id: crypto.randomUUID(), userId: this.owner,
-        name: displayName, contentType, createdAt: now, updatedAt: now };
+        name: displayName, contentType, ...(driveName?.trim() ? { driveName: driveName.trim() } : {}), createdAt: now, updatedAt: now };
       await this.storage.save(`googleLibraries:${this.owner}`, [...rows, source]);
       return { source, created: true };
     });
@@ -110,8 +130,14 @@ export class GoogleDriveLibraryRepository {
     return this.mutate(async () => {
       const clean = name.trim(); if (!clean || clean.length > 100) return null;
       const rows = await this.all(), current = rows.find(row => row.id === id); if (!current || current.name === clean) return current ?? null;
+      // The name is the source's category: two sources with one name would merge into one chip.
+      if (nameTaken(rows, clean, id)) throw new Error("DRIVE_SOURCE_NAME_TAKEN");
       const updated = { ...current, name: clean, updatedAt: new Date().toISOString() };
-      await this.storage.save(`googleLibraries:${this.owner}`, rows.map(row => row.id === id ? updated : row)); return updated;
+      await this.storage.save(`googleLibraries:${this.owner}`, rows.map(row => row.id === id ? updated : row));
+      // The source is one category: its entries follow the new name.
+      const entries = await this.entries(id);
+      if (entries.length) await this.storage.save(`googleLibraryEntries:${this.owner}:${id}`, entries.map(entry => ({ ...entry, genre: clean })));
+      return updated;
     });
   }
   public async entries(sourceId?: string): Promise<GoogleDriveLibraryEntry[]> {
@@ -125,8 +151,32 @@ export class GoogleDriveLibraryRepository {
   public async appendEntries(sourceId: string, incoming: GoogleDriveLibraryEntry[]): Promise<GoogleDriveLibraryEntry[]> {
     return this.mutate(async () => {
       const current = await this.entries(sourceId), byId = new Map(current.map(entry => [entry.fileId, entry]));
-      incoming.forEach(entry => byId.set(entry.fileId, entry)); const saved = [...byId.values()];
+      incoming.forEach(entry => byId.set(entry.fileId, entry));
+      // A source is one category named like the source. A sync started before a rename still
+      // carries the old name, so the stored name wins (and heals entries written meanwhile).
+      const category = await this.categoryOf(sourceId);
+      const saved = [...byId.values()].map(entry => category && entry.genre !== category ? { ...entry, genre: category } : entry);
       await this.storage.save(`googleLibraryEntries:${this.owner}:${sourceId}`, saved); return saved;
+    });
+  }
+  /** The category name of a source, or null while it still has an automatic "Link N" name
+   *  (its entries then carry the folder's real name until the sync renames the source). */
+  private async categoryOf(sourceId: string): Promise<string | null> {
+    const name = (await this.all()).find(row => row.id === sourceId)?.name.trim();
+    return name && !/^Link\s+\d+$/i.test(name) ? name : null;
+  }
+  public async folders(sourceId: string): Promise<GoogleDriveFolderNode[]> {
+    return await this.storage.load<GoogleDriveFolderNode[]>(`googleLibraryFolders:${this.owner}:${sourceId}`) ?? [];
+  }
+  /** Upserts folders by id: a folder is stored once however many times it is listed, and
+   *  "listed" never goes back to false once every page of it was read. */
+  public async appendFolders(sourceId: string, incoming: readonly GoogleDriveFolderNode[]): Promise<GoogleDriveFolderNode[]> {
+    return this.mutate(async () => {
+      const byId = new Map((await this.folders(sourceId)).map(node => [node.folderId, node]));
+      for (const node of incoming) { const previous = byId.get(node.folderId); byId.set(node.folderId, { ...previous, ...node, listed: Boolean(previous?.listed || node.listed) }); }
+      const category = await this.categoryOf(sourceId);
+      const saved = [...byId.values()].map(node => category && node.parentFolderId === null && node.name !== category ? { ...node, name: category } : node);
+      await this.storage.save(`googleLibraryFolders:${this.owner}:${sourceId}`, saved); return saved;
     });
   }
   public async syncState(sourceId: string): Promise<GoogleDriveLibrarySyncState | null> { return await this.storage.load<GoogleDriveLibrarySyncState>(`googleLibrarySync:${this.owner}:${sourceId}`); }
@@ -136,5 +186,12 @@ export class GoogleDriveLibraryRepository {
     await this.storage.save(`googleLibraries:${this.owner}`, (await this.all()).filter(row => row.id !== id));
     await this.storage.remove(`googleLibraryEntries:${this.owner}:${id}`);
     await this.storage.remove(`googleLibrarySync:${this.owner}:${id}`);
+    await this.storage.remove(`googleLibraryFolders:${this.owner}:${id}`);
   }); }
+}
+
+/** Source names are categories, so they are unique regardless of case and accents. */
+function nameTaken(rows: readonly GoogleDriveLibrarySource[], name: string, exceptId?: string): boolean {
+  const fold = (value: string): string => value.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR").trim();
+  return rows.some(row => row.id !== exceptId && fold(row.name) === fold(name));
 }

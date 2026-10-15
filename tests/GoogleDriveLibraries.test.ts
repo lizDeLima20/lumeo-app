@@ -50,11 +50,10 @@ it("Drive service binds fetch through globalThis for Android WebView", async () 
   const source = await readFile("src/external/GoogleDriveLibraryService.ts", "utf8");
   assert.match(source, /globalThis\.fetch\(input, init\)/);
 });
-it("mainImportHasDeviceComicAndDriveSourcesAndOpensThePersonalDriveShelf", async () => {
+it("mainImportKeepsOnlyLocalSourcesBecauseDriveUsesTheDedicatedShelf", async () => {
   const source = await readFile("src/views/BookImportView.ts", "utf8");
-  assert.match(source, /sourceChoices.append\(device, comic, drive\)/);
-  assert.match(source, /openPersonalDrive/);
-  assert.match(source, /this\.openPersonalDrive\(\)/);
+  assert.match(source, /sourceChoices.append\(device, comic\)/);
+  assert.doesNotMatch(source, /sourceChoices.append\([^)]*drive/);
 });
 it("listTargetsSavedFolderAndDownloadIsDirectWithoutBackend", async () => {
   const calls: string[] = [];
@@ -150,13 +149,13 @@ it("startupFallbackIsReservedForAppStartAndLogsTechnicalFailure", async () => {
   assert.equal(source.includes("unhandledrejection\", () => this.showFallback"), false);
 });
 
-it("a tela Adicionar livro oferece dispositivo, HQ local e Google Drive", async () => {
+it("a tela Adicionar livro oferece somente dispositivo e HQ local", async () => {
   const view = await readFile("src/views/BookImportView.ts", "utf8");
   const row = /sourceChoices\.append\(([^)]*)\)/.exec(view);
   assert.ok(row, "nao achei a linha das origens");
-  assert.deepEqual(row[1]!.split(",").map(part => part.trim()), ["device", "comic", "drive"]);
-  assert.match(view, /Link de arquivo ou pasta do Google Drive/);
-  assert.match(view, /Importar link do Google Drive/);
+  assert.deepEqual(row[1]!.split(",").map(part => part.trim()), ["device", "comic"]);
+  assert.doesNotMatch(view, /Link de arquivo ou pasta do Google Drive/);
+  assert.doesNotMatch(view, /Importar link do Google Drive/);
 });
 
 it("cadastrar uma biblioteca nao depende de estar logado", async () => {
@@ -175,4 +174,25 @@ it("cadastrar uma biblioteca nao depende de estar logado", async () => {
   await signedIn.save("Mangas", "https://drive.google.com/drive/folders/2ZzYyXxWw");
   assert.equal((await signedIn.all()).length, 1);
   assert.equal((await anonymous.all()).length, 1);
+});
+it("readsLargeCatalogsLikeRomanceAndAsksForBigPagesWhenListingCatalogFolders", async () => {
+  // Romance: 4234 records with long descriptions, 8.5 MB - refused as "invalid" above 4 MB before.
+  const records = Array.from({ length: 4234 }, (_, index) => ({ title: `Livro ${index}`, description: "x".repeat(2000), bookPath: `books/bk_${index}.epub` }));
+  const calls: string[] = [];
+  const service = new GoogleDriveLibraryService("test", async (input) => {
+    const value = String(input); calls.push(value);
+    if (value.includes("alt=media")) return new Response(JSON.stringify(records));
+    if (value.includes("fields=mimeType")) return Response.json({ mimeType: GoogleDriveLibraryService.FOLDER });
+    return Response.json({ files: [] });
+  });
+  Object.assign(service, { token: "test-only", expires: Date.now() + 10_000 });
+  const signal = new AbortController().signal;
+  assert.equal(((await service.json({ id: "cat", name: "catalog.json", mimeType: "application/json" }, signal)) as unknown[]).length, 4234);
+  await service.listRaw("books_123", undefined, signal, undefined, 1000);
+  assert.equal(new URL(calls.at(-1)!).searchParams.get("pageSize"), "1000");
+  await service.listRaw("books_123", undefined, signal);
+  assert.equal(new URL(calls.at(-1)!).searchParams.get("pageSize"), "100");
+  const huge = new GoogleDriveLibraryService("test", async () => new Response(" ".repeat(GoogleDriveLibraryService.MAX_CATALOG_CHARS + 1)));
+  Object.assign(huge, { token: "test-only", expires: Date.now() + 10_000 });
+  await assert.rejects(huge.json({ id: "cat", name: "catalog.json", mimeType: "application/json" }, signal), /DRIVE_CATALOG_TOO_LARGE/);
 });

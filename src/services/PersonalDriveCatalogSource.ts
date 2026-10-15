@@ -50,7 +50,11 @@ export async function describeDriveFolder(api: DriveCatalogApi, root: GoogleLibr
   if (own) categories.push(own);
   else {
     for (const folder of children.filter(item => item.mimeType === GoogleDriveLibraryService.FOLDER)) {
-      const inner = await listAll(api, folder.id, folder.resourceKey, signal);
+      // A subfolder the account cannot open is simply not a catalog; the others still count.
+      const inner = await listAll(api, folder.id, folder.resourceKey, signal).catch(error => {
+        if (signal.aborted) throw error;
+        console.warn(JSON.stringify({ event: "DRIVE_SUBFOLDER_UNREADABLE", folderId: folder.id, reason: error instanceof Error ? error.message : "unknown" })); return [] as GoogleLibraryFile[];
+      });
       const category = structureOf(folder.name, folder.id, folder.resourceKey, inner);
       if (category) categories.push(category);
     }
@@ -62,15 +66,19 @@ export async function describeDriveFolder(api: DriveCatalogApi, root: GoogleLibr
 }
 
 /** Every catalog book of a category as cached Drive entries (metadata only, nothing downloaded). */
+export interface DriveCatalogPlacement { genre: string; parentFolderId: string; folderPath: Array<{ id: string; name: string }>; }
+
 export async function readDriveCatalogCategory(api: DriveCatalogApi, category: DriveCatalogCategory, sourceId: string,
-  contentType: GoogleDriveLibraryContentType, signal: AbortSignal): Promise<{ entries: GoogleDriveLibraryEntry[]; stats: DriveCatalogStats }> {
+  contentType: GoogleDriveLibraryContentType, signal: AbortSignal, placement?: DriveCatalogPlacement): Promise<{ entries: GoogleDriveLibraryEntry[]; stats: DriveCatalogStats }> {
   const document = await api.json(category.catalog, signal);
   const rows = catalogRows(document);
   if (!rows) throw new Error("DRIVE_CATALOG_INVALID");
   const bookFiles = (await listAll(api, category.books.id, category.books.resourceKey, signal)).filter(item => READABLE.test(item.name));
   const coverFiles = category.covers ? (await listAll(api, category.covers.id, category.covers.resourceKey, signal)).filter(item => item.mimeType !== GoogleDriveLibraryService.FOLDER) : [];
-  // The genre is the category folder exactly as named in Drive ("Desenvolvimento pessoal").
-  const genre = category.name.trim() || "Sem gênero";
+  // Without a placement the genre is the category folder exactly as named in Drive
+  // ("Desenvolvimento pessoal"); a source places its catalogs inside its own single category.
+  const genre = placement?.genre ?? (category.name.trim() || "Sem gênero");
+  const parentFolderId = placement?.parentFolderId ?? category.folderId, folderPath = placement?.folderPath ?? [];
   const stats: DriveCatalogStats = { records: rows.length, booksResolved: 0, booksFailed: 0, coversExpected: 0, coversResolved: 0, coversFailed: 0, synopses: 0 };
   const entries: GoogleDriveLibraryEntry[] = [], seen = new Set<string>();
   for (const row of rows) {
@@ -84,7 +92,7 @@ export async function readDriveCatalogCategory(api: DriveCatalogApi, category: D
     if (book.coverSource !== "placeholder") stats.coversResolved++;
     else if (hasCover) stats.coversFailed++;
     entries.push({ sourceId, fileId: book.file.id, name: book.file.name, mimeType: book.file.mimeType, size: book.file.size,
-      modifiedTime: book.file.modifiedTime, resourceKey: book.file.resourceKey, genre, contentType, collectionPath: [],
+      modifiedTime: book.file.modifiedTime, resourceKey: book.file.resourceKey, genre, contentType, collectionPath: folderPath.map(step => step.name), parentFolderId, folderPath,
       title: book.title, author: book.author, synopsis: book.synopsis, coverUrl: book.coverUrl || undefined,
       coverDriveFileId: book.coverDriveFileId, thumbnailUrl: book.coverUrl });
   }
@@ -144,7 +152,8 @@ function structureOf(name: string, folderId: string, resourceKey: string | undef
 async function listAll(api: DriveCatalogApi, folderId: string, key: string | undefined, signal: AbortSignal): Promise<GoogleLibraryFile[]> {
   const files: GoogleLibraryFile[] = []; let pageToken: string | undefined;
   do {
-    const page = await api.listRaw(folderId, key, signal, pageToken);
+    // books/ and covers/ hold thousands of files: Drive's largest page keeps it to a few requests.
+    const page = await api.listRaw(folderId, key, signal, pageToken, 1000);
     files.push(...page.files); pageToken = page.nextPageToken;
   } while (pageToken);
   return files;

@@ -1,3 +1,4 @@
+import { ComicCoverCacheRepository } from "../repositories/ComicCoverCacheRepository";
 import { LocalFileImporter } from "../importers/LocalFileImporter";
 import { Capacitor } from "@capacitor/core";
 import { EnvironmentConfig } from "../config/EnvironmentConfig";
@@ -169,7 +170,8 @@ export class App {
         return new PersonalDriveLibraryView(this.state, new GoogleDriveLibraryRepository(new ExternalLibraryStorage(this.database), "personal"), drive,
           new PersonalDriveImporter(drive, this.imports, this.books, this.genres, this.covers),
           book => void this.addBook(book), id => this.openLibraryBook(id), async () => { this.state.library.replaceGenres(await this.genres.getAll()); this.state.notify(); }, params.get("addLink") === "1",
-          book => this.syncBook(book));
+          book => this.syncBook(book),
+          { cache: new ComicCoverCacheRepository(this.database), localFile: id => this.localFileStore().get(id) });
       }
       return new CatalogExplorerView(this.catalog, this.state, (bookId) => this.router.navigate("catalog-book", { id: bookId }), () => this.router.navigate("catalog-admin"),
         { collections: this.driveCollections, open: (collection) => this.router.navigate("collection-genre", { id: collection.id }) }, params.get("genre") ?? "");

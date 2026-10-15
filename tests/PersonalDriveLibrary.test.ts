@@ -78,8 +78,9 @@ it("lists Drive pages progressively, checkpoints queue state, and never download
   const service = new PersonalDriveLibraryService(fake as never);
   const pages: string[][] = [];
   await service.listProgressively({ id: "link", userId: "personal", name: "Link 1", folderId: "root", folderUrl: url, createdAt: "", updatedAt: "" }, [], null, new AbortController().signal,
-    async (entries, state) => { pages.push(entries.map(item => `${item.name}:${item.genre}`)); assert.ok(state.completed || state.queue.length > 0); });
-  assert.deepEqual(pages.filter(batch => batch.length), [["Raiz.pdf:História"], ["Outra.pdf:História"], ["Filho.epub:Autoajuda"]]);
+    async (entries, state) => { pages.push(entries.map(item => `${item.name}:${item.genre}:${item.parentFolderId}:${(item.folderPath ?? []).map(step => step.name).join("/")}`)); assert.ok(state.completed || state.queue.length > 0); });
+  // One category (the source); the subfolder is a child of it, never a genre of its own.
+  assert.deepEqual(pages.filter(batch => batch.length), [["Raiz.pdf:História:root:"], ["Outra.pdf:História:root:"], ["Filho.epub:História:self:Auto Ajuda"]]);
   assert.deepEqual(calls, ["prepare", "list:root:first", "list:root:next", "list:self:first"]);
 });
 
