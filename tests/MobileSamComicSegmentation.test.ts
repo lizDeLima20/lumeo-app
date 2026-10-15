@@ -64,3 +64,27 @@ test("prompts travel with their own coordinate space and the plugin never scales
   assert.doesNotMatch(plugin, /MODEL_SIDE \/ \(float\) Math\.max\(source\.getWidth\(\), source\.getHeight\(\)\)/);
   assert.doesNotMatch(plugin, /box\.getDouble\(\d\) \* scale/);
 });
+
+test("balloon-first: OCR lines inside a balloon's mask become its text, in reading order", async () => {
+  const { comicPromptsInsideMask } = await import("../src/reader/comic/interaction/MobileSamComicSegmentation");
+  // 10 x 6 analysis mask at (2, 3); everything inside is the balloon.
+  const native = { x: 2, y: 3, width: 10, height: 6, maskRle: encodedRuns(0, 60) };
+  const line = (id: string, x0: number, y0: number, x1: number, y1: number, text: string) => ({ id, bbox: { x0, y0, x1, y1 }, text, confidence: .9, lines: 1 });
+  // Page = analysis x 2. Two lines in reading order given shuffled, one line outside the balloon.
+  const prompts = [line("b", 6, 12, 20, 14, "DE VERDADE!"), line("a", 6, 8, 20, 10, "E SÓ TEM UM JEITO"), line("c", 40, 40, 50, 44, "fora")];
+  assert.deepEqual(comicPromptsInsideMask(native, 2, 2, prompts).map(value => value.text), ["E SÓ TEM UM JEITO", "DE VERDADE!"]);
+  assert.deepEqual(comicPromptsInsideMask(native, 2, 2, []).map(value => value.text), []);
+});
+
+test("balloon-first: OCR no longer decides which balloons exist", () => {
+  const reader = readFileSync(new URL("../src/reader/comic/interaction/ComicPageRegionReader.ts", import.meta.url), "utf8");
+  const androidBranch = reader.slice(reader.indexOf('Capacitor.getPlatform() === "android"'), reader.indexOf("const found ="));
+  assert.match(androidBranch, /segmentComicBalloonsWithMobileSam\(encoded, prompts/);
+  assert.doesNotMatch(androidBranch, /if \(!prompts\.length\) \{[^}]*return \{ regions: \[\] \}/);
+  const plugin = readFileSync(new URL("../android/app/src/main/java/com/lumeo/reader/ComicSegmentationPlugin.java", import.meta.url), "utf8");
+  assert.match(plugin, /public void segmentBalloons\(PluginCall call\)/);
+  assert.match(plugin, /ComicMaskOps\.fillHoles\(mask, width, height\)/);
+  const notice = readFileSync(new URL("../android/app/src/main/assets/models/ComicBubbleDetector-NOTICE.txt", import.meta.url), "utf8");
+  assert.match(notice, /5fe9e4f576e49d4e7e8b0e029d6d3cdc252abd4694113e1cae120e62c931ea79/);
+  assert.match(notice, /Apache License 2\.0/);
+});

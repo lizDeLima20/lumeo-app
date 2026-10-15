@@ -67,6 +67,17 @@ public final class ComicSegmentationPlugin extends Plugin {
     private OrtEnvironment environment;
     private OrtSession encoder;
     private OrtSession decoder;
+    private OrtSession detector;
+    /** RT-DETR v2 comic text/bubble detector (Apache-2.0, ogkalu/comic-text-and-bubble-detector, int8). */
+    private static final String DETECTOR_MODEL = "comic_bubble_detector_v4s_int8.onnx";
+    private static final int DETECTOR_SIDE = 640;
+    private static final String BALLOON_MODEL_VERSION = "rtdetr-v2-bubbles-int8+mobilesam-tinyvit-onnx-v1";
+    /** A split of touching balloons is kept only if each part holds its whole text block... */
+    private static final float SPLIT_TEXT_COVERAGE = 0.97f;
+    /** ...and the parts barely overlap. */
+    private static final float SPLIT_MAX_OVERLAP = 0.10f;
+    /** Two masks this nested are one balloon detected twice. */
+    private static final float DUPLICATE_CONTAINMENT = 0.85f;
 
     @PluginMethod
     public void segment(PluginCall call) {
@@ -81,6 +92,243 @@ public final class ComicSegmentationPlugin extends Plugin {
         // space, never from whatever size the page happens to be decoded at.
         final int promptWidth = call.getInt("sourceWidth", 0), promptHeight = call.getInt("sourceHeight", 0);
         executor.execute(() -> run(call, encoded, prompts, pageIndex, promptWidth, promptHeight));
+    }
+
+    /**
+     * Balloon-first segmentation. The detector finds every speech balloon by its shape (any
+     * colour, with or without readable text); MobileSAM cuts each one out with the whole balloon
+     * as its box. OCR boxes, when given, only tell lettered balloons from round artwork; the
+     * WebView assigns the recognised text to the balloon whose mask contains it.
+     */
+    @PluginMethod
+    public void segmentBalloons(PluginCall call) {
+        final String encoded = call.getString("imageBase64");
+        if (encoded == null || encoded.isEmpty()) {
+            call.reject("Página ausente.", "COMIC_ML_INVALID_REQUEST");
+            return;
+        }
+        final JSArray prompts = call.getArray("prompts", new JSArray());
+        final int pageIndex = call.getInt("pageIndex", -1);
+        final int promptWidth = call.getInt("sourceWidth", 0), promptHeight = call.getInt("sourceHeight", 0);
+        executor.execute(() -> runBalloons(call, encoded, prompts, pageIndex, promptWidth, promptHeight));
+    }
+
+    private void runBalloons(PluginCall call, String encoded, JSArray prompts, int pageIndex, int promptWidth, int promptHeight) {
+        final long totalStarted = System.nanoTime();
+        Bitmap source = null, resized = null, detectorInput = null;
+        try {
+            ensureSessions();
+            ensureDetector();
+            byte[] bytes = Base64.decode(encoded, Base64.DEFAULT);
+            BitmapFactory.Options bounds = new BitmapFactory.Options(); bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw new IOException("invalid_bitmap");
+            final ComicModelGeometry geometry = ComicModelGeometry.of(bounds.outWidth, bounds.outHeight, promptWidth, promptHeight, MODEL_SIDE);
+            final int spaceWidth = promptWidth > 0 ? promptWidth : bounds.outWidth;
+            final int spaceHeight = promptHeight > 0 ? promptHeight : bounds.outHeight;
+            source = decodeForModel(bytes, ComicModelGeometry.sampleSize(bounds.outWidth, bounds.outHeight, MODEL_SIDE));
+            bytes = null;
+            if (source == null) throw new IOException("invalid_bitmap");
+
+            // 1. Detector: the page squashed to 640 x 640 (as it was trained), RGB in [0, 1];
+            //    boxes come back in the prompt space through orig_target_sizes.
+            final long detectorStarted = System.nanoTime();
+            detectorInput = Bitmap.createScaledBitmap(source, DETECTOR_SIDE, DETECTOR_SIDE, true);
+            final float[] chw = bitmapChwUnit(detectorInput);
+            detectorInput.recycle(); detectorInput = null;
+            List<ComicBalloonPlanner.Detection> detections = new ArrayList<>();
+            try (OnnxTensor images = OnnxTensor.createTensor(environment, FloatBuffer.wrap(chw), new long[]{1, 3, DETECTOR_SIDE, DETECTOR_SIDE});
+                 OnnxTensor sizes = OnnxTensor.createTensor(environment, java.nio.LongBuffer.wrap(new long[]{spaceWidth, spaceHeight}), new long[]{1, 2})) {
+                Map<String, OnnxTensor> inputs = new HashMap<>(); inputs.put("images", images); inputs.put("orig_target_sizes", sizes);
+                try (OrtSession.Result out = detector.run(inputs)) {
+                    long[][] labels = (long[][]) out.get(0).getValue();
+                    float[][][] boxes = (float[][][]) out.get(1).getValue();
+                    float[][] scores = (float[][]) out.get(2).getValue();
+                    for (int i = 0; i < scores[0].length; i++) {
+                        if (scores[0][i] < ComicBalloonPlanner.CANDIDATE_MIN_SCORE) continue;
+                        float[] b = boxes[0][i];
+                        detections.add(new ComicBalloonPlanner.Detection((int) labels[0][i], scores[0][i], b[0], b[1], b[2], b[3]));
+                    }
+                }
+            }
+            final long detectorMs = elapsedMs(detectorStarted);
+
+            List<float[]> ocrBoxes = new ArrayList<>();
+            for (int i = 0; i < prompts.length(); i++) {
+                JSONArray box = prompts.getJSONObject(i).getJSONArray("box");
+                ocrBoxes.add(new float[]{(float) box.getDouble(0), (float) box.getDouble(1), (float) box.getDouble(2), (float) box.getDouble(3)});
+            }
+            List<ComicBalloonPlanner.Balloon> balloons = ComicBalloonPlanner.plan(detections, ocrBoxes, spaceHeight);
+
+            // 2. MobileSAM on the same page.
+            final int width = geometry.modelWidth, height = geometry.modelHeight;
+            resized = Bitmap.createScaledBitmap(source, width, height, true);
+            if (resized != source) { source.recycle(); source = null; }
+            final float[] rgb = bitmapRgb(resized);
+            final long encoderStarted = System.nanoTime();
+            List<BalloonMask> kept = new ArrayList<>();
+            int detected = 0, splitCount = 0;
+            try (OnnxTensor image = OnnxTensor.createTensor(environment, FloatBuffer.wrap(rgb), new long[]{height, width, 3});
+                 OrtSession.Result encodedPage = encoder.run(Collections.singletonMap("input_image", image))) {
+                final long encoderMs = elapsedMs(encoderStarted);
+                final OnnxTensor embedding = (OnnxTensor) encodedPage.get(0);
+                List<BalloonMask> found = new ArrayList<>();
+                for (int b = 0; b < balloons.size(); b++) {
+                    ComicBalloonPlanner.Balloon balloon = balloons.get(b);
+                    String id = "b" + b;
+                    if (!balloon.hasText) { Log.i(TAG, "COMIC_ML_BALLOON id=" + id + " det=" + balloon.detScore + " result=no-text"); continue; }
+                    detected++;
+                    List<BalloonMask> parts = new ArrayList<>();
+                    if (!balloon.parts.isEmpty()) {
+                        for (ComicBalloonPlanner.Prompt part : balloon.parts) {
+                            BalloonMask mask = decodeBalloon(embedding, part, geometry, balloon.detScore, id + "-" + parts.size());
+                            if (mask == null || mask.textCoverage < SPLIT_TEXT_COVERAGE) { parts.clear(); break; }
+                            parts.add(mask);
+                        }
+                        for (int i = 0; i < parts.size() && !parts.isEmpty(); i++) for (int j = i + 1; j < parts.size(); j++) {
+                            if (ComicMaskOps.containment(parts.get(i).mask, parts.get(j).mask) >= SPLIT_MAX_OVERLAP) { parts.clear(); break; }
+                        }
+                    }
+                    if (!parts.isEmpty()) {
+                        splitCount++;
+                        for (BalloonMask part : parts) { part.split = true; found.add(part); }
+                        Log.i(TAG, "COMIC_ML_BALLOON id=" + id + " det=" + balloon.detScore + " result=split parts=" + parts.size());
+                        continue;
+                    }
+                    BalloonMask whole = decodeBalloon(embedding, balloon.whole, geometry, balloon.detScore, id);
+                    if (whole == null) continue;
+                    // Text coverage is only meaningful for a detected text block; a balloon kept for its
+                    // OCR lines alone has its own box as "text", which a round balloon never fills.
+                    boolean textCut = balloon.whole.detectedText && whole.textCoverage < MIN_PROMPT_COVERAGE;
+                    if (whole.score < MIN_SCORE || whole.pageShare > MAX_PAGE_SHARE || textCut) {
+                        Log.i(TAG, "COMIC_ML_BALLOON id=" + id + " det=" + balloon.detScore + " score=" + whole.score + " textCoverage="
+                            + whole.textCoverage + " pageShare=" + whole.pageShare + " result=rejected");
+                        continue;
+                    }
+                    found.add(whole);
+                    Log.i(TAG, "COMIC_ML_BALLOON id=" + id + " det=" + balloon.detScore + " score=" + whole.score
+                        + " textCoverage=" + whole.textCoverage + " pageShare=" + whole.pageShare + " result=accepted");
+                }
+                // 3. One balloon detected twice: keep the more confident detection.
+                found.sort((a, b) -> Float.compare(b.detScore, a.detScore));
+                for (BalloonMask value : found) {
+                    boolean duplicate = false;
+                    for (BalloonMask other : kept) if (ComicMaskOps.containment(value.mask, other.mask) >= DUPLICATE_CONTAINMENT) { duplicate = true; break; }
+                    if (duplicate) Log.i(TAG, "COMIC_ML_BALLOON id=" + value.id + " result=duplicate-mask");
+                    else kept.add(value);
+                }
+                kept.sort((a, b) -> a.id.compareTo(b.id));
+                JSArray regions = new JSArray();
+                for (BalloonMask value : kept) regions.put(value.json(width, geometry));
+                JSObject result = new JSObject();
+                result.put("modelVersion", BALLOON_MODEL_VERSION);
+                result.put("analysisWidth", width);
+                result.put("analysisHeight", height);
+                result.put("detectorMs", detectorMs);
+                result.put("encoderMs", encoderMs);
+                result.put("totalMs", elapsedMs(totalStarted));
+                result.put("detected", detected);
+                result.put("split", splitCount);
+                result.put("peakEstimateBytes", (long) width * height * 4L + 3L * DETECTOR_SIDE * DETECTOR_SIDE * 4L);
+                final long javaHeapBytes = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+                final long nativeHeapBytes = Debug.getNativeHeapAllocatedSize();
+                result.put("javaHeapUsedBytes", javaHeapBytes);
+                result.put("nativeHeapAllocatedBytes", nativeHeapBytes);
+                result.put("regions", regions);
+                Log.i(TAG, "COMIC_ML_BALLOON_PAGE model=" + BALLOON_MODEL_VERSION + " page=" + pageIndex + " detections=" + detections.size()
+                    + " balloons=" + detected + " accepted=" + kept.size() + " split=" + splitCount + " detectorMs=" + detectorMs
+                    + " encoderMs=" + encoderMs + " totalMs=" + elapsedMs(totalStarted) + " nativeHeapBytes=" + nativeHeapBytes);
+                call.resolve(result);
+            }
+        } catch (Throwable error) {
+            Log.e(TAG, "COMIC_ML_FAILED class=" + error.getClass().getSimpleName(), error);
+            call.reject("A segmentação local da página falhou.", "COMIC_ML_INFERENCE_FAILED",
+                error instanceof Exception ? (Exception) error : new RuntimeException(error));
+        } finally {
+            if (detectorInput != null && !detectorInput.isRecycled()) detectorInput.recycle();
+            if (resized != null && !resized.isRecycled()) resized.recycle();
+            if (source != null && !source.isRecycled()) source.recycle();
+            closeSessions();
+        }
+    }
+
+    /** One MobileSAM decode for a balloon prompt, mapped from prompt space to the model input. */
+    private BalloonMask decodeBalloon(OnnxTensor embedding, ComicBalloonPlanner.Prompt prompt, ComicModelGeometry geometry,
+                                      float detScore, String id) throws Exception {
+        final int width = geometry.modelWidth, height = geometry.modelHeight;
+        List<float[]> points = new ArrayList<>(); List<Float> labels = new ArrayList<>();
+        for (float[] p : prompt.positives) { points.add(new float[]{p[0] * geometry.scaleX, p[1] * geometry.scaleY}); labels.add(1f); }
+        for (float[] p : prompt.negatives) { points.add(new float[]{p[0] * geometry.scaleX, p[1] * geometry.scaleY}); labels.add(0f); }
+        float[] box = prompt.box == null ? null : geometry.toModel(prompt.box[0], prompt.box[1], prompt.box[2], prompt.box[3]);
+        if (prompt.box != null && box == null) { Log.w(TAG, "COMIC_ML_BALLOON id=" + id + " result=prompt-outside-page"); return null; }
+        if (box != null) { points.add(new float[]{box[0], box[1]}); labels.add(2f); points.add(new float[]{box[2], box[3]}); labels.add(3f); }
+        float[] coords = new float[points.size() * 2], labelValues = new float[labels.size()];
+        for (int i = 0; i < points.size(); i++) {
+            coords[i * 2] = clamp(points.get(i)[0], 0, width - 1); coords[i * 2 + 1] = clamp(points.get(i)[1], 0, height - 1); labelValues[i] = labels.get(i);
+        }
+        final long started = System.nanoTime();
+        Map<String, OnnxTensor> inputs = new HashMap<>();
+        try (OnnxTensor pointCoords = OnnxTensor.createTensor(environment, FloatBuffer.wrap(coords), new long[]{1, labelValues.length, 2});
+             OnnxTensor pointLabels = OnnxTensor.createTensor(environment, FloatBuffer.wrap(labelValues), new long[]{1, labelValues.length});
+             OnnxTensor maskInput = OnnxTensor.createTensor(environment, FloatBuffer.wrap(new float[256 * 256]), new long[]{1, 1, 256, 256});
+             OnnxTensor hasMask = OnnxTensor.createTensor(environment, FloatBuffer.wrap(new float[]{0}), new long[]{1});
+             OnnxTensor originalSize = OnnxTensor.createTensor(environment, FloatBuffer.wrap(new float[]{height, width}), new long[]{2})) {
+            inputs.put("image_embeddings", embedding); inputs.put("point_coords", pointCoords); inputs.put("point_labels", pointLabels);
+            inputs.put("mask_input", maskInput); inputs.put("has_mask_input", hasMask); inputs.put("orig_im_size", originalSize);
+            try (OrtSession.Result output = decoder.run(inputs)) {
+                float[][][][] masks = (float[][][][]) output.get(0).getValue();
+                float score = ((float[][]) output.get(1).getValue())[0][0];
+                BitSet raw = new BitSet(width * height);
+                for (int y = 0; y < height; y++) for (int x = 0; x < width; x++) if (masks[0][0][y][x] > 0f) raw.set(y * width + x);
+                BitSet mask = ComicMaskOps.keepComponent(raw, width, height, coords[0], coords[1], box);
+                mask = ComicMaskOps.fillHoles(mask, width, height);
+                int[] b = ComicMaskOps.bounds(mask, width);
+                if (b == null) { Log.i(TAG, "COMIC_ML_BALLOON id=" + id + " result=empty-mask"); return null; }
+                float[] textBox = geometry.toModel(prompt.textBox[0], prompt.textBox[1], prompt.textBox[2], prompt.textBox[3]);
+                float textCoverage = textBox == null ? 0f : ComicMaskOps.coverage(mask, width, height, textBox);
+                return new BalloonMask(id, score, detScore, textCoverage, mask.cardinality() / (float) (width * height),
+                    elapsedMs(started), b, mask, textBox);
+            }
+        }
+    }
+
+    private void ensureDetector() throws IOException, OrtException {
+        synchronized (sessionLock) {
+            if (detector != null) return;
+            OrtSession.SessionOptions options = new OrtSession.SessionOptions();
+            options.setIntraOpNumThreads(Math.max(1, Math.min(2, Runtime.getRuntime().availableProcessors())));
+            options.setInterOpNumThreads(1);
+            detector = environment.createSession(materializeModel(DETECTOR_MODEL), options);
+            Log.i(TAG, "COMIC_ML_DETECTOR_READY model=" + DETECTOR_MODEL);
+        }
+    }
+
+    /** CHW float, RGB scaled to [0, 1] (the detector does its own normalisation). */
+    private static float[] bitmapChwUnit(Bitmap bitmap) {
+        int width = bitmap.getWidth(), height = bitmap.getHeight(), plane = width * height;
+        int[] pixels = new int[plane]; bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
+        float[] chw = new float[plane * 3];
+        for (int i = 0; i < plane; i++) {
+            int pixel = pixels[i];
+            chw[i] = ((pixel >> 16) & 255) / 255f; chw[plane + i] = ((pixel >> 8) & 255) / 255f; chw[2 * plane + i] = (pixel & 255) / 255f;
+        }
+        return chw;
+    }
+
+    private static final class BalloonMask {
+        final String id; final float score, detScore, textCoverage, pageShare; final long decoderMs; final int[] bounds; final BitSet mask; final float[] textBox;
+        boolean split;
+        BalloonMask(String id, float score, float detScore, float textCoverage, float pageShare, long decoderMs, int[] bounds, BitSet mask, float[] textBox) {
+            this.id = id; this.score = score; this.detScore = detScore; this.textCoverage = textCoverage; this.pageShare = pageShare;
+            this.decoderMs = decoderMs; this.bounds = bounds; this.mask = mask; this.textBox = textBox;
+        }
+        JSObject json(int width, ComicModelGeometry geometry) throws IOException, org.json.JSONException {
+            JSObject value = new JSObject(); value.put("id", id); value.put("score", score); value.put("detScore", detScore);
+            value.put("promptCoverage", textCoverage); value.put("maskSolidity", 1); value.put("decoderMs", decoderMs); value.put("split", split);
+            value.put("x", bounds[0]); value.put("y", bounds[1]); value.put("width", bounds[2] - bounds[0]); value.put("height", bounds[3] - bounds[1]);
+            if (textBox != null) value.put("textBox", new JSArray().put(textBox[0]).put(textBox[1]).put(textBox[2]).put(textBox[3]));
+            value.put("maskRle", encodeRle(mask, width, bounds[0], bounds[1], bounds[2], bounds[3])); return value;
+        }
     }
 
     private void run(PluginCall call, String encoded, JSArray prompts, int pageIndex, int promptWidth, int promptHeight) {
@@ -379,7 +627,8 @@ public final class ComicSegmentationPlugin extends Plugin {
         synchronized (sessionLock) {
             try { if (encoder != null) encoder.close(); } catch (Exception ignored) {}
             try { if (decoder != null) decoder.close(); } catch (Exception ignored) {}
-            encoder = null; decoder = null;
+            try { if (detector != null) detector.close(); } catch (Exception ignored) {}
+            encoder = null; decoder = null; detector = null;
         }
     }
 

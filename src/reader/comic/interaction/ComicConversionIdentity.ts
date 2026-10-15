@@ -6,7 +6,10 @@
 // inSampleSize decode, and float rounding (share 1.0000000000000002) failed whole pages.
 // Every page written under the v4 key is affected, so only those are left unused; the
 // original comic, reading progress and earlier versions' entries are untouched.
-export const COMIC_CONVERSION_VERSION = "comic-mobilesam-body-vision-v5-prompt-geometry";
+// v6 finds balloons with an on-device detector (RT-DETR v2, any colour, read or not) and cuts
+// each one out with MobileSAM using the whole balloon as its box; OCR only supplies words.
+// v5 pages (partial text, missing balloons) are left unused, never deleted.
+export const COMIC_CONVERSION_VERSION = "comic-rtdetr-balloons-mobilesam-v6";
 
 export async function comicSourceKey(blob: Blob, coverPages: readonly number[] = [0]): Promise<string> {
   const hash = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());

@@ -7,7 +7,7 @@ import { comicCreateOriginalCutouts } from "./ComicOriginalCutoutSource";
 import type { ComicRegionOcr } from "./ComicRegionOcr";
 import type { ComicStencil } from "./ComicContainerDetector";
 import type { ComicStageRecorder } from "./ComicStageTimer";
-import { mobileSamAvailable, segmentComicPageWithMobileSam } from "./MobileSamComicSegmentation";
+import { mobileSamAvailable, segmentComicBalloonsWithMobileSam } from "./MobileSamComicSegmentation";
 import { Capacitor } from "@capacitor/core";
 import { comicBuildVisualHierarchy, comicHierarchySample } from "./ComicVisualHierarchy";
 
@@ -23,8 +23,9 @@ export async function comicReadPageAnalysis(canvas: HTMLCanvasElement, pageIndex
   timer?: ComicStageRecorder, encoded?: ComicPageAsset): Promise<ComicPageAnalysis> {
   const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) throw new Error("Canvas indisponivel para leitura de pagina de HQ.");
-  // Android uses OCR only as a set of prompts. The contours, masks and touch targets are
-  // MobileSAM instances produced by ONNX Runtime in the native process.
+  // Android finds balloons with the native detector and cuts each one out with MobileSAM.
+  // OCR supplies only the words: a balloon it cannot read is still found, cut out whole and
+  // clickable. Contours, masks and touch targets are produced in the native process.
   if (encoded && Capacitor.getPlatform() === "android") {
     if (!mobileSamAvailable()) {
       console.error(JSON.stringify({ event: "COMIC_ML_NATIVE_UNAVAILABLE", pageIndex }));
@@ -33,12 +34,9 @@ export async function comicReadPageAnalysis(canvas: HTMLCanvasElement, pageIndex
     const whole = comicEncodedMatchesCanvas(encoded, canvas.width, canvas.height)
       ? new Blob([new Uint8Array(encoded.data)], { type: encoded.mimeType }) : canvas;
     const prompts = await ocr.locateTextPrompts(whole, pageIndex, signal, timer);
-    if (!prompts.length) {
-      console.warn(JSON.stringify({ event: "COMIC_ML_NO_TEXT_PROMPTS", pageIndex }));
-      return { regions: [] };
-    }
+    if (!prompts.length) console.warn(JSON.stringify({ event: "COMIC_ML_NO_TEXT_PROMPTS", pageIndex }));
     try {
-      const ml = await segmentComicPageWithMobileSam(encoded, prompts, pageIndex, canvas.width, canvas.height);
+      const ml = await segmentComicBalloonsWithMobileSam(encoded, prompts, pageIndex, canvas.width, canvas.height);
       if (assets && ml.regions.length) assets.push(...await comicCreateOriginalCutouts(canvas, ml.regions, ml.containers, encoded));
       if (!ml.regions.length) console.warn(JSON.stringify({ event: "COMIC_ML_NO_VALID_MASKS", pageIndex, prompts: prompts.length }));
       const hierarchy = comicBuildVisualHierarchy(pageIndex, comicHierarchySample(canvas), ml.containers, ml.regions, canvas.width, canvas.height, ml.elements);
