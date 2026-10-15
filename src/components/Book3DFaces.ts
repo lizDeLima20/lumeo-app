@@ -10,10 +10,23 @@ abstract class Book3DFace {
 export class BookFrontFace extends Book3DFace {
   public render(model: Book3DModel): HTMLElement {
     const face = this.element("physical-face physical-front"); face.removeAttribute("aria-hidden");
-    if (model.cover) { const image = document.createElement("img"); image.src = model.cover; image.alt = ""; image.loading = "lazy"; face.append(image); }
-    else { const placeholder = this.element("book-cover__placeholder"); placeholder.textContent = model.title.trim().slice(0, 2).toLocaleUpperCase() || "📖"; face.append(placeholder); }
+    const placeholder = lumeoCoverPlaceholder(model.title);
+    if (model.cover) {
+      const image = document.createElement("img"); image.src = model.cover; image.alt = ""; image.loading = "lazy";
+      image.addEventListener("error", () => { if (image.isConnected) image.replaceWith(placeholder); }, { once: true }); face.append(image);
+    } else face.append(placeholder);
     return face;
   }
+}
+
+/** A local, text-safe cover while an imported book has no artwork yet. */
+function lumeoCoverPlaceholder(title: string): HTMLElement {
+  const cover = document.createElement("span"); cover.className = "lumeo-cover-placeholder"; cover.setAttribute("aria-label", `Capa genérica de ${title || "livro"}`);
+  const mark = document.createElementNS("http://www.w3.org/2000/svg", "svg"); mark.setAttribute("class", "lumeo-cover-placeholder__mark"); mark.setAttribute("viewBox", "0 0 64 64"); mark.setAttribute("aria-hidden", "true");
+  for (const d of ["M7 14c9-4 17-2 25 5v31c-8-7-16-9-25-5z", "M57 14c-9-4-17-2-25 5v31c8-7 16-9 25-5z", "M32 20v30"]) { const path = document.createElementNS("http://www.w3.org/2000/svg", "path"); path.setAttribute("d", d); mark.append(path); }
+  const wordmark = document.createElement("span"); wordmark.className = "lumeo-cover-placeholder__wordmark"; wordmark.textContent = "LUMEO";
+  const label = document.createElement("strong"); label.className = "lumeo-cover-placeholder__title"; label.textContent = title.trim() || "Sem título";
+  cover.append(mark, wordmark, label); return cover;
 }
 
 export class BookSpineFace extends Book3DFace {
