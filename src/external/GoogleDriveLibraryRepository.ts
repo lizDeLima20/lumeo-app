@@ -2,6 +2,11 @@ import type { StorageAdapter } from "../services/StorageService";
 import { I18nManager } from "../i18n/I18nManager";
 
 export type GoogleDriveLibraryContentType = "book" | "comic";
+/** A source taken off the shelf: its listing, folders and sync state are kept so it can come back. */
+export interface GoogleDriveRemovedSource { source: GoogleDriveLibrarySource; removedAt: string; origin: string; }
+/** One change to the list of sources, kept on the device so a missing source can be explained. */
+export interface GoogleDriveSourceEvent { at: string; action: "added" | "removed" | "restored" | "renamed" | "retyped" | "refused"; sourceId: string; name: string; origin: string; detail?: string; }
+
 export interface GoogleDriveLibrarySource {
   id: string; userId: string; name: string; folderUrl: string; folderId: string;
   /** The owner's local choice for PDFs in this Drive folder. Older records mean book. */
@@ -74,6 +79,31 @@ export class GoogleDriveLibraryRepository {
   private mutate<T>(action: () => Promise<T>): Promise<T> {
     const result = this.queue.then(action); this.queue = result.catch(() => undefined); return result;
   }
+  /** The only way the list of sources is written. It never loses a source silently: rows of
+   *  another owner are kept, and a write that would drop a source is refused unless that
+   *  source is the one being removed. */
+  private async writeSources(next: GoogleDriveLibrarySource[], dropping?: string): Promise<void> {
+    const stored = await this.storage.load<GoogleDriveLibrarySource[]>(`googleLibraries:${this.owner}`) ?? [];
+    const kept = new Set(next.map(row => row.id));
+    const lost = stored.filter(row => row.userId === this.owner && row.id !== dropping && !kept.has(row.id));
+    if (lost.length) {
+      for (const row of lost) await this.log("refused", row, "writeSources", `a write would have dropped ${row.id}`);
+      throw new Error("DRIVE_SOURCE_LIST_SHRINK");
+    }
+    await this.storage.save(`googleLibraries:${this.owner}`, [...stored.filter(row => row.userId !== this.owner), ...next]);
+  }
+  private async log(action: GoogleDriveSourceEvent["action"], source: Pick<GoogleDriveLibrarySource, "id" | "name">, origin: string, detail?: string): Promise<void> {
+    const event: GoogleDriveSourceEvent = { at: new Date().toISOString(), action, sourceId: source.id, name: source.name, origin, ...(detail ? { detail } : {}) };
+    console.info(JSON.stringify({ event: `PERSONAL_DRIVE_SOURCE_${action.toUpperCase()}`, ...event }));
+    const history = await this.storage.load<GoogleDriveSourceEvent[]>(`googleLibrariesLog:${this.owner}`).catch(() => null) ?? [];
+    await this.storage.save(`googleLibrariesLog:${this.owner}`, [...history, event].slice(-200)).catch(() => undefined);
+  }
+  /** What happened to the list of sources, oldest first (the last 200 changes). */
+  public async history(): Promise<GoogleDriveSourceEvent[]> { return await this.storage.load<GoogleDriveSourceEvent[]>(`googleLibrariesLog:${this.owner}`) ?? []; }
+  /** Sources taken off the shelf and their data, newest first; any of them can be restored. */
+  public async removed(): Promise<GoogleDriveRemovedSource[]> {
+    return (await this.storage.load<GoogleDriveRemovedSource[]>(`googleLibrariesRemoved:${this.owner}`) ?? []).filter(row => row.source.userId === this.owner).reverse();
+  }
   public save(name: string, link: string, id?: string): Promise<GoogleDriveLibrarySource> {
     return this.mutate(async () => {
       if (!name.trim() || name.trim().length > 100) throw new Error(I18nManager.shared.t("externalLibrary.invalidName"));
@@ -81,7 +111,7 @@ export class GoogleDriveLibraryRepository {
       const previous = rows.find(row => row.id === id), now = new Date().toISOString();
       const source: GoogleDriveLibrarySource = { ...parsed, id: previous?.id ?? crypto.randomUUID(), userId: this.owner,
         name: name.trim(), contentType: previous?.contentType ?? "book", createdAt: previous?.createdAt ?? now, updatedAt: now };
-      await this.storage.save(`googleLibraries:${this.owner}`, [...rows.filter(row => row.id !== source.id), source]); return source;
+      await this.writeSources([...rows.filter(row => row.id !== source.id), source]); await this.log(previous ? "renamed" : "added", source, "save"); return source;
     });
   }
   /** New personal-library flow: labels are deliberately local and automatic.  Keep the
@@ -97,8 +127,21 @@ export class GoogleDriveLibraryRepository {
         const displayName = name?.trim();
         if (displayName && displayName !== duplicate.name && nameTaken(rows, displayName, duplicate.id)) throw new Error("DRIVE_SOURCE_NAME_TAKEN");
         const refreshed = duplicate.folderUrl === parsed.folderUrl && (duplicate.contentType ?? "book") === contentType && (!displayName || displayName === duplicate.name) ? duplicate : { ...duplicate, folderUrl: parsed.folderUrl, contentType, name: displayName || duplicate.name, driveName: driveName?.trim() || duplicate.driveName, updatedAt: new Date().toISOString() };
-        if (refreshed !== duplicate) await this.storage.save(`googleLibraries:${this.owner}`, rows.map(row => row.id === duplicate.id ? refreshed : row));
+        if (refreshed !== duplicate) await this.writeSources(rows.map(row => row.id === duplicate.id ? refreshed : row));
         return { source: refreshed, created: false };
+      }
+      // The folder of a source removed before: it comes back with everything already listed.
+      const removedRows = await this.storage.load<GoogleDriveRemovedSource[]>(`googleLibrariesRemoved:${this.owner}`) ?? [];
+      const previous = removedRows.find(row => row.source.userId === this.owner && row.source.folderId === parsed.folderId);
+      if (previous) {
+        const wanted = name?.trim() || previous.source.name;
+        const restored: GoogleDriveLibrarySource = { ...previous.source, folderUrl: parsed.folderUrl, contentType, name: nameTaken(rows, wanted) ? freeName(rows, wanted) : wanted,
+          ...(driveName?.trim() ? { driveName: driveName.trim() } : {}), updatedAt: new Date().toISOString() };
+        await this.writeSources([...rows, restored]);
+        await this.storage.save(`googleLibrariesRemoved:${this.owner}`, removedRows.filter(row => row !== previous));
+        if (restored.name !== previous.source.name) await this.retitleEntries(restored.id, restored.name);
+        await this.log("restored", restored, "saveLink");
+        return { source: restored, created: false };
       }
       const now = new Date().toISOString();
       // The personal Drive sheet deliberately keeps one URL field. A folder name can be
@@ -109,7 +152,7 @@ export class GoogleDriveLibraryRepository {
       if (nameTaken(rows, displayName)) throw new Error("DRIVE_SOURCE_NAME_TAKEN");
       const source: GoogleDriveLibrarySource = { ...parsed, id: crypto.randomUUID(), userId: this.owner,
         name: displayName, contentType, ...(driveName?.trim() ? { driveName: driveName.trim() } : {}), createdAt: now, updatedAt: now };
-      await this.storage.save(`googleLibraries:${this.owner}`, [...rows, source]);
+      await this.writeSources([...rows, source]); await this.log("added", source, "saveLink");
       return { source, created: true };
     });
   }
@@ -119,9 +162,10 @@ export class GoogleDriveLibraryRepository {
       const rows = await this.all(), previous = rows.find(row => row.id === id);
       if (!previous) return null;
       const source = { ...previous, contentType, updatedAt: new Date().toISOString() };
-      await this.storage.save(`googleLibraries:${this.owner}`, rows.map(row => row.id === id ? source : row));
+      await this.writeSources(rows.map(row => row.id === id ? source : row));
       const entries = await this.entries(id);
       await this.storage.save(`googleLibraryEntries:${this.owner}:${id}`, entries.map(entry => ({ ...entry, contentType })));
+      await this.log("retyped", source, "updateContentType", contentType);
       return source;
     });
   }
@@ -133,12 +177,16 @@ export class GoogleDriveLibraryRepository {
       // The name is the source's category: two sources with one name would merge into one chip.
       if (nameTaken(rows, clean, id)) throw new Error("DRIVE_SOURCE_NAME_TAKEN");
       const updated = { ...current, name: clean, updatedAt: new Date().toISOString() };
-      await this.storage.save(`googleLibraries:${this.owner}`, rows.map(row => row.id === id ? updated : row));
+      await this.writeSources(rows.map(row => row.id === id ? updated : row));
       // The source is one category: its entries follow the new name.
-      const entries = await this.entries(id);
-      if (entries.length) await this.storage.save(`googleLibraryEntries:${this.owner}:${id}`, entries.map(entry => ({ ...entry, genre: clean })));
+      await this.retitleEntries(id, clean);
+      await this.log("renamed", updated, "rename", `${current.name} → ${clean}`);
       return updated;
     });
+  }
+  private async retitleEntries(sourceId: string, name: string): Promise<void> {
+    const entries = await this.entries(sourceId);
+    if (entries.length) await this.storage.save(`googleLibraryEntries:${this.owner}:${sourceId}`, entries.map(entry => ({ ...entry, genre: name })));
   }
   public async entries(sourceId?: string): Promise<GoogleDriveLibraryEntry[]> {
     if (sourceId) return await this.storage.load<GoogleDriveLibraryEntry[]>(`googleLibraryEntries:${this.owner}:${sourceId}`) ?? [];
@@ -182,12 +230,36 @@ export class GoogleDriveLibraryRepository {
   public async syncState(sourceId: string): Promise<GoogleDriveLibrarySyncState | null> { return await this.storage.load<GoogleDriveLibrarySyncState>(`googleLibrarySync:${this.owner}:${sourceId}`); }
   public async saveSyncState(sourceId: string, state: GoogleDriveLibrarySyncState): Promise<void> { await this.storage.save(`googleLibrarySync:${this.owner}:${sourceId}`, state); }
   public async clearSyncState(sourceId: string): Promise<void> { await this.storage.remove(`googleLibrarySync:${this.owner}:${sourceId}`); }
-  public remove(id: string): Promise<void> { return this.mutate(async () => {
-    await this.storage.save(`googleLibraries:${this.owner}`, (await this.all()).filter(row => row.id !== id));
-    await this.storage.remove(`googleLibraryEntries:${this.owner}:${id}`);
-    await this.storage.remove(`googleLibrarySync:${this.owner}:${id}`);
-    await this.storage.remove(`googleLibraryFolders:${this.owner}:${id}`);
+  /** Takes a source off the shelf. Nothing is deleted: its listing, folders and sync state stay
+   *  on the device, the removal is recorded with where it came from, and `restore` (or adding
+   *  the same folder again) brings it back as it was. */
+  public remove(id: string, origin = "unknown"): Promise<void> { return this.mutate(async () => {
+    const rows = await this.all(), source = rows.find(row => row.id === id);
+    if (!source) return;
+    const removedRows = await this.storage.load<GoogleDriveRemovedSource[]>(`googleLibrariesRemoved:${this.owner}`) ?? [];
+    await this.storage.save(`googleLibrariesRemoved:${this.owner}`, [...removedRows.filter(row => row.source.id !== id), { source, removedAt: new Date().toISOString(), origin }]);
+    await this.writeSources(rows.filter(row => row.id !== id), id);
+    await this.log("removed", source, origin);
   }); }
+  /** Puts a removed source back with its data; a name taken meanwhile gets a number. */
+  public restore(id: string, origin = "unknown"): Promise<GoogleDriveLibrarySource | null> { return this.mutate(async () => {
+    const removedRows = await this.storage.load<GoogleDriveRemovedSource[]>(`googleLibrariesRemoved:${this.owner}`) ?? [];
+    const previous = removedRows.find(row => row.source.id === id && row.source.userId === this.owner);
+    if (!previous) return null;
+    const rows = await this.all();
+    if (rows.some(row => row.id === id || row.folderId === previous.source.folderId)) { await this.storage.save(`googleLibrariesRemoved:${this.owner}`, removedRows.filter(row => row !== previous)); return rows.find(row => row.id === id || row.folderId === previous.source.folderId) ?? null; }
+    const restored = { ...previous.source, name: nameTaken(rows, previous.source.name) ? freeName(rows, previous.source.name) : previous.source.name, updatedAt: new Date().toISOString() };
+    await this.writeSources([...rows, restored]);
+    await this.storage.save(`googleLibrariesRemoved:${this.owner}`, removedRows.filter(row => row !== previous));
+    if (restored.name !== previous.source.name) await this.retitleEntries(restored.id, restored.name);
+    await this.log("restored", restored, origin);
+    return restored;
+  }); }
+}
+
+/** "Romance (2)", "Romance (3)"…: the first variant of a name no source uses. */
+function freeName(rows: readonly GoogleDriveLibrarySource[], name: string): string {
+  for (let index = 2; ; index++) { const candidate = `${name} (${index})`; if (!nameTaken(rows, candidate)) return candidate; }
 }
 
 /** Source names are categories, so they are unique regardless of case and accents. */

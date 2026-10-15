@@ -5,7 +5,7 @@ import { GoogleDriveAccessError, GoogleDriveLibraryService, type GoogleLibraryFi
 import { GoogleDriveLibraryRepository, type GoogleDriveFolderNode, type GoogleDriveLibraryEntry, type GoogleDriveLibrarySource } from "../src/external/GoogleDriveLibraryRepository";
 import type { StorageAdapter } from "../src/services/StorageService";
 import { PERSONAL_DRIVE_SYNC_VERSION, PersonalDriveLibraryService } from "../src/services/PersonalDriveLibraryService";
-import { driveChildFolders, driveFilesIn, driveRootOf, driveTrail } from "../src/services/PersonalDriveFolderTree";
+import { driveChildFolders, driveFilesIn, driveFirstUnlisted, driveRootOf, driveSections, driveTrail } from "../src/services/PersonalDriveFolderTree";
 import { cbzCoverByRange, firstCbzPage, readCbzDirectory } from "../src/services/CbzRangeCover";
 import { PersonalDriveCoverResolver } from "../src/services/PersonalDriveCoverResolver";
 import { cbrCoverArchiveByRange, firstRarPage, planRar } from "../src/services/RarRangeCover";
@@ -110,6 +110,34 @@ describe("one category per source, Drive's real tree below it", () => {
   });
 });
 
+describe("the comic shelf: the tree as titled sections in reading order", () => {
+  it("lists each folder before its subfolders, natural order, any depth; empty branches are left out", async () => {
+    const { entries, nodes } = await syncAll(fakeDrive({ forbidden: ["proibida"] }));
+    const root = driveRootOf(nodes, "src")!;
+    const sections = driveSections(nodes, entries, "src", { ...root, name: "HQs da Marvel" });
+    assert.deepEqual(sections.map(section => `${"  ".repeat(section.depth)}${section.node.name} (${section.files.length})`), [
+      "HQs da Marvel (1)",
+      "  Privada (0)",                              // refused by Drive: kept, so it can say so
+      "  Vingadores (3)",
+      "  X-Men (2)",
+      "    [1980] A Saga da Fênix Negra (0)",          // no files of its own: a title over its volumes
+      "      Volume 1 (3)",
+      "      Volume 2 (1)",                          // "Volume 10" is empty: no section, no empty carousel
+    ]);
+    assert.deepEqual(sections.find(section => section.node.name === "Volume 1")!.files.map(file => file.name), ["Fênix 01.cbr", "Fênix 02.cbz", "Fênix 03.pdf"]);
+    // Every comic appears exactly once across the sections.
+    assert.equal(sections.reduce((total, section) => total + section.files.length, 0), entries.length);
+  });
+
+  it("a sync that has not reached a folder yet shows what it has; the next folder to list follows the reading order", () => {
+    const node = (folderId: string, parentFolderId: string | null, name: string, listed: boolean): GoogleDriveFolderNode => ({ sourceId: "src", folderId, parentFolderId, name, depth: 0, listed });
+    const nodes = [node("root", null, "HQs", true), node("b", "root", "B", false), node("a", "root", "A", true), node("a2", "a", "A 2", false), node("a1", "a", "A 1", true)];
+    assert.equal(driveFirstUnlisted(nodes, "root"), "a2");
+    const shelf = driveSections(nodes, [{ sourceId: "src", fileId: "f", name: "A1 #1.cbr", mimeType: "x", genre: "HQs", thumbnailUrl: "", parentFolderId: "a1" }], "src", nodes[0]!);
+    assert.deepEqual(shelf.map(section => section.node.name), ["HQs", "A", "A 1"]);
+  });
+});
+
 describe("source storage", () => {
   const memory = (): StorageAdapter => { const values = new Map<string, unknown>(); return { load: async <T>(key: string) => (values.get(key) as T) ?? null, save: async (key, value) => { values.set(key, value); }, remove: async key => { values.delete(key); } }; };
 
@@ -143,6 +171,46 @@ describe("source storage", () => {
     assert.deepEqual(entries.map(entry => entry.genre), ["HQs da Marvel", "HQs da Marvel"]);
     const folders = await repository.appendFolders(saved.id, [{ sourceId: saved.id, folderId: "root", parentFolderId: null, name: "Marvel", depth: 0 }, { sourceId: saved.id, folderId: "x", parentFolderId: "root", name: "X-Men", depth: 1 }]);
     assert.deepEqual(folders.map(node => node.name), ["HQs da Marvel", "X-Men"]);
+  });
+
+  it("removing a source keeps its data, records who did it, and the source can come back", async () => {
+    const storage = memory(), repository = new GoogleDriveLibraryRepository(storage, "personal");
+    const { source: romance } = await repository.saveLink("https://drive.google.com/drive/folders/romance", "book", "Romance", "Romance");
+    const { source: humor } = await repository.saveLink("https://drive.google.com/drive/folders/humor", "book", "Humor", "Humor");
+    await repository.appendEntries(romance.id, [{ sourceId: romance.id, fileId: "r1", name: "r1.epub", mimeType: "x", genre: "Romance", thumbnailUrl: "" }]);
+    await repository.appendFolders(romance.id, [{ sourceId: romance.id, folderId: "romance", parentFolderId: null, name: "Romance", depth: 0, listed: true }]);
+    await repository.saveSyncState(romance.id, { version: PERSONAL_DRIVE_SYNC_VERSION, queue: [], completed: true, updatedAt: "" });
+    await repository.remove(romance.id, "lixeira");
+    assert.deepEqual((await repository.all()).map(row => row.name), ["Humor"]);
+    assert.deepEqual((await repository.entries()).map(entry => entry.fileId), [], "a removed source leaves the shelf");
+    // …but nothing of it was deleted.
+    assert.equal((await repository.entries(romance.id)).length, 1);
+    assert.equal((await repository.folders(romance.id)).length, 1);
+    assert.equal((await repository.syncState(romance.id))?.completed, true);
+    assert.deepEqual((await repository.removed()).map(row => [row.source.name, row.origin]), [["Romance", "lixeira"]]);
+    assert.deepEqual((await repository.history()).map(event => `${event.action}:${event.name}:${event.origin}`), ["added:Romance:saveLink", "added:Humor:saveLink", "removed:Romance:lixeira"]);
+    // Restored as it was, with its listing.
+    assert.equal((await repository.restore(romance.id, "modal"))?.name, "Romance");
+    assert.deepEqual((await repository.all()).map(row => row.name).sort(), ["Humor", "Romance"]);
+    assert.deepEqual((await repository.entries()).map(entry => entry.fileId), ["r1"]);
+    assert.deepEqual(await repository.removed(), []);
+    // Pasting the folder of a removed source again restores it instead of starting from zero.
+    await repository.remove(humor.id, "lixeira");
+    const again = await repository.saveLink("https://drive.google.com/drive/folders/humor", "book", "Humor", "Humor");
+    assert.equal(again.source.id, humor.id); assert.equal(again.created, false);
+  });
+
+  it("a write that would drop a source is refused and recorded, and another owner's rows are kept", async () => {
+    const storage = memory(), repository = new GoogleDriveLibraryRepository(storage, "personal");
+    await storage.save("googleLibraries:personal", [{ id: "other", userId: "someone-else", name: "Outro", folderId: "o", folderUrl: "https://drive.google.com/drive/folders/o", createdAt: "", updatedAt: "" }]);
+    const { source } = await repository.saveLink("https://drive.google.com/drive/folders/romance", "book", "Romance");
+    assert.deepEqual(((await storage.load("googleLibraries:personal")) as GoogleDriveLibrarySource[]).map(row => row.id).sort(), ["other", source.id].sort());
+    // Simulates a stale or failed read: the list the code starts from lacks a stored source.
+    let reads = 0;
+    const stale = new GoogleDriveLibraryRepository({ ...storage, load: async <T>(key: string) => (key === "googleLibraries:personal" && reads++ === 0 ? [] : await storage.load<T>(key)) as T }, "personal");
+    await assert.rejects(stale.saveLink("https://drive.google.com/drive/folders/humor", "book", "Humor"), /DRIVE_SOURCE_LIST_SHRINK/);
+    assert.ok((await repository.history()).some(event => event.action === "refused" && event.name === "Romance"));
+    assert.deepEqual((await repository.all()).map(row => row.name), ["Romance"]);
   });
 
   it("stores each folder once and never forgets that it was fully listed", async () => {

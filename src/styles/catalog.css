@@ -102,3 +102,26 @@
 .catalog-card__cover{position:relative;isolation:isolate}
 .catalog-card__cover>.lumeo-cover-placeholder{inset:0}
 .catalog-card__cover>img{position:relative;z-index:2}
+/* HQs: the source's Drive tree as titled sections, each folder with its own carousel. */
+.catalog.personal-drive-library .catalog__grid>.drive-comic-shelf{grid-column:1/-1;min-width:0}
+.drive-comic-shelf{display:grid;gap:.15rem;min-width:0}
+.drive-comic-shelf__section{min-width:0;padding:.3rem 0 .2rem;content-visibility:auto;contain-intrinsic-size:auto 15rem}
+.drive-comic-shelf__title{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;margin:.35rem 0 .45rem;overflow-wrap:anywhere;color:var(--color-text);font-weight:800;line-height:1.2}
+.drive-comic-shelf__section[data-depth="0"]>.drive-comic-shelf__title{font-size:1.3rem;letter-spacing:-.01em}
+.drive-comic-shelf__section[data-depth="1"]{margin-top:.55rem;border-top:1px solid color-mix(in srgb,var(--color-text) 10%,transparent)}
+.drive-comic-shelf__section[data-depth="1"]>.drive-comic-shelf__title{padding-left:.55rem;border-left:3px solid var(--color-primary);font-size:1.08rem}
+.drive-comic-shelf__section[data-depth="2"]>.drive-comic-shelf__title{margin-left:.55rem;padding-left:.5rem;border-left:2px solid color-mix(in srgb,var(--color-primary) 60%,transparent);font-size:.98rem}
+.drive-comic-shelf__section[data-depth="3"]>.drive-comic-shelf__title,.drive-comic-shelf__section[data-depth="4"]>.drive-comic-shelf__title,.drive-comic-shelf__section[data-depth="5"]>.drive-comic-shelf__title{margin-left:1.05rem;padding-left:.45rem;border-left:2px solid color-mix(in srgb,var(--color-primary) 35%,transparent);color:color-mix(in srgb,var(--color-text) 86%,transparent);font-size:.92rem;font-weight:750}
+/* Deeper levels keep stepping in a little, so a child never looks like its parent's sibling. */
+.drive-comic-shelf__section[data-depth="4"]>.drive-comic-shelf__title{margin-left:1.5rem;font-size:.9rem}
+.drive-comic-shelf__section[data-depth="5"]>.drive-comic-shelf__title{margin-left:1.9rem;font-size:.88rem}
+.drive-comic-shelf__note{margin:0 0 .3rem;color:var(--color-muted);font-size:.82rem}
+.drive-comic-shelf__track{display:flex;gap:.45rem;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding:.1rem 0 .45rem;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.drive-comic-shelf__track::-webkit-scrollbar{display:none}
+/* About three covers across a phone, with the next one peeking to invite the swipe. */
+.catalog.personal-drive-library .drive-comic-shelf__track>.catalog-card{flex:0 0 calc((100% - .9rem)/3.15);min-width:0;scroll-snap-align:start}
+.drive-comic-shelf__sentinel{height:1px}
+/* Sources taken off the shelf: kept with their data until restored. */
+.personal-drive-library__removed-title{margin:.6rem 0 0;color:#a79fbd;font-size:.8rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.personal-drive-library__source--removed{opacity:.72}
+.personal-drive-library__source--removed .personal-drive-library__source-name{cursor:default}

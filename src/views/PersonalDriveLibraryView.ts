@@ -1,8 +1,9 @@
 import type { AppState } from "../core/AppState";
 import { GoogleDriveAccessError, GoogleDriveLibraryService } from "../external/GoogleDriveLibraryService";
 import { GoogleDriveLibraryRepository, type GoogleDriveFolderNode, type GoogleDriveLibraryEntry, type GoogleDriveLibrarySource } from "../external/GoogleDriveLibraryRepository";
+import { DriveComicShelf } from "./DriveComicShelf";
 import { PersonalDriveCoverResolver, driveCoverThumbnail, driveLocalFirstPage, type DriveCoverCache } from "../services/PersonalDriveCoverResolver";
-import { driveChildFolders, driveFilesIn, driveRootOf, driveTrail } from "../services/PersonalDriveFolderTree";
+import { driveChildFolders, driveFilesIn, driveFirstUnlisted, driveRootOf, driveSections, driveTrail } from "../services/PersonalDriveFolderTree";
 import type { Book } from "../models/Book";
 import { createLumeoCoverPlaceholder } from "../components/Book3DFaces";
 import { PersonalDriveImporter } from "../services/PersonalDriveImporter";
@@ -55,47 +56,78 @@ export class PersonalDriveLibraryView extends BaseView {
     const browser = this.createElement("div", "personal-drive-library__browser"); browser.append(controls, status, retry, grid, more); section.append(heading, welcome, browser);
     let mode: "choice" | "book" | "comic" = "choice", entries: GoogleDriveLibraryEntry[] = [], selectedGenre = "", lastSource: GoogleDriveLibrarySource | null = null, visibleLimit = 60;
     // Drive tree: each source is one category; its folders are navigated below it.
-    let sourcesList: GoogleDriveLibrarySource[] = [], openFolder: { sourceId: string; folderId: string } | null = null, coverObserver: IntersectionObserver | null = null, coversOnScreen = new AbortController();
+    let sourcesList: GoogleDriveLibrarySource[] = [], openFolder: { sourceId: string; folderId: string } | null = null, coverObserver: IntersectionObserver | null = null, coversOnScreen = new AbortController(), comicShelf: DriveComicShelf | null = null;
     const folderNodes = new Map<string, GoogleDriveFolderNode[]>();
     const applyMode = (next: "choice" | "book" | "comic"): void => { mode = next; selectedGenre = ""; visibleLimit = 60; welcome.hidden = mode !== "choice"; browser.hidden = mode === "choice"; if (mode !== "choice") { search.placeholder = mode === "comic" ? "Pesquisar quadrinhos" : "Pesquisar livros"; drawFilters(); drawGrid(); } };
     const local = (entry: GoogleDriveLibraryEntry): Book | undefined => this.state.books.find(book => book.catalogBookId === `drive:${entry.fileId}` && book.sourceVersion === version(entry));
-    const drawGrid = (): void => {
-      const query = fold(search.value), seen = new Set<string>(); const filtered = entries.filter(entry => { if (seen.has(entry.fileId)) return false; seen.add(entry.fileId); return mode !== "choice" && (entry.contentType ?? "book") === mode && (!selectedGenre || entry.genre === selectedGenre) && (!query || fold(`${entry.title ?? ""} ${entry.name} ${entry.author ?? ""}`).includes(query)); }); grid.replaceChildren();
-      const cardFor = (entry: GoogleDriveLibraryEntry): HTMLElement => {
-        const book = local(entry), card = this.createElement("article", "catalog-card"), coverFrame = this.createElement("div", "catalog-card__cover-frame"), cover = this.createElement("button", "catalog-card__cover") as HTMLButtonElement;
-        const title = entry.title || stripExtension(entry.name); cover.type = "button"; cover.setAttribute("aria-label", `Detalhes de ${title}`);
-        const image = this.createElement("img", "") as HTMLImageElement; image.alt = `Capa de ${title}`; image.loading = "lazy"; image.decoding = "async";
-        const initial = book?.cover || this.coverResolver.peek(entry), placeholder = createLumeoCoverPlaceholder(title);
-        // The generic Lumeo cover is deliberately mounted first. It is removed only
-        // after the original image loads; a missing or stale URL keeps the fallback.
-        const showRealCover = (url: string): void => {
-          // Called before the card is on screen too (catalog or downloaded cover): what matters
-          // is that this card still shows its placeholder.
-          if (placeholder.parentNode !== cover || image.parentNode) return;
-          image.addEventListener("load", () => placeholder.remove(), { once: true });
-          image.addEventListener("error", () => image.remove(), { once: true });
-          image.src = url; cover.append(image);
-        };
-        cover.append(placeholder);
-        if (initial) showRealCover(initial);
-        else {
-          // The cached/Drive/first-page artwork is resolved only for visible cards.
-          const hydrate = (): void => { void this.coverResolver.resolve(entry, coversOnScreen.signal).then(url => { if (url) showRealCover(url); }).catch(() => undefined); };
-          if (coverObserver) { (card as HTMLElement & { __hydrate?: () => void }).__hydrate = hydrate; coverObserver.observe(card); } else hydrate();
-        }
-        const info = this.createElement("div", "catalog-card__info"); info.append(this.createElement("strong", "catalog-card__title", title)); if (entry.author) info.append(this.createElement("span", "catalog-card__author", entry.author));
-        const action = this.createElement("button", "catalog-card__quick-action") as HTMLButtonElement; action.type = "button"; action.title = book ? "Abrir livro" : "Baixar livro"; action.setAttribute("aria-label", action.title);
-        const icon = new DownloadProgressIcon(action, Boolean(book));
-        const details = (): void => this.showDetails(entry, local(entry), () => void (local(entry) ? this.open(local(entry)!.id) : download(entry, action, icon)));
-        cover.addEventListener("click", details); action.addEventListener("click", event => { event.stopPropagation(); void (book ? this.open(book.id) : download(entry, action, icon)); }); coverFrame.append(cover, action); card.append(coverFrame, info); return card;
+    const cardFor = (entry: GoogleDriveLibraryEntry): HTMLElement => {
+      const book = local(entry), card = this.createElement("article", "catalog-card"), coverFrame = this.createElement("div", "catalog-card__cover-frame"), cover = this.createElement("button", "catalog-card__cover") as HTMLButtonElement;
+      const title = entry.title || stripExtension(entry.name); cover.type = "button"; cover.setAttribute("aria-label", `Detalhes de ${title}`);
+      const image = this.createElement("img", "") as HTMLImageElement; image.alt = `Capa de ${title}`; image.loading = "lazy"; image.decoding = "async";
+      const initial = book?.cover || this.coverResolver.peek(entry), placeholder = createLumeoCoverPlaceholder(title);
+      // The generic Lumeo cover is deliberately mounted first. It is removed only
+      // after the original image loads; a missing or stale URL keeps the fallback.
+      const showRealCover = (url: string): void => {
+        // Called before the card is on screen too (catalog or downloaded cover): what matters
+        // is that this card still shows its placeholder.
+        if (placeholder.parentNode !== cover || image.parentNode) return;
+        image.addEventListener("load", () => placeholder.remove(), { once: true });
+        image.addEventListener("error", () => image.remove(), { once: true });
+        image.src = url; cover.append(image);
       };
+      cover.append(placeholder);
+      if (initial) showRealCover(initial);
+      else {
+        // The cached/Drive/first-page artwork is resolved only for visible cards. A comic card
+        // that leaves the screen before its turn gives its place in the queue back (a fast
+        // swipe past dozens of issues asks for none of them) and asks again when it returns.
+        let pending: AbortController | null = null;
+        const hydrate = (near = true): void => {
+          if (!near) { if (pending && entry.contentType === "comic") { pending.abort(); pending = null; } return; }
+          if (pending) return;
+          const request = pending = new AbortController(), screen = coversOnScreen.signal;
+          screen.addEventListener("abort", () => request.abort(), { once: true });
+          void this.coverResolver.resolve(entry, request.signal).then(url => {
+            if (request.signal.aborted) return;
+            pending = null; coverObserver?.unobserve(card); if (url) showRealCover(url);
+          }).catch(() => undefined);
+        };
+        if (coverObserver) { (card as HTMLElement & { __hydrate?: (near?: boolean) => void }).__hydrate = hydrate; coverObserver.observe(card); } else hydrate();
+      }
+      const info = this.createElement("div", "catalog-card__info"); info.append(this.createElement("strong", "catalog-card__title", title)); if (entry.author) info.append(this.createElement("span", "catalog-card__author", entry.author));
+      const action = this.createElement("button", "catalog-card__quick-action") as HTMLButtonElement; action.type = "button"; action.title = book ? "Abrir livro" : "Baixar livro"; action.setAttribute("aria-label", action.title);
+      const icon = new DownloadProgressIcon(action, Boolean(book));
+      const details = (): void => this.showDetails(entry, local(entry), () => void (local(entry) ? this.open(local(entry)!.id) : download(entry, action, icon)));
+      cover.addEventListener("click", details); action.addEventListener("click", event => { event.stopPropagation(); const current = local(entry); void (current ? this.open(current.id) : download(entry, action, icon)); }); coverFrame.append(cover, action); card.append(coverFrame, info); return card;
+    };
+    const resetCovers = (): void => {
       coverObserver?.disconnect();
       // Covers still queued for the cards being replaced are not needed any more.
       coversOnScreen.abort(); coversOnScreen = new AbortController();
       coverObserver = typeof IntersectionObserver === "function" ? new IntersectionObserver(items => items.forEach(item => {
-        if (!item.isIntersecting) return; coverObserver?.unobserve(item.target);
-        (item.target as HTMLElement & { __hydrate?: () => void }).__hydrate?.();
+        (item.target as HTMLElement & { __hydrate?: (near?: boolean) => void }).__hydrate?.(item.isIntersecting);
       }), { rootMargin: "300px" }) : null;
+    };
+    // A comic source is read as one page: its folders as titled sections, each with its own
+    // carousel. Kept across redraws so a sync page only completes it.
+    const showShelf = (source: GoogleDriveLibrarySource): void => {
+      if (comicShelf?.sourceId !== source.id) {
+        comicShelf?.dispose(); grid.replaceChildren(); resetCovers();
+        comicShelf = new DriveComicShelf(source.id, cardFor, () => more.classList.toggle("is-hidden", !comicShelf?.hasMore));
+        grid.append(comicShelf.element);
+      }
+      const nodes = folderNodes.get(source.id) ?? [], root = driveRootOf(nodes, source.id) ?? { sourceId: source.id, folderId: source.folderId, parentFolderId: null, name: source.name, depth: 0 };
+      const sections = driveSections(nodes, entries, source.id, { ...root, name: source.name });
+      comicShelf.update(sections);
+      more.classList.toggle("is-hidden", !comicShelf.hasMore);
+      console.info(`[DriveRender] genre=${source.name} layout=shelf sections=${sections.length} mountedSections=${comicShelf.mountedSections} mountedCards=${comicShelf.mountedCards}`);
+    };
+    const drawGrid = (): void => {
+      const shelfSource = mode === "comic" && selectedGenre && !fold(search.value) ? sourcesList.find(value => value.name === selectedGenre && value.contentType === "comic") : undefined;
+      if (shelfSource) { openFolder = null; showShelf(shelfSource); return; }
+      comicShelf?.dispose(); comicShelf = null;
+      const query = fold(search.value), seen = new Set<string>(); const filtered = entries.filter(entry => { if (seen.has(entry.fileId)) return false; seen.add(entry.fileId); return mode !== "choice" && (entry.contentType ?? "book") === mode && (!selectedGenre || entry.genre === selectedGenre) && (!query || fold(`${entry.title ?? ""} ${entry.name} ${entry.author ?? ""}`).includes(query)); }); grid.replaceChildren();
+      resetCovers();
       // A selected source is one category: navigate its real Drive folders.
       const activeSource = selectedGenre && !query ? sourcesList.find(value => value.name === selectedGenre && (value.contentType ?? "book") === mode) : undefined;
       if (activeSource) {
@@ -169,7 +201,7 @@ export class PersonalDriveLibraryView extends BaseView {
             const byGenre = new Map<string, number>(); entries.filter(entry => entry.sourceId === source.id).forEach(entry => byGenre.set(entry.genre, (byGenre.get(entry.genre) ?? 0) + 1));
             byGenre.forEach((count, genre) => console.info(`[DriveRender] genre=${genre} booksRendered=${count}`));
           }
-        }, { priority: () => openFolder?.sourceId === source.id ? openFolder.folderId : null });
+        }, { priority: () => comicShelf?.sourceId === source.id ? driveFirstUnlisted(folderNodes.get(source.id) ?? [], source.folderId) : openFolder?.sourceId === source.id ? openFolder.folderId : null });
         // A source saved as "Link N" takes the folder's real name as soon as it is known.
         if (/^Link\s+\d+$/i.test(source.name) && listed.folderName) { const renamed = await this.sources.rename(source.id, listed.folderName).catch(() => null); if (renamed) { lastSource = renamed; await cache(); } }
         return true;
@@ -219,7 +251,19 @@ export class PersonalDriveLibraryView extends BaseView {
         label.title = source.driveName && source.driveName !== source.name ? `Pasta no Drive: ${source.driveName}. Toque para renomear.` : "Toque para renomear";
         label.addEventListener("click", () => void (async () => { const next = window.prompt("Nome desta fonte", source.name)?.trim(); if (!next || next === source.name) return;
           const renamed = await this.sources.rename(source.id, next).catch(error => { note.textContent = message(error); return null; }); if (!renamed) return; if (selectedGenre === source.name) selectedGenre = renamed.name;
-          await cache(); await renderSources(); note.textContent = `Fonte renomeada para ${renamed.name}.`; })()); const updateType = async (): Promise<void> => { const next = (source.contentType ?? "book") === "comic" ? "book" : "comic", updated = await this.sources.updateContentType(source.id, next); if (!updated) return; source = updated; entries = entries.map(entry => entry.sourceId === updated.id ? { ...entry, contentType: updated.contentType } : entry); await reclassify(updated); drawFilters(); drawGrid(); note.textContent = `${updated.name} foi classificado como ${updated.contentType === "comic" ? "HQs e Mangás" : "Livros"}.`; updateTypeButton(); }; const updateTypeButton = (): void => { const comic = (source.contentType ?? "book") === "comic"; type.replaceChildren(icon(comic ? "comic" : "book"), document.createTextNode(comic ? "HQs e Mangás" : "Livros")); type.setAttribute("aria-label", `Alterar ${labelText}: ${comic ? "HQs e Mangás" : "Livros"}`); }; updateTypeButton(); type.addEventListener("click", () => void updateType()); const remove = this.createElement("button", "personal-drive-library__delete"); remove.type = "button"; remove.setAttribute("aria-label", `Remover ${labelText}`); remove.title = "Remover link"; remove.append(icon("trash")); remove.addEventListener("click", () => void (async () => { if (!window.confirm(`Remover ${labelText}? Os livros baixados não serão apagados.`)) return; await this.sources.remove(source.id); entries = entries.filter(entry => entry.sourceId !== source.id); drawFilters(); drawGrid(); await renderSources(); })()); row.append(folder, label, type, remove); list.append(row); }); };
+          await cache(); await renderSources(); note.textContent = `Fonte renomeada para ${renamed.name}.`; })()); const updateType = async (): Promise<void> => { const next = (source.contentType ?? "book") === "comic" ? "book" : "comic", updated = await this.sources.updateContentType(source.id, next); if (!updated) return; source = updated; entries = entries.map(entry => entry.sourceId === updated.id ? { ...entry, contentType: updated.contentType } : entry); await reclassify(updated); drawFilters(); drawGrid(); note.textContent = `${updated.name} foi classificado como ${updated.contentType === "comic" ? "HQs e Mangás" : "Livros"}.`; updateTypeButton(); }; const updateTypeButton = (): void => { const comic = (source.contentType ?? "book") === "comic"; type.replaceChildren(icon(comic ? "comic" : "book"), document.createTextNode(comic ? "HQs e Mangás" : "Livros")); type.setAttribute("aria-label", `Alterar ${labelText}: ${comic ? "HQs e Mangás" : "Livros"}`); }; updateTypeButton(); type.addEventListener("click", () => void updateType()); const remove = this.createElement("button", "personal-drive-library__delete"); remove.type = "button"; remove.setAttribute("aria-label", `Remover ${labelText}`); remove.title = "Remover link"; remove.append(icon("trash")); remove.addEventListener("click", () => void (async () => { if (!window.confirm(`Remover ${labelText}? Ela poderá ser restaurada depois, e os livros baixados não serão apagados.`)) return; await this.sources.remove(source.id, "lixeira"); entries = entries.filter(entry => entry.sourceId !== source.id); sourcesList = sourcesList.filter(value => value.id !== source.id); drawFilters(); drawGrid(); await renderSources(); })()); row.append(folder, label, type, remove); list.append(row); });
+        // Removed sources keep their data and can come back as they were.
+        const removedRows = await this.sources.removed().catch(() => []);
+        if (removedRows.length) {
+          list.append(this.createElement("p", "personal-drive-library__removed-title", "Removidas"));
+          removedRows.forEach(({ source: gone }) => {
+            const row = this.createElement("div", "personal-drive-library__source personal-drive-library__source--removed"), folder = this.createElement("span", "personal-drive-library__source-folder"), name = this.createElement("span", "personal-drive-library__source-name", gone.name), restore = this.createElement("button", "personal-drive-library__type", "Restaurar") as HTMLButtonElement;
+            folder.append(icon("folder")); restore.type = "button"; restore.setAttribute("aria-label", `Restaurar ${gone.name}`);
+            restore.addEventListener("click", () => void (async () => { restore.disabled = true; const back = await this.sources.restore(gone.id, "modal").catch(error => { note.textContent = message(error); return null; }); if (!back) { restore.disabled = false; return; } await cache(); await renderSources(); note.textContent = `${back.name} foi restaurada.`; })());
+            row.append(folder, name, restore); list.append(row);
+          });
+        }
+      };
       form.addEventListener("submit", event => void (async () => { event.preventDefault(); submit.disabled = true; try {
         GoogleDriveLibraryRepository.parse(input.value);
         // The real folder name is read before anything is saved; the person can then rename it
@@ -244,7 +288,7 @@ export class PersonalDriveLibraryView extends BaseView {
       panel.append(form, note, confirm, list, close); dialog.append(panel); dialog.addEventListener("close", () => dialog.remove(), { once: true }); document.body.append(dialog); void renderSources(); dialog.showModal();
     };
     bookChoice.addEventListener("click", () => applyMode("book")); comicChoice.addEventListener("click", () => applyMode("comic")); backToChoice.addEventListener("click", () => applyMode("choice"));
-    retry.addEventListener("click", () => { if (lastSource) void sync(lastSource); }); search.addEventListener("input", () => { visibleLimit = 60; drawGrid(); }); more.addEventListener("click", () => { visibleLimit += 60; drawGrid(); }); applyMode("choice"); void (async () => { await cache(); const savedSources = await this.sources.all(); await chooseInitialMode();
+    retry.addEventListener("click", () => { if (lastSource) void sync(lastSource); }); search.addEventListener("input", () => { visibleLimit = 60; drawGrid(); }); more.addEventListener("click", () => { if (comicShelf) { comicShelf.showMore(); return; } visibleLimit += 60; drawGrid(); }); applyMode("choice"); void (async () => { await cache(); const savedSources = await this.sources.all(); await chooseInitialMode();
       // The link modal first: syncs below can take minutes, and one manager open at a time.
       if (this.openLinkModal && section.isConnected && !document.querySelector("dialog[open] .personal-drive-library__manager")) openManager();
       for (const source of savedSources) { const state = await this.sources.syncState(source.id), cached = await this.sources.entries(source.id); if ((state && !state.completed) || (!state && cached.length === 0) || (state && state.version !== PERSONAL_DRIVE_SYNC_VERSION)) await sync(source); } })(); return section;
@@ -267,6 +311,7 @@ function message(error: unknown, download = false): string {
   if (error instanceof DOMException && error.name === "AbortError") return "Sincronização cancelada.";
   if (error instanceof Error && error.message === "DRIVE_LINK_NOT_FOLDER") return "Cole o link de uma pasta do Google Drive.";
   if (error instanceof Error && error.message === "DRIVE_SOURCE_NAME_TAKEN") return "Já existe uma fonte com este nome. Escolha outro nome.";
+  if (error instanceof Error && error.message === "DRIVE_SOURCE_LIST_SHRINK") return "A lista de fontes mudou enquanto era salva. Nada foi apagado; tente de novo.";
   if (error instanceof Error && /invalidLink|link/i.test(error.message)) return "Link inválido.";
   return download ? "Download bloqueado ou falha de conexão." : "Não foi possível sincronizar a pasta. Tente novamente.";
 }
