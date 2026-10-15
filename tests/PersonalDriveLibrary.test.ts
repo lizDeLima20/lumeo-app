@@ -23,20 +23,20 @@ it("normalizes known Drive folder genres but preserves personal names", () => {
   assert.equal(resolvePersonalDriveGenre("Leituras da Ana"), "Leituras da Ana");
 });
 
-it("keeps one saved link, numbers several links, and persists metadata separately from downloads", async () => {
+it("keeps one saved link, preserves an explicit source name, and persists metadata separately from downloads", async () => {
   const storage = new Memory(), repository = new GoogleDriveLibraryRepository(storage, "personal");
-  const first = await repository.saveLink(url), repeated = await repository.saveLink(url + "?resourcekey=safe-key");
+  const first = await repository.saveLink(url, "book", "História"), repeated = await repository.saveLink(url + "?resourcekey=safe-key", "book", "História");
   assert.equal(first.created, true); assert.equal(repeated.created, false); assert.equal((await repository.all()).length, 1);
   assert.match(repeated.source.folderUrl, /resourcekey=safe-key/);
-  const second = await repository.saveLink("https://drive.google.com/drive/folders/folder_456");
-  assert.equal(second.source.name, "Link 2"); assert.equal((await repository.all()).length, 2);
+  const second = await repository.saveLink("https://drive.google.com/drive/folders/folder_456", "book", "Romance");
+  assert.equal(second.source.name, "Romance"); assert.equal((await repository.all()).length, 2);
   await repository.saveEntries(first.source.id, [{ sourceId: first.source.id, fileId: "pdf", name: "book.pdf", mimeType: "application/pdf", genre: "História", thumbnailUrl: "https://example.test/cover" }]);
   assert.equal((await repository.entries()).length, 1);
 });
 
 it("persists the reader choice for a link and updates only its cached metadata", async () => {
   const storage = new Memory(), repository = new GoogleDriveLibraryRepository(storage, "personal");
-  const created = await repository.saveLink(url, "comic");
+  const created = await repository.saveLink(url, "comic", "HQ Marvel");
   assert.equal(created.source.contentType, "comic");
   await repository.saveEntries(created.source.id, [{ sourceId: created.source.id, fileId: "pdf", name: "almanaque.pdf", mimeType: "application/pdf", genre: "HQs", thumbnailUrl: "https://example.test/cover", contentType: "comic" }]);
   const updated = await repository.updateContentType(created.source.id, "book");
@@ -120,4 +120,21 @@ it("reveals a small Drive folder in more than one render batch", async () => {
   await new PersonalDriveLibraryService(fake as never).listProgressively({ id: "link", userId: "personal", name: "Link 1", folderId: "root", folderUrl: url, createdAt: "", updatedAt: "" }, [], null,
     new AbortController().signal, async entries => { if (entries.length) batches.push(entries.length); });
   assert.deepEqual(batches, [8, 8, 1]);
+});
+
+it("reads catalog.json before listing files and retains a comic collection path", async () => {
+  const fake = { authorized: true, prepare: async () => undefined, connect: async () => undefined,
+    metadata: async () => ({ id: "root", name: "Marvel", mimeType: "application/vnd.google-apps.folder" }),
+    childNamed: async () => ({ id: "catalog", name: "catalog.json", mimeType: "application/json" }),
+    json: async () => ({ books: [{ driveFileId: "issue", title: "Vingadores 001", author: "Stan", synopsis: "Uma edição", coverDriveFileId: "cover" }] }),
+    listRaw: async (id: string) => id === "root" ? { files: [{ id: "vingadores", name: "Os Vingadores", mimeType: "application/vnd.google-apps.folder" }] } :
+      { files: [{ id: "issue", name: "001.cbz", mimeType: "application/x-cbz" }, { id: "cover", name: "001.webp", mimeType: "image/webp" }] },
+  };
+  const batches: import("../src/external/GoogleDriveLibraryRepository").GoogleDriveLibraryEntry[][] = [];
+  await new PersonalDriveLibraryService(fake as never).listProgressively({ id: "source", userId: "personal", name: "HQ Marvel", folderId: "root", folderUrl: url, contentType: "comic", createdAt: "", updatedAt: "" }, [], null, new AbortController().signal,
+    async entries => { if (entries.length) batches.push(entries); });
+  const issue = batches.flat()[0]!;
+  assert.equal(issue.genre, "HQ Marvel"); assert.deepEqual(issue.collectionPath, ["Os Vingadores"]);
+  assert.equal(issue.title, "Vingadores 001"); assert.equal(issue.author, "Stan"); assert.equal(issue.synopsis, "Uma edição");
+  assert.match(issue.coverUrl!, /thumbnail\?id=cover/);
 });

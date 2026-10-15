@@ -7,6 +7,13 @@ import { comicRegionsDuplicate } from "./ComicRegionDedup";
 import { comicDistanceToContour, comicPointInContour } from "./ComicSilhouette";
 
 export interface ComicTextCandidate { bbox: Bbox; lines: Line[]; }
+export interface ComicTextPrompt {
+  id: string;
+  bbox: Bbox;
+  text: string;
+  confidence: number;
+  lines: number;
+}
 
 /** Asks the page for one region, prepared as the plan says. Supplied by the converter,
  *  which owns the canvas; the reading pipeline itself never touches pixels. */
@@ -104,6 +111,29 @@ export function comicContainerIsWorthReading(container: ComicVisualContainer): b
   return container.runs >= 8 && container.glyphShare >= .5 && container.inkShare >= .015;
 }
 
+/** Final safety gate between a coloured component and an interactive balloon.
+ *
+ * OCR proves that a component contains letters; it does not prove that the component is
+ * their balloon. A whole comic panel can contain perfectly readable dialogue and used to
+ * pass as a caption. This gate requires the component itself to have balloon/caption
+ * geometry and glyph structure. It intentionally prefers a missed balloon over making a
+ * character or a panel clickable. */
+export function comicContainerBoundaryIsTrusted(container: ComicVisualContainer, pageWidth: number, pageHeight: number): boolean {
+  const width = container.bbox.x1 - container.bbox.x0, height = container.bbox.y1 - container.bbox.y0;
+  const area = width * height / Math.max(1, pageWidth * pageHeight);
+  const aspect = width / Math.max(1, height);
+  if (area <= 0 || area > .08 || container.shape === "freeform" || container.shape === "unknown" || container.type === "other") return false;
+  if (container.shape === "rectangle" || container.type === "caption") {
+    return container.styleConfidence >= .65 && container.blockShare >= .12 && container.runs >= 20
+      && container.glyphShare >= .8 && aspect >= .8;
+  }
+  if (container.shape === "jagged") {
+    return container.blockShare >= .09 && container.runs >= 35 && container.glyphShare >= .85;
+  }
+  return container.styleConfidence >= .55 && container.blockShare >= .1
+    && container.runs >= 25 && container.glyphShare >= .75;
+}
+
 /** Whether a reading looks like words at all.
  *
  *  Recognition never returns nothing: pointed at a flame or a face it returns specks of
@@ -148,6 +178,37 @@ export class ComicRegionOcr {
     } finally { signal?.removeEventListener("abort", cancel); }
   }
 
+  /** Text-only proposal pass for prompted ML segmentation.
+   *
+   * OCR says only where lettering is likely to be. It does not provide the balloon
+   * outline and no OCR rectangle becomes interactive by itself: MobileSAM must return a
+   * validated instance mask for this prompt before the reader receives a region. */
+  public async locateTextPrompts(image: ImageLike, pageIndex: number, signal?: AbortSignal,
+    timer?: ComicStageRecorder): Promise<ComicTextPrompt[]> {
+    signal?.throwIfAborted();
+    if (!this.worker) {
+      const worker = await this.factory();
+      if (signal?.aborted) { await worker.terminate(); signal.throwIfAborted(); }
+      this.worker = worker;
+    }
+    await this.worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, user_defined_dpi: "300" });
+    const read = () => this.worker!.recognize(image, {}, { blocks: true, text: true });
+    const layout = timer ? await timer.step("TEXT_DETECTION", read) : await read();
+    signal?.throwIfAborted();
+    const candidates = comicTextCandidates(layout.data.blocks ?? []).filter(candidate => {
+      const text = candidate.lines.map(line => line.text).join(" ");
+      return letterCount(text) >= 2 && candidate.lines.some(line => line.confidence >= 45);
+    });
+    return groupComicTextLines(candidates).map((candidate, index) => ({
+      id: `p${pageIndex + 1}-ml${index + 1}`,
+      bbox: candidate.bbox,
+      text: candidate.lines.map(line => line.text.trim()).filter(Boolean).join("\n"),
+      confidence: Math.max(0, Math.min(1, candidate.lines.reduce((sum, line) => sum + line.confidence, 0)
+        / Math.max(1, candidate.lines.length) / 100)),
+      lines: candidate.lines.length,
+    })).filter(prompt => comicTextLooksReadable(prompt.text));
+  }
+
   /** Four passes over one page.
    *
    *  A reads the whole page loosely, so free lettering and text with no box around it is
@@ -190,8 +251,16 @@ export class ComicRegionOcr {
       // A wide flat background can hold two speakers at once. A balloon, however large,
       // holds one - and splitting it would throw away its outline, which is exactly what
       // the enlarged balloon is made of. Only a fill bigger than any balloon is divided.
-      const connectedSpeech = container.type === "speech" || container.type === "thought";
-      if (groups.length <= 1 || area < .05 || connectedSpeech) entries.push({ container,
+      // A true multi-lobe balloon is normally a small region. Once a detector result
+      // covers a sizeable part of the page, treating every OCR block as one speech
+      // object makes a whole panel (characters, scenery and neighbouring balloons)
+      // clickable. Large containers must be split by their independent text blocks;
+      // this is a safe fallback because an uncertain region is preferable to a panel
+      // masquerading as a balloon.
+      const connectedSpeech = (container.type === "speech" || container.type === "thought")
+        && (area < .05 || (area < .12 && container.styleConfidence >= .9
+          && container.inkShare >= .12 && container.blockShare >= .25));
+      if (groups.length <= 1 || connectedSpeech) entries.push({ container,
         lines: groups.flatMap(group => group.lines), text: union(groups.map(group => group.bbox)),
         // All members are inside ONE fill stopped by the artist's original outline.
         members: connectedSpeech && groups.length > 1 ? groups.map(group => group.bbox) : undefined });
@@ -228,7 +297,14 @@ export class ComicRegionOcr {
     // whatever the page pass recognized. The loose pass often sees only the first line of
     // a balloon, and a box drawn around that one line would claim the balloon is written
     // in letters a third of their real size.
-    const textBox = union([entry.container?.ink, entry.text ?? union(lineBoxes)].filter((box): box is Bbox => box !== undefined));
+    const trustedBoundary = entry.container ? comicContainerBoundaryIsTrusted(entry.container, width, height) : false;
+    if (!trustedBoundary) {
+      console.info(JSON.stringify({ event: "COMIC_BALLOON_REJECTED", pageIndex,
+        reason: entry.container ? "untrusted-boundary" : "missing-boundary",
+        shape: entry.container?.shape ?? "none", type: entry.container?.type ?? "free-text" }));
+      return null;
+    }
+    const textBox = union([entry.container!.ink, entry.text ?? union(lineBoxes)].filter((box): box is Bbox => box !== undefined));
     const visualBox = entry.container ? entry.container.bbox : textBox ? pad(textBox, 4, width, height) : undefined;
     if (!visualBox || !textBox) return null;
     const readable = clampBox(entry.container ? pad(visualBox, -3, width, height) : pad(textBox, 3, width, height), width, height);
@@ -269,13 +345,12 @@ export class ComicRegionOcr {
     const initial = entry.lines.map(line => line.text.trim()).join("\n").trim();
     const text = letterCount(best.text) >= 2 ? best.text : letterCount(initial) >= 2 ? initial : best.text || initial;
     const confidence = best.text ? best.confidence : 0;
-    // Two ways to earn a region: words were read, or the container is so clearly a box of
-    // text that losing it would be worse than keeping it unread. Everything else - a face,
-    // a flame, a fold of cloth that happened to enclose some marks - is dropped here.
-    // Free lettering has no box vouching for it, so it has to be read clearly to count.
+    // A convincing contour alone is not evidence of speech: panels and drawings can
+    // have the same geometry. Require actual readable lettering from either OCR pass.
     const floor = entry.container ? .5 : .6, minimum = 4;
     const read = comicTextLooksReadable(text) && confidence >= floor && letterCount(text) >= minimum;
-    if (!read && !convincing) return null;
+    const pageRead = comicTextLooksReadable(initial) && entry.lines.some(line => line.confidence >= 65);
+    if (!read && !pageRead) return null;
 
     const reviewReasons: string[] = [];
     if (!best.text) reviewReasons.push("empty-region-pass");

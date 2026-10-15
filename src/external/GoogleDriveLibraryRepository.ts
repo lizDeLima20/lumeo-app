@@ -13,9 +13,13 @@ export interface GoogleDriveLibrarySource {
 export interface GoogleDriveLibraryEntry {
   sourceId: string; fileId: string; name: string; mimeType: string; size?: string;
   modifiedTime?: string; resourceKey?: string; genre: string; thumbnailUrl: string;
+  title?: string; author?: string; synopsis?: string; coverUrl?: string; coverDriveFileId?: string;
+  /** Folder names below a HQ source. They are metadata for collection sections, never
+   * independent root genres. */
+  collectionPath?: string[];
   contentType?: GoogleDriveLibraryContentType;
 }
-export interface GoogleDriveSyncTask { folderId: string; genre: string; resourceKey?: string; pageToken?: string; }
+export interface GoogleDriveSyncTask { folderId: string; genre: string; resourceKey?: string; pageToken?: string; collectionPath?: string[]; }
 export interface GoogleDriveLibrarySyncState {
   queue: GoogleDriveSyncTask[]; completed: boolean; updatedAt: string;
   /** Durable foreground-resume counters. Results themselves live in the entry cache. */
@@ -62,7 +66,7 @@ export class GoogleDriveLibraryRepository {
   }
   /** New personal-library flow: labels are deliberately local and automatic.  Keep the
    * older save(name, link) API above for existing non-Android callers and migrations. */
-  public saveLink(link: string, contentType: GoogleDriveLibraryContentType = "book"): Promise<{ source: GoogleDriveLibrarySource; created: boolean }> {
+  public saveLink(link: string, contentType: GoogleDriveLibraryContentType = "book", name?: string): Promise<{ source: GoogleDriveLibrarySource; created: boolean }> {
     return this.mutate(async () => {
       const parsed = GoogleDriveLibraryRepository.parse(link), rows = await this.all();
       const duplicate = rows.find(row => row.folderId === parsed.folderId);
@@ -70,13 +74,16 @@ export class GoogleDriveLibraryRepository {
         // A person can paste the same shared folder later with its resource key. Keep
         // that key locally; otherwise a stale saved URL would fail authorization while
         // the UI misleadingly calls the repeated link a successful update.
-        const refreshed = duplicate.folderUrl === parsed.folderUrl && (duplicate.contentType ?? "book") === contentType ? duplicate : { ...duplicate, folderUrl: parsed.folderUrl, contentType, updatedAt: new Date().toISOString() };
+        const displayName = name?.trim();
+        const refreshed = duplicate.folderUrl === parsed.folderUrl && (duplicate.contentType ?? "book") === contentType && (!displayName || displayName === duplicate.name) ? duplicate : { ...duplicate, folderUrl: parsed.folderUrl, contentType, name: displayName || duplicate.name, updatedAt: new Date().toISOString() };
         if (refreshed !== duplicate) await this.storage.save(`googleLibraries:${this.owner}`, rows.map(row => row.id === duplicate.id ? refreshed : row));
         return { source: refreshed, created: false };
       }
       const now = new Date().toISOString();
+      const displayName = name?.trim();
+      if (!displayName || displayName.length > 100) throw new Error(I18nManager.shared.t("externalLibrary.invalidName"));
       const source: GoogleDriveLibrarySource = { ...parsed, id: crypto.randomUUID(), userId: this.owner,
-        name: `Link ${rows.length + 1}`, contentType, createdAt: now, updatedAt: now };
+        name: displayName, contentType, createdAt: now, updatedAt: now };
       await this.storage.save(`googleLibraries:${this.owner}`, [...rows, source]);
       return { source, created: true };
     });

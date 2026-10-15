@@ -15,7 +15,7 @@ export class ComicLimaSerializer {
     document.pages.forEach(page => {
       const data = assetMap.get(page.imagePath);
       if (data) archive[page.imagePath] = data;
-      archive[`interaction/${String(page.index + 1).padStart(3, "0")}.json`] = strToU8(JSON.stringify({ pageIndex: page.index, regions: page.regions }, null, 2));
+      archive[`interaction/${String(page.index + 1).padStart(3, "0")}.json`] = strToU8(JSON.stringify({ pageIndex: page.index, regions: page.regions, hierarchy: page.hierarchy }, null, 2));
     });
     return zipSync(archive, { level: 6 });
   }

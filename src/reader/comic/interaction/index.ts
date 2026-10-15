@@ -7,6 +7,8 @@ export * from "./ComicLimaDeserializer";
 export * from "./ComicLimaSerializer";
 export * from "./ComicConversionCache";
 export * from "./ComicRegionOcr";
+export * from "./MobileSamComicSegmentation";
+export * from "./ComicVisualHierarchy";
 export * from "./ComicContainerDetector";
 export * from "./ComicRegionCrop";
 export * from "./ComicPageRegionReader";

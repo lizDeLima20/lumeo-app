@@ -80,8 +80,76 @@ export interface ComicTextRegion extends NormalizedBounds {
   assetHeight?: number;
   segmentationConfidence?: number;
   segmentationNeedsReview?: boolean;
-  segmentationMethod?: "component-mask" | "original-crop-fallback";
+  segmentationMethod?: "component-mask" | "mobilesam-v1" | "original-crop-fallback";
   needsReview?: boolean;
+  /** Relationship derived from the page visual hierarchy. It never changes the existing
+   * hit area: the contour remains the only source of touch geometry. */
+  hierarchy?: ComicRegionHierarchy;
+}
+
+export interface ComicScene extends NormalizedBounds {
+  id: string;
+  /** `panel` is a structural panel found from gutters; `freeform` is the safe whole-page
+   * scene used when artwork has no reliable borders. */
+  kind: "panel" | "freeform";
+  confidence: number;
+  zIndex: number;
+}
+
+export interface ComicSceneMembership {
+  sceneId: string;
+  /** Share of the balloon's mask that is inside this scene. The mask is never clipped. */
+  maskShare: number;
+}
+
+export interface ComicTailSceneCandidate {
+  sceneId: string;
+  direction: ComicTailDirection;
+  confidence: number;
+  /** No character model is bundled in v1, so this is a spatial candidate only. */
+  characterConfirmed: false;
+}
+
+export interface ComicRegionHierarchy {
+  sceneId: string;
+  memberships: ComicSceneMembership[];
+  zIndex: number;
+  /** Other scenes crossed by the balloon. This records visible overflow rather than
+   * cutting the mask at a panel boundary. */
+  overlapsSceneIds: string[];
+  tailSceneCandidate?: ComicTailSceneCandidate;
+}
+
+/** A page-level observation.  Unlike `regions`, an element may deliberately be
+ * non-interactive (for example an onomatopoeia).  It therefore lets the BODY tree retain
+ * visual context without ever turning a character, panel or sound effect into a button. */
+export type ComicVisualElementKind = "balloon" | "narration" | "effect" | "unclassified";
+export interface ComicVisualElement extends NormalizedBounds {
+  id: string;
+  kind: ComicVisualElementKind;
+  confidence: number;
+  interactive: boolean;
+  zIndex: number;
+  sceneId?: string;
+  memberships: ComicSceneMembership[];
+  overflowSceneIds: string[];
+  /** Region owning this element when it is a validated interactive balloon. */
+  regionId?: string;
+  reason?: "sound-effect" | "no-reliable-boundary";
+}
+
+/** Page-local tree. Regions are referenced by id because their full masks and assets stay
+ * in `regions`, avoiding duplicated large data in the hierarchy record. */
+export interface ComicPageHierarchy {
+  version: "visual-hierarchy-v1" | "visual-hierarchy-v2";
+  rootId: string;
+  scenes: ComicScene[];
+  sceneChildren: Record<string, string[]>;
+  /** Observations belonging to the BODY. Characters are intentionally absent unless a
+   * dedicated, licensed local instance model has actually detected them. */
+  elements?: ComicVisualElement[];
+  /** Reserved for a future licensed character-instance model. Never fabricated. */
+  characters: [];
 }
 
 export interface ComicPage {
@@ -93,6 +161,7 @@ export interface ComicPage {
   mimeType: "image/webp" | "image/png" | "image/jpeg";
   cover: boolean;
   regions: ComicTextRegion[];
+  hierarchy?: ComicPageHierarchy;
 }
 
 export interface ComicMetadata {
@@ -119,8 +188,8 @@ export interface ComicLimaManifestPage {
 
 /** 1: text-shaped regions only. 2: the three rectangles above plus sampled colours.
  *  Readers accept both; the converter always writes the current version. */
-export type ComicLimaVersion = 1 | 2 | 3 | 4;
-export const COMIC_LIMA_VERSION: ComicLimaVersion = 4;
+export type ComicLimaVersion = 1 | 2 | 3 | 4 | 5;
+export const COMIC_LIMA_VERSION: ComicLimaVersion = 5;
 
 export interface ComicLimaManifest {
   format: "lima";

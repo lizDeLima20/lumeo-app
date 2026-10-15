@@ -106,7 +106,16 @@ export class ComicConversionService {
 
   private async convert(key: string, request: ComicConversionRequest, options: ComicConversionOptions): Promise<ComicConversionResult> {
     const running = ComicConversionService.running.get(key);
-    if (running) return await running;
+    if (running) {
+      try { return await running; }
+      catch (error) {
+        // A foreground reader must not inherit a cancelled preparation job. Its own
+        // request resumes from the pages that job had already stored.
+        options.signal?.throwIfAborted();
+        if (!(error instanceof DOMException && error.name === "AbortError")) throw error;
+        return this.convert(key, request, options);
+      }
+    }
 
     comicLog("COMIC_CONVERSION_STARTED", { bookId: request.bookId, conversionKey: key });
     const work = this.converter.convert({

@@ -1,13 +1,20 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { unzipSync } from "fflate";
-import { comicCutoutMask, comicMaskedPixels, comicMaskCutsInk } from "../src/reader/comic/interaction/ComicObjectCutout";
+import { comicCutoutMask, comicMaskedPixels, comicMaskCutsInk, comicMaskCutsTextBounds } from "../src/reader/comic/interaction/ComicObjectCutout";
+
+test("mask with a missing part of a text box is rejected regardless of sampled text colour", () => {
+  const alpha = new Uint8Array(20 * 20).fill(255);
+  for (let y = 8; y < 12; y++) for (let x = 6; x < 10; x++) alpha[y * 20 + x] = 0;
+  assert.equal(comicMaskCutsTextBounds(alpha, 20, 20, { x0: 5, y0: 7, x1: 15, y1: 13 }), true);
+  assert.equal(comicMaskCutsTextBounds(new Uint8Array(20 * 20).fill(255), 20, 20, { x0: 5, y0: 7, x1: 15, y1: 13 }), false);
+});
 import type { ComicVisualContainer } from "../src/reader/comic/interaction/ComicContainerDetector";
 import { emptyMask, sealComicArtMask } from "../src/reader/comic/interaction/ComicShapeMask";
 import { ComicConverter } from "../src/reader/comic/interaction/ComicConverter";
 import { ComicLimaDeserializer } from "../src/reader/comic/interaction/ComicLimaDeserializer";
 import { ComicInteractionValidator } from "../src/reader/comic/interaction/ComicInteractionValidator";
-import type { ComicTextRegion } from "../src/reader/comic/interaction/ComicInteractionTypes";
+import { COMIC_LIMA_VERSION, type ComicTextRegion } from "../src/reader/comic/interaction/ComicInteractionTypes";
 
 test("mask preserves original RGB including coloured icons; scenery is transparent", () => {
   const pixels = new Uint8ClampedArray([245,212,15,255, 32,87,156,255, 2,4,9,255, 244,11,77,255]);
@@ -33,7 +40,7 @@ test("LIMA stores independent image/mask bytes and logical text without losing r
   assert.deepEqual([...archive[region.maskPath!]!],[4,5]);
   const loaded=new ComicLimaDeserializer().deserialize(result.bytes);
   assert.deepEqual(loaded.pages[0]!.regions[0],region);
-  assert.equal(loaded.manifest.version,4);
+  assert.equal(loaded.manifest.version, COMIC_LIMA_VERSION);
   assert.throws(()=>new ComicInteractionValidator().validateRegion({...region,assetPath:"../../secret"}), /inseguro/);
 });
 

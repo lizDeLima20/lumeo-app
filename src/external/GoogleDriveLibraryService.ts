@@ -48,6 +48,12 @@ export class GoogleDriveLibraryService {
     if (!response.ok) throw new GoogleDriveRequestError(response.status); return response;
   }
   public async list(id: string, key: string | undefined, signal: AbortSignal, pageToken?: string): Promise<{ files: GoogleLibraryFile[]; nextPageToken?: string }> {
+    const result = await this.listRaw(id, key, signal, pageToken);
+    return { ...result, files: result.files.filter(file => file.mimeType === GoogleDriveLibraryService.FOLDER || /\.(pdf|epub|cbr|cbz)$/i.test(file.name)) };
+  }
+  /** Metadata-only folder page used by the local structured-catalog resolver. It is still
+   * the official authenticated Drive API; callers must never scrape the Drive HTML UI. */
+  public async listRaw(id: string, key: string | undefined, signal: AbortSignal, pageToken?: string): Promise<{ files: GoogleLibraryFile[]; nextPageToken?: string }> {
     if (!/^[\w-]+$/.test(id)) throw this.error();
     const timed = portableTimeout(signal, 30_000);
     try {
@@ -57,7 +63,33 @@ export class GoogleDriveLibraryService {
         fields: "nextPageToken,files(id,name,mimeType,size,modifiedTime,resourceKey)", orderBy: "folder,name_natural", supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
       if (pageToken) query.set("pageToken", pageToken);
       const result = await (await this.request(`files?${query}`, timed.signal, { id, key })).json() as { files: GoogleLibraryFile[]; nextPageToken?: string };
-      return { ...result, files: result.files.filter(file => file.mimeType === GoogleDriveLibraryService.FOLDER || /\.(pdf|epub|cbr|cbz)$/i.test(file.name)) };
+      return { ...result, files: Array.isArray(result.files) ? result.files : [] };
+    } catch (error) {
+      if (error instanceof GoogleDriveRequestError) throw this.accessError(error.status);
+      throw error;
+    } finally { timed.dispose(); }
+  }
+  /** Finds a small structural file without guessing where it lands in paginated order. */
+  public async childNamed(folderId: string, name: string, key: string | undefined, signal: AbortSignal): Promise<GoogleLibraryFile | null> {
+    if (!/^[\w-]+$/.test(folderId) || !name || name.length > 255) throw this.error();
+    const timed = portableTimeout(signal, 30_000);
+    try {
+      const query = new URLSearchParams({ q: `'${folderId}' in parents and name = '${name.replace(/'/g, "\\'")}' and trashed=false`, pageSize: "2",
+        fields: "files(id,name,mimeType,size,modifiedTime,resourceKey)", supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
+      const result = await (await this.request(`files?${query}`, timed.signal, { id: folderId, key })).json() as { files?: GoogleLibraryFile[] };
+      return result.files?.[0] ?? null;
+    } catch (error) { if (error instanceof GoogleDriveRequestError) throw this.accessError(error.status); throw error; }
+    finally { timed.dispose(); }
+  }
+  /** Reads a small Drive metadata document locally. Catalogs never pass through a server. */
+  public async json(file: GoogleLibraryFile, signal: AbortSignal): Promise<unknown> {
+    if (!/\.json$/i.test(file.name)) throw new Error("DRIVE_CATALOG_NOT_JSON");
+    const timed = portableTimeout(signal, 30_000);
+    try {
+      const response = await this.request(`files/${encodeURIComponent(file.id)}?alt=media&supportsAllDrives=true`, timed.signal, { id: file.id, key: file.resourceKey });
+      const body = await response.text();
+      if (body.length > 4 * 1024 * 1024 || /^\s*(?:<!doctype|<html|<head)/i.test(body)) throw new Error("DRIVE_CATALOG_INVALID");
+      try { return JSON.parse(body) as unknown; } catch { throw new Error("DRIVE_CATALOG_INVALID"); }
     } catch (error) {
       if (error instanceof GoogleDriveRequestError) throw this.accessError(error.status);
       throw error;

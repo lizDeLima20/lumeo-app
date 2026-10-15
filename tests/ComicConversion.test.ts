@@ -8,7 +8,7 @@ import { ComicConverter } from "../src/reader/comic/interaction/ComicConverter";
 import { IndexedDbComicConversionCache } from "../src/reader/comic/interaction/ComicConversionCache";
 import { ComicLimaDeserializer } from "../src/reader/comic/interaction/ComicLimaDeserializer";
 import { ComicInteractionEngine } from "../src/reader/comic/interaction/ComicInteractionEngine";
-import { ComicRegionOcr, comicTextCandidates, groupComicTextLines } from "../src/reader/comic/interaction/ComicRegionOcr";
+import { ComicRegionOcr, comicContainerBoundaryIsTrusted, comicTextCandidates, groupComicTextLines } from "../src/reader/comic/interaction/ComicRegionOcr";
 import { ComicLayout } from "../src/reader/comic/ComicLayout";
 import { comicHorizontalContentBounds } from "../src/reader/comic/ComicPageMarginDetector";
 import { drawComicInteractionDebug } from "../src/reader/comic/interaction/ComicInteractionDebug";
@@ -51,21 +51,23 @@ test("region OCR preserves uncertain raw spelling and accents, then supports exa
     recognize: async (_image: unknown, options: { rectangle?: unknown }) => {
       calls++;
       if (calls === 1) return { data: { blocks: blocks([[line("Olá", 10, 20), line("Mund0?", 10, 34)]]) } };
-      assert.ok(options.rectangle);
       // Recognized as it stands, digit and all: nothing here corrects "Mund0?" to "Mundo?".
       return { data: { text: "Olá\nMund0?", confidence: 63, blocks: blocks([[{ ...line("Mund0?", 10, 34), words: [{ confidence: 30 }] } as Line]]) } };
     }, terminate: async () => { terminated = true; },
   } as unknown as Worker));
-  const regions = await ocr.recognize("image", 100, 150, 1);
+  const trusted = container({ bbox: { x0: 5, y0: 10, x1: 90, y1: 70 }, ink: { x0: 10, y0: 20, x1: 80, y1: 50 },
+    contour: [{ x: 5, y: 10 }, { x: 90, y: 10 }, { x: 90, y: 70 }, { x: 5, y: 70 }] });
+  const regions = await ocr.recognize("image", 1000, 1500, 1, undefined, [trusted], () => "crop");
   assert.equal(regions[0]?.text, "Olá\nMund0?"); assert.equal(regions[0]?.recognitionStatus, "needs-review");
   assert.equal(regions[0]?.ocrConfidence, .63); assert.equal(calls, 2);
-  const result = await new ComicConverter().convert({ id: "raw", title: "Raw", totalPages: 2, pageProvider: asset, regionProvider: async () => regions });
+  const result = await new ComicConverter().convert({ id: "raw", title: "Raw", totalPages: 2, pageProvider: asset,
+    regionProvider: async index => regions.map(value => ({ ...value, pageIndex: index })) });
   const engine = new ComicInteractionEngine(); engine.open(new ComicLimaDeserializer().deserialize(result.bytes));
   const r = regions[0]!; assert.equal(engine.hitTest(1, { x: r.x + r.width / 2, y: r.y + r.height / 2 })?.text, r.text);
   await ocr.dispose(); assert.ok(terminated);
 });
 
-test("progressive cache resumes after cancellation and skips OCR for cover and completed conversions", async () => {
+test("progressive cache resumes after cancellation and processes cover and completed conversions", async () => {
   const key = crypto.randomUUID(); const cache = new IndexedDbComicConversionCache(); const controller = new AbortController();
   let renders = 0; let ocrCalls = 0; let releases = 0;
   const input = { id: key, title: "Resume", totalPages: 3, conversionKey: key,
@@ -75,12 +77,12 @@ test("progressive cache resumes after cancellation and skips OCR for cover and c
   await assert.rejects(new ComicConverter().convert(input, { cache, signal: controller.signal, onProgress: p => stages.push(p.stage),
     onPageProcessed: page => { if (page.index === 1) controller.abort(); } }));
   assert.equal(stages.at(-1), "FAILED"); assert.ok(!stages.includes("COMPLETED")); assert.equal(await cache.completed(key), undefined);
-  assert.ok(await cache.page(key, 1)); assert.equal(ocrCalls, 1); assert.equal(releases, 2);
+  assert.ok(await cache.page(key, 1)); assert.equal(ocrCalls, 2); assert.equal(releases, 2);
   const result = await new ComicConverter().convert(input, { cache: new IndexedDbComicConversionCache() });
-  assert.equal(renders, 3); assert.equal(ocrCalls, 2); assert.equal(result.document.pages[0]?.regions.length, 0);
+  assert.equal(renders, 3); assert.equal(ocrCalls, 3); assert.equal(result.document.pages[0]?.regions.length, 1);
   const entries = unzipSync(result.bytes); assert.equal(Object.keys(entries).length, 8);
   assert.equal(new ComicLimaDeserializer().deserialize(result.bytes).pages[2]?.regions[0]?.text, "Texto original?");
-  await new ComicConverter().convert(input, { cache }); assert.equal(renders, 3); assert.equal(ocrCalls, 2);
+  await new ComicConverter().convert(input, { cache }); assert.equal(renders, 3); assert.equal(ocrCalls, 3);
 });
 
 test("aborting during OCR releases the active worker without waiting for recognition", async () => {
@@ -97,7 +99,7 @@ test("failed page processing never creates a completed package", async () => {
   const cache = new IndexedDbComicConversionCache(), key = crypto.randomUUID(); let released = 0;
   await assert.rejects(new ComicConverter().convert({ id: key, title: "Failure", conversionKey: key, totalPages: 2,
     pageProvider: asset, regionProvider: async () => { throw new Error("OCR failed"); }, releasePage: () => { released++; } }, { cache }), /OCR failed/);
-  assert.equal(released, 2); assert.equal(await cache.completed(key), undefined); assert.equal(await cache.page(key, 1), undefined);
+  assert.equal(released, 1); assert.equal(await cache.completed(key), undefined); assert.equal(await cache.page(key, 1), undefined);
 });
 
 test("interaction files cannot silently refer to another page", async () => {
@@ -277,6 +279,16 @@ const container = (over: Partial<ComicVisualContainer> = {}): ComicVisualContain
   ...over,
 });
 
+test("um painel com personagem e texto não vira balão clicável", () => {
+  const panel = container({
+    bbox: { x0: 8, y0: 698, x1: 139, y1: 895 }, ink: { x0: 16, y0: 704, x1: 124, y1: 738 },
+    inkShare: .0478, blockShare: .0859, runs: 311, glyphShare: .96, bands: 4,
+    styleConfidence: .82,
+  });
+  assert.equal(comicContainerBoundaryIsTrusted(panel, 576, 1328), false);
+  assert.equal(comicContainerBoundaryIsTrusted(container(), 1000, 1500), true);
+});
+
 const reader = (readings: { text: string; confidence: number }[], pageLines: Line[] = []) => {
   const calls: { crop: boolean }[] = [];
   let turn = -1;
@@ -315,14 +327,11 @@ test("container e texto são reconciliados: a caixa inteira é o alvo, as letras
   assert.equal(calls.length, 1);
 });
 
-test("uma caixa convincente sem leitura sobrevive marcada, e uma mancha qualquer não", async () => {
+test("caixa convincente sem texto e mancha qualquer não viram balões clicáveis", async () => {
   const empty = [{ text: "", confidence: 0 }];
   const convincing = new ComicRegionOcr(async () => reader(empty).worker);
   const kept = await convincing.recognize("page", 1000, 1500, 0, undefined, [container()], () => "crop");
-  assert.equal(kept.length, 1);
-  assert.equal(kept[0]?.text, "");
-  assert.equal(kept[0]?.recognitionStatus, "needs-review");
-  assert.ok(kept[0]?.reviewReasons?.includes("empty-region-pass"));
+  assert.equal(kept.length, 0);
 
   const vague = new ComicRegionOcr(async () => reader(empty).worker);
   const dropped = await vague.recognize("page", 1000, 1500, 0, undefined,
@@ -354,14 +363,11 @@ test("quando o que salvou a leitura foi um preparo alternativo, isso fica regist
   assert.ok(regions[0]?.reviewReasons?.includes("prepared-ink"));
 });
 
-test("texto sem nenhuma caixa em volta continua virando região", async () => {
+test("texto sem contorno confiável não vira área clicável", async () => {
   const { worker } = reader([{ text: "WEE-OH WEE-OH", confidence: .8 }], [line("WEE-OH WEE-OH", 400, 300)]);
   const ocr = new ComicRegionOcr(async () => worker);
   const regions = await ocr.recognize("page", 1000, 1500, 0, undefined, [], () => "crop");
-  assert.equal(regions.length, 1);
-  assert.equal(regions[0]?.type, "free-text");
-  assert.equal(regions[0]?.shape, "unknown");
-  assert.ok(regions[0]?.reviewReasons?.includes("unverified-boundary"));
+  assert.equal(regions.length, 0);
 });
 
 const maskOf = (width: number, height: number, paint: (set: (x: number, y: number) => void) => void): ComicMask => {
@@ -886,13 +892,13 @@ test("páginas prontas sobrevivem ao fechamento do aplicativo", async () => {
   // session, over the same stored database.
   await assert.rejects(new ComicConverter().convert(input, { cache: new IndexedDbComicConversionCache(), signal: controller.signal,
     onPageProcessed: page => { if (page.index === 2) controller.abort(); } }));
-  assert.equal(rendered, 3); assert.equal(read, 2, "a capa não é lida");
+  assert.equal(rendered, 3); assert.equal(read, 3, "a capa também é processada");
   const result = await new ComicConverter().convert(input, { cache: new IndexedDbComicConversionCache() });
   assert.equal(rendered, 4, "só a página que faltava foi renderizada de novo");
-  assert.equal(read, 3);
+  assert.equal(read, 4);
   assert.equal(result.document.pages.length, 4);
   assert.deepEqual(result.document.pages.map(page => page.index), [0, 1, 2, 3]);
   // And once the whole comic is converted, opening it again converts nothing at all.
   await new ComicConverter().convert(input, { cache: new IndexedDbComicConversionCache() });
-  assert.equal(rendered, 4); assert.equal(read, 3);
+  assert.equal(rendered, 4); assert.equal(read, 4);
 });

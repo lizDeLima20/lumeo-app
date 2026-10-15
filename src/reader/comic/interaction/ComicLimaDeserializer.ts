@@ -1,10 +1,11 @@
 import { strFromU8, unzipSync } from "fflate";
-import type { ComicDocument, ComicLimaManifest, ComicMetadata, ComicPage, ComicTextRegion } from "./ComicInteractionTypes";
+import type { ComicDocument, ComicLimaManifest, ComicMetadata, ComicPage, ComicPageHierarchy, ComicTextRegion } from "./ComicInteractionTypes";
 import { ComicInteractionValidator } from "./ComicInteractionValidator";
 
 interface InteractionFile {
   pageIndex: number;
   regions?: ComicTextRegion[];
+  hierarchy?: ComicPageHierarchy;
 }
 
 export class ComicLimaDeserializer {
@@ -26,6 +27,7 @@ export class ComicLimaDeserializer {
         mimeType: entry.mimeType,
         cover: entry.cover ?? false,
         regions: interaction?.regions ?? [],
+        hierarchy: interaction?.hierarchy,
       } satisfies ComicPage;
     });
     const document = { manifest, metadata, pages };

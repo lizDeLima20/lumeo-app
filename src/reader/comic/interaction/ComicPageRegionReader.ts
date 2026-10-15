@@ -2,22 +2,61 @@ import { detectComicContainersMultiScale, comicEncodedMatchesCanvas } from "./Co
 import { comicGroupConnectedContainers } from "./ComicContainerGrouping";
 import { comicReadingOrder, type ComicReadingDirection } from "./ComicReadingOrder";
 import { comicPrepareCrop } from "./ComicRegionCrop";
-import type { ComicPageAsset, ComicTextRegion } from "./ComicInteractionTypes";
+import type { ComicPageAsset, ComicPageHierarchy, ComicTextRegion } from "./ComicInteractionTypes";
 import { comicCreateOriginalCutouts } from "./ComicOriginalCutoutSource";
 import type { ComicRegionOcr } from "./ComicRegionOcr";
 import type { ComicStencil } from "./ComicContainerDetector";
 import type { ComicStageRecorder } from "./ComicStageTimer";
+import { mobileSamAvailable, segmentComicPageWithMobileSam } from "./MobileSamComicSegmentation";
+import { Capacitor } from "@capacitor/core";
+import { comicBuildVisualHierarchy, comicHierarchySample } from "./ComicVisualHierarchy";
+
+export interface ComicPageAnalysis { regions: ComicTextRegion[]; hierarchy?: ComicPageHierarchy; }
 
 /** Everything one rendered page goes through: find the containers in colour, then read
  *  each of them from a crop prepared for its own background.
  *
  *  The rendered canvas is only ever read from here - the packaged page image keeps the
  *  artist's colours exactly as they were. */
-export async function comicReadPageRegions(canvas: HTMLCanvasElement, pageIndex: number, ocr: ComicRegionOcr,
+export async function comicReadPageAnalysis(canvas: HTMLCanvasElement, pageIndex: number, ocr: ComicRegionOcr,
   signal?: AbortSignal, direction: ComicReadingDirection = "ltr", assets?: ComicPageAsset[],
-  timer?: ComicStageRecorder, encoded?: ComicPageAsset): Promise<ComicTextRegion[]> {
+  timer?: ComicStageRecorder, encoded?: ComicPageAsset): Promise<ComicPageAnalysis> {
   const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) throw new Error("Canvas indisponivel para leitura de pagina de HQ.");
+  // Android uses OCR only as a set of prompts. The contours, masks and touch targets are
+  // MobileSAM instances produced by ONNX Runtime in the native process.
+  if (encoded && Capacitor.getPlatform() === "android") {
+    if (!mobileSamAvailable()) {
+      console.error(JSON.stringify({ event: "COMIC_ML_NATIVE_UNAVAILABLE", pageIndex }));
+      return { regions: [] };
+    }
+    const whole = comicEncodedMatchesCanvas(encoded, canvas.width, canvas.height)
+      ? new Blob([new Uint8Array(encoded.data)], { type: encoded.mimeType }) : canvas;
+    const prompts = await ocr.locateTextPrompts(whole, pageIndex, signal, timer);
+    if (!prompts.length) {
+      console.warn(JSON.stringify({ event: "COMIC_ML_NO_TEXT_PROMPTS", pageIndex }));
+      return { regions: [] };
+    }
+    try {
+      const ml = await segmentComicPageWithMobileSam(encoded, prompts, pageIndex, canvas.width, canvas.height);
+      if (assets && ml.regions.length) assets.push(...await comicCreateOriginalCutouts(canvas, ml.regions, ml.containers, encoded));
+      if (!ml.regions.length) console.warn(JSON.stringify({ event: "COMIC_ML_NO_VALID_MASKS", pageIndex, prompts: prompts.length }));
+      const hierarchy = comicBuildVisualHierarchy(pageIndex, comicHierarchySample(canvas), ml.containers, ml.regions, canvas.width, canvas.height, ml.elements);
+      const regions = comicReadingOrder(ml.regions, direction);
+      console.info(JSON.stringify({ event: "COMIC_VISUAL_HIERARCHY_READY", pageIndex, scenes: hierarchy.scenes.length,
+        regions: regions.length, overflow: regions.filter(region => region.hierarchy?.overlapsSceneIds.length).length }));
+      return { regions, hierarchy };
+    } catch (error) {
+      // A missing balloon is safer than reviving the detector that could turn a panel or
+      // character into a target. The page remains completely readable and the failure is
+      // available in logcat for a later, versioned reprocessing pass.
+      console.error(JSON.stringify({ event: "COMIC_ML_PAGE_FAILED", pageIndex,
+        reason: error instanceof Error ? error.message : "unknown" }));
+      return { regions: [] };
+    }
+  }
+  // Only the legacy fallback needs a full RGBA copy of the page. Keeping this after the
+  // native ML branch avoids holding another high-resolution bitmap while ONNX is active.
   const page = timer
     ? await timer.step("BITMAP_CREATE", () => context.getImageData(0, 0, canvas.width, canvas.height))
     : context.getImageData(0, 0, canvas.width, canvas.height);
@@ -61,8 +100,16 @@ export async function comicReadPageRegions(canvas: HTMLCanvasElement, pageIndex:
     }
     signal?.throwIfAborted();
     // Reading order is the last word on a page, once every region on it is known.
-    return comicReadingOrder(regions, direction);
+    return { regions: comicReadingOrder(regions, direction) };
   } finally { scratch.width = scratch.height = 0; }
+}
+
+/** Compatibility entrypoint used by diagnostic pages and existing callers that need only
+ * regions. Converters use `comicReadPageAnalysis` so hierarchy data is persisted. */
+export async function comicReadPageRegions(canvas: HTMLCanvasElement, pageIndex: number, ocr: ComicRegionOcr,
+  signal?: AbortSignal, direction: ComicReadingDirection = "ltr", assets?: ComicPageAsset[],
+  timer?: ComicStageRecorder, encoded?: ComicPageAsset): Promise<ComicTextRegion[]> {
+  return (await comicReadPageAnalysis(canvas, pageIndex, ocr, signal, direction, assets, timer, encoded)).regions;
 }
 
 /** Paints everything outside the container's silhouette with the container's own colour,

@@ -115,10 +115,10 @@ export class ComicHitMap {
       if (outline) {
         // A balloon that knows its own shape is answered by that shape alone: the empty
         // page inside its rectangle - the gap between two lobes, the corner where the
-        // next balloon sits - was never part of it.
+        // next balloon sits - was never part of it. There is deliberately no outside
+        // slop for a real contour: only a point inside the artist's balloon may open it.
         const distance = comicDistanceToContour(outline, located);
         if (distance === 0) { if (!silhouette || area < silhouette.area) silhouette = { region, area }; }
-        else if (distance <= slop && (!nearest || distance < nearest.distance)) nearest = { region, distance };
         continue;
       }
       // Lettering with no container of its own - a caption in the open, a sound effect -
@@ -128,20 +128,19 @@ export class ComicHitMap {
       else if (boxDistance <= slop && (!nearest || boxDistance < nearest.distance)) nearest = { region, distance: boxDistance };
     }
     const chosen = silhouette?.region ?? boxed?.region ?? nearest?.region ?? null;
-    if (chosen) return { region: chosen, pageIndex: located.pageIndex, source: ComicHitMap.regionRect(page.rect, comicRegionBounds(chosen).visual, page.contentBounds) };
-
-    // Nothing answered for the point on its own terms. A grouped conversation still might,
-    // within its own wider halo - the point is in the gap the artist actually left between
-    // two of its balloons, not on an object of its own.
-    const groupSlop = COMIC_GROUP_HIT_SLOP_PX / scale;
-    let group: { region: ComicTextRegion; distance: number } | null = null;
-    for (const region of this.engine.regionsForPage(located.pageIndex)) {
-      if (!region.bubbleGroup) continue;
-      const outline = region.contour && region.contour.length >= 3 ? region.contour : null;
-      const distance = outline ? comicDistanceToContour(outline, located) : comicDistanceToBounds(comicRegionBounds(region).hit, located);
-      if (distance <= groupSlop && (!group || distance < group.distance)) group = { region, distance };
+    if (chosen) {
+      // This is the correlation key for native diagnostic artifacts.  It deliberately
+      // records geometry only: page/region/mask method, never the user's dialogue text.
+      console.info(JSON.stringify({ event: "COMIC_BALLOON_TOUCH", pageIndex: located.pageIndex,
+        regionId: chosen.id, segmentation: chosen.segmentationMethod, confidence: chosen.segmentationConfidence,
+        hierarchyScene: chosen.hierarchy?.sceneId, x: Number(located.x.toFixed(4)), y: Number(located.y.toFixed(4)) }));
+      return { region: chosen, pageIndex: located.pageIndex, source: ComicHitMap.regionRect(page.rect, comicRegionBounds(chosen).visual, page.contentBounds) };
     }
-    return group ? { region: group.region, pageIndex: located.pageIndex, source: ComicHitMap.regionRect(page.rect, comicRegionBounds(group.region).visual, page.contentBounds) } : null;
+
+    console.info(JSON.stringify({ event: "COMIC_BALLOON_TOUCH_MISS", pageIndex: located.pageIndex,
+      x: Number(located.x.toFixed(4)), y: Number(located.y.toFixed(4)) }));
+
+    return null;
   }
 
   public regions(): { pageIndex: number; art: ComicRect; regions: readonly ComicTextRegion[] }[] {

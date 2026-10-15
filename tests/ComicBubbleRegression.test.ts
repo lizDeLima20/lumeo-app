@@ -55,8 +55,8 @@ test("a connected upper/lower speech container stays one group while middle ball
     stencil: { x: bbox.x0, y: bbox.y0, step: 1, width: bbox.x1-bbox.x0, height: bbox.y1-bbox.y0,
       data: new Uint8Array((bbox.x1-bbox.x0)*(bbox.y1-bbox.y0)).fill(1) },
   });
-  const connected = make({x0:100,y0:100,x1:600,y1:400},
-    [{x:100,y:100},{x:600,y:100},{x:600,y:150},{x:150,y:150},{x:150,y:350},{x:600,y:350},{x:600,y:400},{x:100,y:400}]);
+  const connected = make({x0:100,y0:100,x1:450,y1:400},
+    [{x:100,y:100},{x:450,y:100},{x:450,y:150},{x:150,y:150},{x:150,y:350},{x:450,y:350},{x:450,y:400},{x:100,y:400}]);
   const small = make({x0:300,y0:210,x1:400,y1:245},
     [{x:300,y:210},{x:400,y:210},{x:400,y:245},{x:300,y:245}]);
   let calls = 0;

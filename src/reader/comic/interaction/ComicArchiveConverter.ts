@@ -1,7 +1,7 @@
 import { ComicArchiveSource } from "../ComicArchiveSource";
 import { ComicConverter, type ComicConversionResult, type ComicConverterOptions } from "./ComicConverter";
 import { comicSourceKey } from "./ComicConversionIdentity";
-import { comicReadPageRegions } from "./ComicPageRegionReader";
+import { comicReadPageAnalysis } from "./ComicPageRegionReader";
 import { ComicRegionOcr } from "./ComicRegionOcr";
 import type { ComicPdfInput } from "./ComicPdfConverter";
 
@@ -46,7 +46,7 @@ export class ComicArchiveConverter {
         regionProvider: async (index, asset, signal) => {
           if (!canvas) throw new Error("Página não renderizada.");
           asset.interactionAssets = [];
-          return comicReadPageRegions(canvas, index, ocr, signal, input.contentType === "manga" ? "rtl" : "ltr", asset.interactionAssets, undefined, asset);
+          return comicReadPageAnalysis(canvas, index, ocr, signal, input.contentType === "manga" ? "rtl" : "ltr", asset.interactionAssets, undefined, asset);
         },
         releasePage: () => { if (canvas) canvas.width = canvas.height = 0; canvas = null; },
       }, options);

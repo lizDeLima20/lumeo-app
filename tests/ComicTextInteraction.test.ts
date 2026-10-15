@@ -382,7 +382,7 @@ describe("HQ: o toque pertence à silhueta, não ao retângulo", () => {
   });
 });
 
-describe("HQ: a conversa em grupo tem um halo próprio, maior que o de um balão", () => {
+describe("HQ: até uma conversa em grupo responde somente dentro do contorno", () => {
   const art = { x: 0, y: 0, width: 1000, height: 1000 };
   const pages: ComicPageArt[] = [{ pageIndex: 0, rect: art }];
   const conversationGroup: ComicTextRegion["bubbleGroup"] = { id: "g1", unionBounds: { x: .4, y: .4, width: .2, height: .1 },
@@ -404,11 +404,10 @@ describe("HQ: a conversa em grupo tem um halo próprio, maior que o de um balão
     assert.equal(map().hit({ x: 500, y: 450 })?.region.id, "grupo");
   });
 
-  it("tocar no vão vazio a poucos pixels do grupo, além do halo normal de um balão, ainda abre o grupo", () => {
-    // 8px past the group's own edge (600), and short of the caption at 615: outside
-    // COMIC_HIT_SLOP_PX (6) but inside the group's own COMIC_GROUP_HIT_SLOP_PX (10).
-    assert.ok(COMIC_HIT_SLOP_PX < 8);
-    assert.equal(map().hit({ x: 608, y: 450 })?.region.id, "grupo");
+  it("tocar no vão vazio entre objetos não abre o grupo", () => {
+    // Eight pixels past the group's actual contour is empty page. The nearby caption
+    // starts at 615, so neither object owns this point.
+    assert.equal(map().hit({ x: 608, y: 450 }), null);
   });
 
   it("um objeto independente perto do grupo responde por si, nunca é engolido pelo halo", () => {

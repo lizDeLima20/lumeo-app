@@ -93,13 +93,13 @@ describe("ComicInteraction .lima foundation", () => {
   it("reads every LIMA version it knows and refuses the ones it does not", () => {
     // 2 added the container and touch rectangles, 3 the container as a shape. A package
     // written by any of them still opens; one from a future format does not.
-    for (const version of [1, 2, 3, 4]) {
+    for (const version of [1, 2, 3, 4, 5]) {
       const value = document();
       (value.manifest as { version: number }).version = version;
       assert.ok(new ComicInteractionValidator().validateDocument(value), `versão ${version}`);
     }
     const future = document();
-    (future.manifest as { version: number }).version = 5;
+    (future.manifest as { version: number }).version = 6;
     assert.throws(() => new ComicInteractionValidator().validateDocument(future), /Versão/);
   });
 

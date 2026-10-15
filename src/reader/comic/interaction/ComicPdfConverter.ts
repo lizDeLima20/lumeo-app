@@ -3,7 +3,7 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { ComicConverter, type ComicConversionResult, type ComicConverterOptions } from "./ComicConverter";
 import { IndexedDbComicConversionCache } from "./ComicConversionCache";
 import { ComicRegionOcr } from "./ComicRegionOcr";
-import { comicReadPageRegions } from "./ComicPageRegionReader";
+import { comicReadPageAnalysis } from "./ComicPageRegionReader";
 import { comicSourceKey } from "./ComicConversionIdentity";
 import { ComicStageTimer } from "./ComicStageTimer";
 import type { ComicConversionCache } from "./ComicConversionCache";
@@ -79,10 +79,10 @@ export class ComicPdfConverter {
           if (!canvas) throw new Error("Pagina nao renderizada.");
           // Manga is read right to left; everything else left to right.
           asset.interactionAssets = [];
-          const regions = await comicReadPageRegions(canvas, index, ocr, signal,
+          const analysis = await comicReadPageAnalysis(canvas, index, ocr, signal,
             input.contentType === "manga" ? "rtl" : "ltr", asset.interactionAssets, timer, asset);
-          if (measured) measured.regionCount = regions.length;
-          return regions;
+          if (measured) measured.regionCount = analysis.regions.length;
+          return analysis;
         }, releasePage: release, priority: options.priority, onPageStarted: options.onPageStarted,
       }, { ...options, cache: timed(cache, () => timer, () => measured, () => { timer = undefined; measured = undefined; }) });
     } catch (error) {

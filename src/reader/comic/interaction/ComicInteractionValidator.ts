@@ -1,4 +1,5 @@
-import type { ComicDocument, ComicLimaManifest, ComicPage, ComicTextRegion, NormalizedBounds } from "./ComicInteractionTypes";
+import type { ComicDocument, ComicLimaManifest, ComicPage, ComicPageHierarchy, ComicTextRegion, NormalizedBounds } from "./ComicInteractionTypes";
+import { COMIC_SHARE_TOLERANCE } from "./ComicVisualHierarchy";
 
 export class ComicInteractionValidationError extends Error {}
 
@@ -27,7 +28,7 @@ export class ComicInteractionValidator {
   public validateManifest(manifest: ComicLimaManifest): true {
     if (manifest.format !== "lima") throw new ComicInteractionValidationError("Formato LIMA inválido para HQ.");
     // Version 1 has one rectangle per region, version 2 the three of them: both are read.
-    if (![1, 2, 3, 4].includes(manifest.version)) throw new ComicInteractionValidationError("Versão LIMA de HQ não suportada.");
+    if (![1, 2, 3, 4, 5].includes(manifest.version)) throw new ComicInteractionValidationError("Versão LIMA de HQ não suportada.");
     if (manifest.contentType !== "comic") throw new ComicInteractionValidationError("Manifest LIMA não é de HQ.");
     if (manifest.metadataPath !== "metadata/metadata.json") throw new ComicInteractionValidationError("Manifest LIMA de HQ sem metadata padrão.");
     if (manifest.pagesPath !== "pages/" || manifest.interactionPath !== "interaction/") {
@@ -53,6 +54,40 @@ export class ComicInteractionValidator {
       if (ids.has(region.id)) throw new ComicInteractionValidationError("Regiao duplicada na pagina de HQ.");
       ids.add(region.id); this.validateRegion(region, page.index);
     });
+    if (page.hierarchy) this.validateHierarchy(page.hierarchy, page.regions);
+    return true;
+  }
+
+  private validateHierarchy(hierarchy: ComicPageHierarchy, regions: readonly ComicTextRegion[]): true {
+    if (!["visual-hierarchy-v1", "visual-hierarchy-v2"].includes(hierarchy.version) || !hierarchy.rootId) throw new ComicInteractionValidationError("Hierarquia visual de HQ inválida.");
+    const scenes = new Set<string>();
+    for (const scene of hierarchy.scenes) {
+      if (!scene.id || scenes.has(scene.id)) throw new ComicInteractionValidationError("Cena de HQ duplicada.");
+      scenes.add(scene.id); this.validateBounds(scene);
+      if (scene.kind !== "panel" && scene.kind !== "freeform") throw new ComicInteractionValidationError("Tipo de cena de HQ inválido.");
+    }
+    if (!scenes.size) throw new ComicInteractionValidationError("Hierarquia de HQ sem cena raiz.");
+    const ids = new Set(regions.map(region => region.id));
+    for (const [sceneId, children] of Object.entries(hierarchy.sceneChildren)) {
+      if (!scenes.has(sceneId) || children.some(id => !ids.has(id))) throw new ComicInteractionValidationError("Filho de cena de HQ inválido.");
+    }
+    for (const region of regions) if (region.hierarchy) {
+      if (!scenes.has(region.hierarchy.sceneId) || !Number.isFinite(region.hierarchy.zIndex)) throw new ComicInteractionValidationError("Associação visual de HQ inválida.");
+      if (region.hierarchy.memberships.some(value => !scenes.has(value.sceneId) || !validShare(value.maskShare))) {
+        throw new ComicInteractionValidationError("Interseção de cena de HQ inválida.");
+      }
+    }
+    for (const element of hierarchy.elements ?? []) {
+      if (!element.id || !Number.isFinite(element.confidence) || element.confidence < 0 || element.confidence > 1) {
+        throw new ComicInteractionValidationError("Elemento visual de HQ inválido.");
+      }
+      this.validateBounds(element);
+      if (element.sceneId && !scenes.has(element.sceneId)) throw new ComicInteractionValidationError("Elemento visual sem cena válida.");
+      if (element.memberships.some(value => !scenes.has(value.sceneId) || !validShare(value.maskShare))) {
+        throw new ComicInteractionValidationError("Interseção de elemento visual inválida.");
+      }
+      if (element.interactive && !element.regionId) throw new ComicInteractionValidationError("Elemento interativo sem região de HQ.");
+    }
     return true;
   }
 
@@ -89,4 +124,10 @@ export class ComicInteractionValidator {
       throw new ComicInteractionValidationError("Container LIMA de HQ contém caminho inseguro.");
     }
   }
+}
+
+/** A share of a mask in [0, 1], allowing only float rounding at either end. NaN, infinity
+ *  and genuinely out-of-range values are still rejected. */
+function validShare(value: number): boolean {
+  return Number.isFinite(value) && value >= -COMIC_SHARE_TOLERANCE && value <= 1 + COMIC_SHARE_TOLERANCE;
 }

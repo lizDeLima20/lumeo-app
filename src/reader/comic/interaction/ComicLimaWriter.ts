@@ -16,7 +16,7 @@ export class ComicLimaWriter {
   public page(page: ComicPage, asset: ComicPageAsset): void {
     this.add(page.imagePath, asset.data);
     for (const object of asset.interactionAssets ?? []) this.add(object.path, object.data);
-    this.add(`interaction/${String(page.index + 1).padStart(3, "0")}.json`, strToU8(JSON.stringify({ pageIndex: page.index, regions: page.regions })));
+    this.add(`interaction/${String(page.index + 1).padStart(3, "0")}.json`, strToU8(JSON.stringify({ pageIndex: page.index, regions: page.regions, hierarchy: page.hierarchy })));
   }
   public finish(document: ComicDocument): Uint8Array {
     this.add("manifest.json", strToU8(JSON.stringify(document.manifest)));

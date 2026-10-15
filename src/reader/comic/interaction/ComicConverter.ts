@@ -1,4 +1,4 @@
-import { COMIC_LIMA_VERSION, type ComicConversionProgress, type ComicDocument, type ComicMetadata, type ComicPageAsset, type ComicTextRegion } from "./ComicInteractionTypes";
+import { COMIC_LIMA_VERSION, type ComicConversionProgress, type ComicDocument, type ComicMetadata, type ComicPageAsset, type ComicTextRegion, type ComicPageHierarchy } from "./ComicInteractionTypes";
 import type { ComicConversionCache } from "./ComicConversionCache";
 import { ComicInteractionValidator } from "./ComicInteractionValidator";
 import { ComicLimaWriter } from "./ComicLimaWriter";
@@ -12,7 +12,7 @@ export interface ComicConversionInput {
   sourceFormat?: ComicMetadata["sourceFormat"];
   totalPages: number;
   pageProvider: (pageIndex: number, signal?: AbortSignal) => Promise<ComicPageAsset>;
-  regionProvider?: (pageIndex: number, asset: ComicPageAsset, signal?: AbortSignal) => Promise<ComicTextRegion[]>;
+  regionProvider?: (pageIndex: number, asset: ComicPageAsset, signal?: AbortSignal) => Promise<ComicTextRegion[] | ComicPageRecognition>;
   releasePage?: () => void;
   conversionKey?: string;
   /** The pages the reader wants first, most wanted first - normally the page on screen
@@ -22,6 +22,8 @@ export interface ComicConversionInput {
   /** Which page the queue just picked up. */
   onPageStarted?: (pageIndex: number) => void;
 }
+
+export interface ComicPageRecognition { regions: ComicTextRegion[]; hierarchy?: ComicPageHierarchy; }
 
 export interface ComicConversionResult {
   document: ComicDocument;
@@ -82,7 +84,11 @@ export class ComicConverter {
             cover: asset.cover ?? pageIndex === 0,
             regions: [],
           };
-          if (!saved && !page.cover && input.regionProvider) page.regions = await input.regionProvider(pageIndex, asset, options.signal);
+          if (!saved && input.regionProvider) {
+            const recognized = await input.regionProvider(pageIndex, asset, options.signal);
+            if (Array.isArray(recognized)) page.regions = recognized;
+            else { page.regions = recognized.regions; page.hierarchy = recognized.hierarchy; }
+          }
           options.signal?.throwIfAborted();
           validator.validatePage(page);
           if (page.index !== pageIndex || page.imagePath !== asset.path || !asset.data.length) throw new Error("Pagina de HQ inconsistente.");

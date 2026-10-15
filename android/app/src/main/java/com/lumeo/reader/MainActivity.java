@@ -16,6 +16,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ReaderSoundPlugin.class);
         registerPlugin(ReadingReminderPlugin.class);
         registerPlugin(GoogleDriveAuthorizationPlugin.class);
+        registerPlugin(ComicSegmentationPlugin.class);
         super.onCreate(savedInstanceState);
         // Notification channels are created once by Android and retain their sound
         // configuration. Create the current version at startup so a saved reminder

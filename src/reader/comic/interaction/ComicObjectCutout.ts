@@ -30,7 +30,7 @@ export interface ComicCutoutMask {
  * background; sealing afterwards fills lettering, icons and enclosed highlights so they
  * can never become transparent holes. */
 export function comicCutoutMask(source: ImageData, crop: Bbox, container?: ComicVisualContainer,
-  siblings: readonly ComicVisualContainer[] = []): ComicCutoutMask {
+  siblings: readonly ComicVisualContainer[] = [], protectedText?: Bbox): ComicCutoutMask {
   const opaque = (): ComicCutoutMask => ({
     alpha: new Uint8Array(source.width * source.height).fill(255),
     method: "original-crop-fallback", confidence: 0, holesFilled: 0,
@@ -72,17 +72,32 @@ export function comicCutoutMask(source: ImageData, crop: Bbox, container?: Comic
   let visible = 0;
   for (const value of alpha) if (value) visible++;
   const share = visible / Math.max(1, alpha.length);
+  const text = protectedText ?? container.ink;
   const ink = {
-    x0: container.ink.x0 - crop.x0, y0: container.ink.y0 - crop.y0,
-    x1: container.ink.x1 - crop.x0, y1: container.ink.y1 - crop.y0,
+    x0: text.x0 - crop.x0, y0: text.y0 - crop.y0,
+    x1: text.x1 - crop.x0, y1: text.y1 - crop.y0,
   };
   // A silhouette that is implausibly small or still removes original lettering is less
   // trustworthy than the complete local crop. The fallback preserves the source intact;
   // it is explicit metadata, never presented as successful object segmentation.
-  if (share < .04 || comicMaskCutsInk(source, alpha, ink, container.textColor)) return opaque();
+  if (share < .04 || comicMaskCutsInk(source, alpha, ink, container.textColor)
+    || comicMaskCutsTextBounds(alpha, source.width, source.height, ink)) return opaque();
   const confidence = Math.max(.3, Math.min(.98,
     container.styleConfidence * .7 + Math.min(1, share / .35) * .3 - Math.min(.2, sealed.holesFilled / Math.max(1, visible))));
   return { alpha, method: "component-mask", confidence, holesFilled: sealed.holesFilled };
+}
+
+/** OCR's ink bounds must survive the cutout even when colour sampling missed the text
+ * colour. A few transparent pixels can be antialiasing; a missing strip is a broken word. */
+export function comicMaskCutsTextBounds(alpha: Uint8Array, width: number, height: number,
+  ink: { x0: number; y0: number; x1: number; y1: number }): boolean {
+  const x0 = Math.max(0, Math.floor(ink.x0)), x1 = Math.min(width, Math.ceil(ink.x1));
+  const y0 = Math.max(0, Math.floor(ink.y0)), y1 = Math.min(height, Math.ceil(ink.y1));
+  let pixels = 0, missing = 0;
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    pixels++; if (!alpha[y * width + x]) missing++;
+  }
+  return pixels > 0 && missing >= 4 && missing / pixels > .01;
 }
 
 /** How far a crop may stretch past its own art in one direction before a real neighbour,
@@ -169,18 +184,28 @@ export async function comicCreateCutouts(canvas: HTMLCanvasElement, regions: Com
     // the colour detector never found at all can pack its own lines closely enough that
     // real padding here, measured from nothing but this one line's own small size, reaches
     // the next line up or down and crops it in half.
-    const cropBounds = comicAdaptiveCropBounds(art, containers, canvas.width, canvas.height, container, container ? Number.POSITIVE_INFINITY : 2);
-    const x = cropBounds.x0, y = cropBounds.y0, width = Math.max(1, cropBounds.x1 - x), height = Math.max(1, cropBounds.y1 - y);
-    const pixels = source.getImageData(x, y, width, height);
-    const cutout = comicCutoutMask(pixels, cropBounds, container, containers);
+    const protectedText = { x0: text.x * canvas.width, y0: text.y * canvas.height,
+      x1: (text.x + text.width) * canvas.width, y1: (text.y + text.height) * canvas.height };
+    let cropBounds = comicAdaptiveCropBounds(art, containers, canvas.width, canvas.height, container, container ? Number.POSITIVE_INFINITY : 2);
+    let pixels = source.getImageData(cropBounds.x0, cropBounds.y0, cropBounds.x1 - cropBounds.x0, cropBounds.y1 - cropBounds.y0);
+    const cutout = comicCutoutMask(pixels, cropBounds, container, containers, protectedText);
+    if (cutout.method === "original-crop-fallback" && container) {
+      // A rejected silhouette must not show its neighbour through an opaque crop.
+      // Zoom the original lettering with a small safe margin instead of presenting
+      // broken balloon segmentation as if it were a complete isolated object.
+      cropBounds = comicAdaptiveCropBounds(protectedText, containers, canvas.width, canvas.height, container, 6);
+      pixels = source.getImageData(cropBounds.x0, cropBounds.y0, cropBounds.x1 - cropBounds.x0, cropBounds.y1 - cropBounds.y0);
+    }
+    const x = cropBounds.x0, y = cropBounds.y0, width = pixels.width, height = pixels.height;
+    const alpha = cutout.method === "original-crop-fallback" ? new Uint8Array(width * height).fill(255) : cutout.alpha;
     const assetPath = `interaction/assets/${region.id}.webp`, maskPath = `interaction/assets/${region.id}-mask.webp`;
     const output = document.createElement("canvas"); output.width = width; output.height = height;
     const context = output.getContext("2d")!;
-    context.putImageData(new ImageData(comicMaskedPixels(pixels, cutout.alpha), width, height), 0, 0);
+    context.putImageData(new ImageData(comicMaskedPixels(pixels, alpha), width, height), 0, 0);
     assets.push(await encode(output, assetPath));
     const mask = new Uint8ClampedArray(width * height * 4);
-    for (let index = 0; index < cutout.alpha.length; index++) {
-      const offset = index * 4; mask[offset] = mask[offset + 1] = mask[offset + 2] = 255; mask[offset + 3] = cutout.alpha[index]!;
+    for (let index = 0; index < alpha.length; index++) {
+      const offset = index * 4; mask[offset] = mask[offset + 1] = mask[offset + 2] = 255; mask[offset + 3] = alpha[index]!;
     }
     context.putImageData(new ImageData(mask, width, height), 0, 0);
     assets.push(await encode(output, maskPath)); output.width = output.height = 0;
@@ -188,7 +213,8 @@ export async function comicCreateCutouts(canvas: HTMLCanvasElement, regions: Com
     region.assetWidth = width; region.assetHeight = height;
     region.visualBounds = { x: x / canvas.width, y: y / canvas.height, width: width / canvas.width, height: height / canvas.height };
     region.hitBounds = { ...region.visualBounds }; Object.assign(region, region.hitBounds);
-    region.segmentationMethod = cutout.method;
+    region.segmentationMethod = region.segmentationMethod === "mobilesam-v1" && cutout.method === "component-mask"
+      ? "mobilesam-v1" : cutout.method;
     if (region.bubbleGroup) {
       region.bubbleGroup.unionBounds = { ...region.visualBounds };
       region.bubbleGroup.unionMaskPath = maskPath;

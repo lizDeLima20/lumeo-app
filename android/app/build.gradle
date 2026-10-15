@@ -48,6 +48,11 @@ dependencies {
     // 21.6.0 retains support for the app's existing minSdk 23. Do not raise
     // minSdk merely to add OAuth; the authorization API is available here.
     implementation "com.google.android.gms:play-services-auth:21.6.0"
+    // MobileSAM executes entirely inside the app process. No model input, page,
+    // embedding or mask leaves the device.
+    // 1.20 keeps Android API 23 support. Newer 1.31 raises its manifest to API 24;
+    // do not silently drop devices or override a runtime's declared minimum.
+    implementation "com.microsoft.onnxruntime:onnxruntime-android:1.20.0"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

@@ -75,6 +75,7 @@ import { AppState } from "./AppState";
 import { Router, type RouteName } from "./Router";
 import { ComicReaderView } from "../views/ComicReaderView";
 import { ComicContentTypeResolver } from "../reader/comic/ComicContentType";
+import { ComicPreparationQueue } from "../reader/comic/interaction/ComicPreparationQueue";
 import { CollectionBrowserView } from "../views/CollectionBrowserView";
 import { DriveCollectionGenreView } from "../views/DriveCollectionGenreView";
 import { DriveCollectionService } from "../services/DriveCollectionService";
@@ -108,6 +109,7 @@ export class App {
   private readerSettings = new ReaderSettingsManager(this.storage);
   private readerManager = new ReaderManager(this.books, this.localFileStore(),
     new ReadingProgressService(this.progress, this.books), this.readerSettings,this.limaDocuments);
+  private comicPreparation: ComicPreparationQueue | null = null;
   private readonly api = new ApiClient(new EnvironmentConfig().read().bffBaseUrl);
   private readonly accountPersistence = new AccountPersistenceService(this.api);
   private readonly catalog = new CatalogService(this.api);
@@ -144,6 +146,8 @@ export class App {
     this.configureLocalLibrary("personal"); await this.hydrateLibrary(false);
     this.state.authStatus = "LOCAL_LIBRARY_READY"; this.state.onboardingCompleted = true; this.state.notify();
     this.router.start("library");
+    this.comicPreparation = new ComicPreparationQueue(() => this.books.getAll(), id => this.localFileStore().get(id), () => this.router.currentRoute === "reader");
+    void this.comicPreparation.start();
   }
 
   private registerRoutes(): void {
@@ -366,6 +370,7 @@ export class App {
 
   private async addBook(book: Book): Promise<void> {
     this.state.library.addBook(book); this.state.notify();
+    this.comicPreparation?.enqueue(book);
     if (!this.auth.isLocalLibraryMode) void this.persistRemoteBook(book).catch(() => undefined);
     void new StoragePersistenceService().requestAfterImport();
     this.router.navigate("book", { id: book.id }); this.showToast("Livro adicionado à biblioteca.");
@@ -500,6 +505,7 @@ export class App {
       else this.router.navigate("book", { id });
       return;
     }
+    this.comicPreparation?.pause();
     this.router.navigate("reader", { id });
   }
 
