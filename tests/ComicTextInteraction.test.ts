@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { ComicHitMap, COMIC_HIT_SLOP_PX, COMIC_SMALL_BALLOON_SLOP_PX, type ComicPageArt } from "../src/reader/comic/interaction/ComicHitMap";
 import { ComicInteractionEngine } from "../src/reader/comic/interaction/ComicInteractionEngine";
-import { comicBubbleTarget, comicBubbleText, comicBubbleZoom, COMIC_BUBBLE_ZOOM } from "../src/reader/comic/interaction/ComicBubbleLayout";
+import { comicBubbleTarget, comicBubbleText, comicBubbleZoom, comicLetteringShare, comicTypicalCapShare, COMIC_BUBBLE_ZOOM } from "../src/reader/comic/interaction/ComicBubbleLayout";
 import { comicBubbleFallbackPath, comicBubblePath } from "../src/reader/comic/interaction/ComicBubbleShape";
 import { ComicBubbleView } from "../src/reader/comic/interaction/ComicBubbleView";
 import { COMIC_TURN } from "../src/reader/comic/ComicTurnController";
@@ -87,9 +87,56 @@ describe("HQ: o asset original é ampliado sem distorcer ou reescrever sua arte"
     // A balloon that already fills a third of the page, lettered to match.
     const large = comicBubbleZoom({ x: 20, y: 200, width: 330, height: 220 }, viewport, true,
       lettered(.02, { x: .05, y: .2, width: .85, height: .3 }));
-    assert.ok(small > 4, `uma caixa pequena deveria crescer bastante, cresceu ${small}`);
+    assert.ok(small >= 3.5, `uma caixa pequena deveria crescer bastante, cresceu ${small}`);
     assert.ok(large < 2.6, `um balão grande deveria crescer pouco, cresceu ${large}`);
-    assert.ok(small <= COMIC_BUBBLE_ZOOM.max && large >= COMIC_BUBBLE_ZOOM.min);
+    // The large one already spans 80% of the screen: it keeps its size rather than filling the rest.
+    assert.ok(small <= COMIC_BUBBLE_ZOOM.legible.max && large >= 1);
+  });
+
+  it("no celular a ampliação é moderada e parecida para todos: 1,35x a 4x, até 82% da largura", () => {
+    // Lettering of every common size, in balloons of every common size.
+    for (const [width, height] of [[40, 22], [70, 30], [110, 45], [160, 60], [220, 90], [300, 120]]) for (const cap of [.12, .2, .3]) {
+      const source = { x: 20, y: 300, width, height };
+      const zoom = comicBubbleZoom(source, viewport, true, lettered(.01, { x: .1, y: .1, width: .1, height: .03 }));
+      const plain = comicBubbleZoom(source, viewport, true, { ...lettered(.01, { x: .1, y: .1, width: .1, height: .03 }), typography: { family: "comic", weight: "normal", italic: false, align: "center", capHeight: cap * .03, lines: 1 } });
+      for (const value of [zoom, plain]) {
+        assert.ok(value >= 1 && value <= COMIC_BUBBLE_ZOOM.legible.max, `${width}x${height}: ${value}`);
+        if (cap * height * value >= COMIC_BUBBLE_ZOOM.legible.capPx) assert.ok(width * value <= viewport.width * COMIC_BUBBLE_ZOOM.compact.widthShare + 1e-6, `${width}x${height} ocupou ${(width * value / viewport.width * 100).toFixed(0)}% da largura`);
+      }
+    }
+  });
+
+  it("um balão de uma ou duas palavras não fica pequeno na tela", () => {
+    // "NÃO EU." on the X-Men page: 32x31px on screen, letters already big enough for 2x.
+    const tiny = { x: 77, y: 186, width: 32, height: 31 };
+    const zoom = comicBubbleZoom(tiny, viewport, true, lettered(.01, { x: .2, y: .2, width: .08, height: .03 }));
+    assert.ok(32 * zoom >= viewport.width * COMIC_BUBBLE_ZOOM.compact.minLongSideShare - 1 || zoom >= COMIC_BUBBLE_ZOOM.compact.max - 1e-9, `${(32 * zoom).toFixed(0)}px`);
+    assert.ok(zoom <= COMIC_BUBBLE_ZOOM.compact.max + 1e-9);
+  });
+
+  it("um balão sem texto lido usa a letra típica da página, não o bloco de texto inteiro", () => {
+    // Read balloons on the page: capitals about 1.2% of the page height.
+    const read = [0, 1, 2].map(index => ({ ...lettered(.012, { x: .1, y: .1 + index * .2, width: .3, height: .08 }), id: `r${index}`, text: "OLÁ, TUDO BEM?" }));
+    const typical = comicTypicalCapShare(read)!;
+    assert.ok(Math.abs(typical - .012) < .002, `típica ${typical}`);
+    // An unread balloon of three lines whose whole text block (3.6% of the page) was taken for one letter.
+    const unread = { ...lettered(.036, { x: .5, y: .5, width: .3, height: .08 }), id: "u", text: "" };
+    assert.ok(comicLetteringShare(unread) > comicLetteringShare(unread, typical) * 2.5, "sem a página, a letra parecia três vezes maior");
+    const source = { x: 20, y: 300, width: 120, height: 32 };
+    assert.ok(comicBubbleZoom(source, viewport, true, unread, typical) > comicBubbleZoom(source, viewport, true, unread) * 1.5, "e por isso crescia pouco");
+    // A read balloon of ordinary lettering keeps its own measurement.
+    assert.equal(comicLetteringShare(read[0]!, typical), comicLetteringShare(read[0]!));
+  });
+
+  it("um balão grande nunca toma a tela inteira; letra miúda pode passar do limite só até ficar legível", () => {
+    const wide = comicBubbleZoom({ x: 10, y: 300, width: 200, height: 60 }, viewport, true);
+    assert.ok(200 * wide <= viewport.width * COMIC_BUBBLE_ZOOM.compact.widthShare + 1e-6, `largura ${200 * wide}`);
+    // A long caption of tiny lettering: more width than usual, but never past 92%, only up to 10px letters.
+    const caption = { x: 10, y: 300, width: 160, height: 24 };
+    const tiny = { ...lettered(.01, { x: .1, y: .1, width: .1, height: .03 }), typography: { family: "comic", weight: "normal" as const, italic: false, align: "center" as const, capHeight: .03 * .12, lines: 1 } };
+    const zoom = comicBubbleZoom(caption, viewport, true, tiny);
+    assert.ok(160 * zoom <= viewport.width * COMIC_BUBBLE_ZOOM.legible.widthShare + 1e-6);
+    assert.ok(160 * zoom > viewport.width * COMIC_BUBBLE_ZOOM.compact.widthShare, "a legenda miúda pôde usar um pouco mais de largura");
   });
 
   it("a forma não é distorcida: um único fator nos dois lados", () => {

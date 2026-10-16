@@ -44,7 +44,7 @@ import{I18nManager}from"../i18n/I18nManager";import{ReaderInteractionController}
 import{ReaderChromeController}from"../reader/premium/ReaderChromeController";import{FocusReadingMode}from"../reader/premium/FocusReadingMode";import{ReaderProgressModel}from"../reader/premium/ReaderProgressModel";import{ReaderProgressBar}from"./ReaderProgressBar";import{ReaderCoverPageView}from"./ReaderCoverPageView";
 import{ImagePageTurnAnimator,type ImageTurnDirection}from"../reader/image/ImagePageTurnAnimator";
 import{DesktopReaderStateMachine}from"../reader/desktop/DesktopReaderStateMachine";
-import{ReaderPomodoroView}from"./ReaderPomodoroView";import{ReaderDisplay}from"../services/ReaderDisplay";import{AndroidReadingOptics,type ReadingOpticsProfile}from"../services/AndroidReadingOptics";import{ReadingDayTracker}from"../reader/pomodoro/ReadingDayTracker";import{PomodoroSettingsController}from"../reader/settings/PomodoroSettingsController";import{StorageService}from"../services/StorageService";import{FirstReadGreeting}from"../reader/premium/FirstReadGreeting";
+import{ReaderPomodoroView}from"./ReaderPomodoroView";import{ReaderDisplay}from"../services/ReaderDisplay";import{ReaderScreenAwake}from"../services/ReaderScreenAwake";import{AndroidReadingOptics,type ReadingOpticsProfile}from"../services/AndroidReadingOptics";import{ReadingDayTracker}from"../reader/pomodoro/ReadingDayTracker";import{PomodoroSettingsController}from"../reader/settings/PomodoroSettingsController";import{StorageService}from"../services/StorageService";import{FirstReadGreeting}from"../reader/premium/FirstReadGreeting";
 import { ReadingReviewRepository } from "../repositories/ReadingReviewRepository";
 import { ReadingReviewDialog } from "./ReadingReviewDialog";
 
@@ -96,13 +96,13 @@ export class ReaderView extends BaseView {
     const loading = this.createElement("div", "reader-loading", this.i18n.t("reader.loading")); loading.setAttribute("role", "status");
     this.stage.append(this.canvas, loading, this.tapZones()); reader.append(this.stage);
     this.chrome=new ReaderChromeController(state=>{reader.classList.toggle("reader--controls-visible",state.visible);reader.classList.toggle("reader--focus-mode",state.focusMode);this.progressBar?.setVisible(state.progressVisible);});this.progressBar=new ReaderProgressBar();reader.append(this.progressBar.render());
-    document.body.classList.add("reader-mode"); this.stopLocaleWatch=this.i18n.subscribe(locale=>{this.element?.setAttribute("lang",locale);this.settingsPanel?.refresh();}); queueMicrotask(() => void this.initialize()); return reader;
+    document.body.classList.add("reader-mode"); void ReaderScreenAwake.keep(); this.stopLocaleWatch=this.i18n.subscribe(locale=>{this.element?.setAttribute("lang",locale);this.settingsPanel?.refresh();}); queueMicrotask(() => void this.initialize()); return reader;
   }
 
   public override unmount(): void {
     window.clearTimeout(this.controlsTimer); window.clearTimeout(this.resizeTimer);
     document.removeEventListener("keydown", this.handleKeydown); window.removeEventListener("resize", this.handleResize);
-    this.stopLocaleWatch();this.stopLocaleWatch=()=>undefined;this.chrome?.destroy();this.pomodoro?.destroy();this.pomodoro=null;void AndroidReadingOptics.stop();void ReaderDisplay.restore();document.body.classList.remove("reader-mode");this.notebookView?.destroy();this.chapterStudyView?.destroy();this.turnController?.unbind();this.desktopView?.destroy();void this.reflow?.close();void this.manager.close(); super.unmount();
+    this.stopLocaleWatch();this.stopLocaleWatch=()=>undefined;this.chrome?.destroy();this.pomodoro?.destroy();this.pomodoro=null;void AndroidReadingOptics.stop();void ReaderDisplay.restore();void ReaderScreenAwake.release();document.body.classList.remove("reader-mode");this.notebookView?.destroy();this.chapterStudyView?.destroy();this.turnController?.unbind();this.desktopView?.destroy();void this.reflow?.close();void this.manager.close(); super.unmount();
   }
 
   private async initialize(): Promise<void> {

@@ -14,6 +14,9 @@ export interface ComicBubbleLayoutInput {
   /** The other balloons of the page, on screen: what the enlarged one should not sit on
    *  top of. They are avoided, never obeyed - a balloon always opens somewhere. */
   obstacles?: readonly ComicRect[];
+  /** The page's usual capital-letter height, as a share of the page height (from the
+   *  balloons whose text was read). See `comicBubbleZoom`. */
+  typicalCapShare?: number;
 }
 
 export interface ComicBubbleTarget extends ComicRect {
@@ -29,7 +32,18 @@ export const COMIC_BUBBLE_ZOOM = {
    *  wide reading is twice that, and the screen still has the last word below. */
   capHeightPx: { compact: 15, wide: 34 },
   min: 1.15, max: 12,
-  compact: { margin: 10, widthShare: .96, heightShare: .82 },
+  /** On a phone the enlargement stays moderate and alike for every balloon: between 1.35x
+   *  and 4x, and no wider than 82% of the screen nor taller than 45% of it. Measured on
+   *  3027 real balloons, the previous limits (up to 12x, 96% x 82% of the screen) left one
+   *  in five covering almost the whole width while large ones barely grew. */
+  compact: { margin: 10, widthShare: .82, heightShare: .45, min: 1.35, max: 4,
+    /** A balloon of one or two words is tiny on the page: enlarged only as far as its
+     *  letters need, it still looked small on screen. Its longer side reaches at least this
+     *  share of the screen width (within the limits above). */
+    minLongSideShare: .36 },
+  /** Reading comes first: lettering that would still be under ten pixels may go past those
+   *  limits, only as far as that size needs - up to 6x and 92% of the width. */
+  legible: { capPx: 10, widthShare: .92, max: 6 },
   wide: { margin: 20, widthShare: .78, heightShare: .88 },
 } as const;
 
@@ -49,6 +63,29 @@ export function comicCapShare(region: ComicTextRegion): number {
   return readings.length > 0 ? Math.min(...readings) : .18;
 }
 
+/** The lettering share used for the zoom. A balloon whose text was not read has only its
+ *  whole text block to measure, and taking that block for one line made its letters look
+ *  two or three times bigger than they are - on 3027 real balloons, most of the 570 that
+ *  grew less than 1.5x. Lettering is the same size across a page, so such a balloon (or one
+ *  read at more than twice the page's usual size) takes the page's usual size instead. */
+export function comicLetteringShare(region: ComicTextRegion, typicalCapShare?: number): number {
+  const own = comicCapShare(region);
+  const height = comicRegionBounds(region).visual.height;
+  if (!typicalCapShare || typicalCapShare <= 0 || height <= 0) return own;
+  const unread = !region.text.trim();
+  if (!unread && own * height <= typicalCapShare * 2) return own;
+  return Math.max(.03, Math.min(.5, typicalCapShare / height));
+}
+
+/** The page's usual capital-letter height (share of the page height): the median over the
+ *  balloons whose text was read. Undefined with fewer than two such balloons. */
+export function comicTypicalCapShare(regions: readonly ComicTextRegion[]): number | undefined {
+  const values = regions.filter(region => region.text.trim())
+    .map(region => comicCapShare(region) * comicRegionBounds(region).visual.height)
+    .filter(value => value > 0).sort((a, b) => a - b);
+  return values.length >= 2 ? values[Math.floor(values.length / 2)] : undefined;
+}
+
 /** How much to enlarge a container, from the size of its own lettering.
  *
  *  A fixed factor cannot serve both a caption the size of a stamp and a balloon that fills
@@ -56,19 +93,29 @@ export function comicCapShare(region: ComicTextRegion): number {
  *  so the measured cap height is taken to a comfortable reading size and the container
  *  comes along at whatever factor that needs - ten times for something tiny, barely one and
  *  a half for something already large. The screen then has the final word. */
-export function comicBubbleZoom(source: ComicRect, viewport: { width: number; height: number }, compact: boolean, region?: ComicTextRegion): number {
-  const capPx = Math.max(.5, (region ? comicCapShare(region) : .2) * source.height);
-  const smallBalloonBoost = compact && Math.min(source.width, source.height) < 44 ? 1.3 : 1;
-  const wanted = ((compact ? COMIC_BUBBLE_ZOOM.capHeightPx.compact : COMIC_BUBBLE_ZOOM.capHeightPx.wide) / capPx) * smallBalloonBoost;
+export function comicBubbleZoom(source: ComicRect, viewport: { width: number; height: number }, compact: boolean, region?: ComicTextRegion,
+  typicalCapShare?: number): number {
+  const capPx = Math.max(.5, (region ? comicLetteringShare(region, typicalCapShare) : .2) * source.height);
+  const wanted = (compact ? COMIC_BUBBLE_ZOOM.capHeightPx.compact : COMIC_BUBBLE_ZOOM.capHeightPx.wide) / capPx;
 
   const limits = compact ? COMIC_BUBBLE_ZOOM.compact : COMIC_BUBBLE_ZOOM.wide;
   const margin = Math.min(limits.margin, viewport.width / 12);
-  const maxWidth = Math.max(40, Math.min(viewport.width * limits.widthShare, viewport.width - margin * 2));
-  const maxHeight = Math.max(40, Math.min(viewport.height * limits.heightShare, viewport.height - margin * 2));
+  const fit = (widthShare: number, heightShare: number): number => {
+    const maxWidth = Math.max(40, Math.min(viewport.width * widthShare, viewport.width - margin * 2));
+    const maxHeight = Math.max(40, Math.min(viewport.height * heightShare, viewport.height - margin * 2));
+    return Math.min(maxWidth / Math.max(1, source.width), maxHeight / Math.max(1, source.height));
+  };
   // The screen has the last word: a balloon that already fills the page simply stays put
   // rather than growing off the edge of it.
-  const ceiling = Math.min(maxWidth / Math.max(1, source.width), maxHeight / Math.max(1, source.height));
-  return Math.max(1, Math.min(Math.max(wanted, COMIC_BUBBLE_ZOOM.min), COMIC_BUBBLE_ZOOM.max, ceiling));
+  const ceiling = fit(limits.widthShare, limits.heightShare);
+  if (!compact) return Math.max(1, Math.min(Math.max(wanted, COMIC_BUBBLE_ZOOM.min), COMIC_BUBBLE_ZOOM.max, ceiling));
+  const visible = (viewport.width * COMIC_BUBBLE_ZOOM.compact.minLongSideShare) / Math.max(1, source.width, source.height);
+  const moderate = Math.min(Math.max(wanted, COMIC_BUBBLE_ZOOM.compact.min, visible), COMIC_BUBBLE_ZOOM.compact.max, ceiling);
+  const legible = COMIC_BUBBLE_ZOOM.legible;
+  if (capPx * moderate >= legible.capPx) return Math.max(1, moderate);
+  // Lettering still too small to read: only as much more as reading needs, within the
+  // wider limits.
+  return Math.max(1, moderate, Math.min(legible.capPx / capPx, legible.max, fit(legible.widthShare, limits.heightShare)));
 }
 
 /** Where the enlarged balloon ends up: the same shape, simply bigger.
@@ -83,7 +130,7 @@ export function comicBubbleTarget(input: ComicBubbleLayoutInput): ComicBubbleTar
   const { width: viewportWidth, height: viewportHeight } = input.viewport;
   const margin = Math.min(limits.margin, viewportWidth / 12);
   const safeTop = Math.max(margin, Math.min(viewportHeight - margin - 1, input.safeTop ?? margin));
-  const zoom = Math.max(1, Math.min(comicBubbleZoom(input.source, input.viewport, input.compact, input.region),
+  const zoom = Math.max(1, Math.min(comicBubbleZoom(input.source, input.viewport, input.compact, input.region, input.typicalCapShare),
     (viewportHeight - safeTop - margin) / Math.max(1, input.source.height)));
   const width = input.source.width * zoom, height = input.source.height * zoom;
 

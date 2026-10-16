@@ -4,6 +4,9 @@ import type { ComicTextRegion } from "./ComicInteractionTypes";
 import { comicArtworkCanvas, type ComicOriginalArt } from "./ComicObjectArtwork";
 import { comicAnalyzeBalloonQuality } from "./ComicBalloonQuality";
 import { comicEnhanceBalloonImage, comicPlanBalloonEnhancement } from "./ComicBalloonEnhancer";
+import { comicSmoothCutoutEdge } from "./ComicCutoutEdge";
+import { comicCrispLettering } from "./ComicLetteringCrisp";
+import { comicTrimArtScraps } from "./ComicScrapTrim";
 
 export const COMIC_BUBBLE_MOTION = { openMs: 340, closeMs: 240 } as const;
 interface Shown { region: ComicTextRegion; source: ComicRect; target: ComicBubbleTarget; element: HTMLElement }
@@ -41,6 +44,29 @@ function comicPrepareBubbleArtwork(region: ComicTextRegion, width: number, heigh
   try {
     const context = original.getContext("2d", { willReadFrequently: true });
     if (!context) return { canvas: original, fallback };
+    // The cutout's border was decided on the segmentation grid: round its steps off at this
+    // size. A whole-rectangle fallback has no such border and stays exactly as it was.
+    const upscale = original.width / Math.max(1, art.width);
+    // Pieces of the surrounding drawing that came along with the balloon - through a text box
+    // that ran into the panel, or a mask that leaked past the outline - are taken out.
+    try {
+      const pixels = context.getImageData(0, 0, original.width, original.height);
+      if (comicTrimArtScraps(pixels, region) > 0) context.putImageData(pixels, 0, 0);
+    } catch { /* the cutout is shown as it was */ }
+    if (!fallback) {
+      try {
+        const pixels = context.getImageData(0, 0, original.width, original.height);
+        if (comicSmoothCutoutEdge(pixels, Math.min(10, Math.max(2, upscale * 2))) > 0) context.putImageData(pixels, 0, 0);
+      } catch { /* the plain cutout is shown */ }
+    }
+    // Enlarged from few page pixels, letters arrive as soft grey ramps: pull them back to ink
+    // and paper. Neutral pixels only - coloured art is left as it is.
+    if (upscale >= 1.3) {
+      try {
+        const pixels = context.getImageData(0, 0, original.width, original.height);
+        if (comicCrispLettering(pixels) > 0) context.putImageData(pixels, 0, 0);
+      } catch { /* the plain enlargement is shown */ }
+    }
     const source = context.getImageData(0, 0, original.width, original.height);
     const before = comicAnalyzeBalloonQuality(source);
     const plan = comicPlanBalloonEnhancement(before, region.ocrConfidence);
@@ -71,6 +97,8 @@ export class ComicBubbleView {
     /** The other balloons of the page on screen, so the enlarged one can avoid covering
      *  them; the region being opened is never among them. */
     obstacles?: (region: ComicTextRegion) => readonly ComicRect[];
+    /** The usual lettering size on the region's page (share of the page height). */
+    typicalCapShare?: (region: ComicTextRegion) => number | undefined;
     onClose?: () => void;
   }) {}
   public get activeRegion(): ComicTextRegion | null { return this.shown?.region ?? null; }
@@ -90,7 +118,7 @@ export class ComicBubbleView {
       .filter(control => control.getBoundingClientRect().height > 0)
       .map(control => control.getBoundingClientRect().bottom - layerTop + 6));
     const target = comicBubbleTarget({ source, viewport, compact: this.options.compact(), region,
-      obstacles: this.options.obstacles?.(region), safeTop });
+      obstacles: this.options.obstacles?.(region), typicalCapShare: this.options.typicalCapShare?.(region), safeTop });
     const artwork = this.artworkFor(region, target.width, target.height, art);
     const element = ComicBubbleView.build(region, target.width, target.height, artwork);
     Object.assign(element.style, { left: `${target.x}px`, top: `${target.y}px`, width: `${target.width}px`, height: `${target.height}px` });

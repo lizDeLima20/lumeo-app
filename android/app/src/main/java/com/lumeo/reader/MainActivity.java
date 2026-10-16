@@ -12,6 +12,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NativeBookDownloadPlugin.class);
         registerPlugin(ReaderDisplayPlugin.class);
         registerPlugin(ReaderImmersivePlugin.class);
+        registerPlugin(ReaderAwakePlugin.class);
         registerPlugin(ReadingOpticsPlugin.class);
         registerPlugin(ReaderSoundPlugin.class);
         registerPlugin(ReadingReminderPlugin.class);

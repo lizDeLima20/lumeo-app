@@ -29,6 +29,8 @@ import { comicRegionBounds } from "../reader/comic/interaction/ComicRegionBounds
 import type { ComicPoint } from "../reader/comic/ComicFoldGeometry";
 import { ReaderFileMissingError, type ReaderManager } from "../reader/ReaderManager";
 import { ReaderImmersive } from "../services/ReaderImmersive";
+import { ReaderScreenAwake } from "../services/ReaderScreenAwake";
+import { comicTypicalCapShare } from "../reader/comic/interaction/ComicBubbleLayout";
 import { ReaderSettingsPanel } from "./ReaderSettingsPanel";
 import { FontSettingsController } from "../reader/settings/FontSettingsController";
 import { PaperSettingsController } from "../reader/settings/PaperSettingsController";
@@ -130,6 +132,7 @@ export class ComicReaderView extends BaseView {
       compact: () => this.geometry?.mode !== "spread" || (this.stage?.clientWidth ?? 0) < 700,
       art: region => this.regionArt(region),
       obstacles: region => this.otherRegions(region),
+      typicalCapShare: region => comicTypicalCapShare(this.interaction.regionsForPage(region.pageIndex)),
       onClose: () => { this.stage?.focus({ preventScroll: true }); this.hints?.schedule(); },
     });
     // The discovery nudge lives under the balloon layer: it is artwork, not furniture.
@@ -157,6 +160,8 @@ export class ComicReaderView extends BaseView {
     document.addEventListener("keydown", this.handleKeydown);
     window.addEventListener("resize", this.handleResize);
     void ReaderImmersive.enter();
+    // The screen stays on while the comic is open.
+    void ReaderScreenAwake.keep();
     queueMicrotask(() => void this.initialize());
     return reader;
   }
@@ -164,6 +169,7 @@ export class ComicReaderView extends BaseView {
   public override unmount(): void {
     this.disposed = true;
     void ReaderImmersive.exit();
+    void ReaderScreenAwake.release();
     this.stage?.removeEventListener("pointerdown", this.handlePointerDown, { capture: true });
     this.bubbleLayer?.removeEventListener("click", this.handleBubbleClick, { capture: true });
     window.clearTimeout(this.resizeTimer); window.clearTimeout(this.labelTimer);
