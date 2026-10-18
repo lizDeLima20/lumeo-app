@@ -169,7 +169,8 @@ export class App {
         const drive = new GoogleDriveLibraryService();
         return new PersonalDriveLibraryView(this.state, new GoogleDriveLibraryRepository(new ExternalLibraryStorage(this.database), "personal"), drive,
           new PersonalDriveImporter(drive, this.imports, this.books, this.genres, this.covers),
-          book => void this.addBook(book), id => this.openLibraryBook(id), async () => { this.state.library.replaceGenres(await this.genres.getAll()); this.state.notify(); }, params.get("addLink") === "1",
+          // The shelf stays on screen: its details page turns into Abrir, its round button opens the reader.
+          book => void this.addBook(book, false), id => this.openLibraryBook(id), async () => { this.state.library.replaceGenres(await this.genres.getAll()); this.state.notify(); }, params.get("addLink") === "1",
           book => this.syncBook(book),
           { cache: new ComicCoverCacheRepository(this.database), localFile: id => this.localFileStore().get(id) });
       }
@@ -367,12 +368,13 @@ export class App {
 
   private localFileStore(): LocalBookFileStore { return new LocalBookFileStore(this.files, this.state.currentUser?.id); }
 
-  private async addBook(book: Book): Promise<void> {
+  private async addBook(book: Book, showDetails = true): Promise<void> {
     this.state.library.addBook(book); this.state.notify();
     this.comicPreparation?.enqueue(book);
     if (!this.auth.isLocalLibraryMode) void this.persistRemoteBook(book).catch(() => undefined);
     void new StoragePersistenceService().requestAfterImport();
-    this.router.navigate("book", { id: book.id }); this.showToast("Livro adicionado à biblioteca.");
+    if (showDetails) this.router.navigate("book", { id: book.id });
+    this.showToast("Livro adicionado à biblioteca.");
   }
 
   private async prepareCatalogDownload(catalogBook: CatalogBookData, link: CatalogDownloadLink): Promise<void> {

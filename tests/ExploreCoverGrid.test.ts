@@ -42,7 +42,7 @@ describe("ícone de download com progresso real", () => {
   it("o toque no ícone não abre os detalhes, a conclusão vem depois de salvar e o livro abre sozinho", () => {
     const source = view();
     assert.match(source, /action\.addEventListener\("click", event => \{ event\.stopPropagation\(\);/);
-    assert.match(source, /icon\.set\("done", 100\); await this\.refreshGenres\(\); this\.saved\(book\);[^\n]*\n[^\n]*this\.open\(book\.id\);/);
+    assert.match(source, /icon\.set\("done", 100\);[^\n]*await this\.refreshGenres\(\); this\.saved\(book\);[^\n]*\n(?:[^\n]*\n){0,2}[^\n]*this\.open\(book\.id\);/);
     assert.match(source, /catch \(error\) \{ button\.disabled = false;[^}]*icon\.set\("error", 0\)/, "falha interrompe a animação e permite tentar de novo");
     assert.equal(/%`/.test(source), false, "nenhuma porcentagem numérica no botão");
   });

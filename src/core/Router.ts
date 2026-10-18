@@ -39,6 +39,9 @@ export class Router {
   private renderFromLocation(fallback: RouteName): void {
     const params = new URLSearchParams(window.location.search);
     const requested = window.location.pathname.slice(1) as RouteName;
+    // Back from an entry a screen added over itself (a details page over the shelf): the
+    // location did not change, so the screen underneath stays as it is.
+    if (this.activeView && requested === this.activeRoute && params.toString() === this.activeParameters.toString()) return;
     const route = this.guard(requested && this.routes.has(requested) ? requested : fallback);
     if (route !== requested) {
       const url = new URL(window.location.href);

@@ -10,12 +10,14 @@ import { PersonalDriveImporter } from "../services/PersonalDriveImporter";
 import { PERSONAL_DRIVE_SYNC_VERSION, PersonalDriveLibraryService } from "../services/PersonalDriveLibraryService";
 import { BaseView } from "./BaseView";
 import { DownloadProgressIcon } from "./DownloadProgressIcon";
+import { DriveItemDetails, type DriveItemDetailsInput, type DriveItemDownloadUpdate } from "./DriveItemDetails";
 
 /** Personal Drive shelf. Cached metadata is immediate; saved sources refresh automatically. */
 export class PersonalDriveLibraryView extends BaseView {
   private readonly service: PersonalDriveLibraryService;
   private readonly coverResolver: PersonalDriveCoverResolver;
   private controller: AbortController | null = null;
+  private readonly details = new DriveItemDetails();
   public constructor(private readonly state: AppState, private readonly sources: GoogleDriveLibraryRepository,
     drive: GoogleDriveLibraryService, private readonly importer: PersonalDriveImporter,
     private readonly saved: (book: Book) => void, private readonly open: (id: string) => void,
@@ -29,7 +31,7 @@ export class PersonalDriveLibraryView extends BaseView {
       firstPage: driveLocalFirstPage, thumbnail: blob => driveCoverThumbnail(blob),
       authorize: async () => { await drive.prepare(); if (!drive.authorized) await drive.connect(); } });
   }
-  public override unmount(): void { this.controller?.abort(); this.controller = null; super.unmount(); }
+  public override unmount(): void { this.controller?.abort(); this.controller = null; this.details.close(); super.unmount(); }
 
   public render(): HTMLElement {
     const section = this.createElement("section", "catalog catalog--explore page-shell personal-drive-library");
@@ -59,7 +61,27 @@ export class PersonalDriveLibraryView extends BaseView {
     let sourcesList: GoogleDriveLibrarySource[] = [], openFolder: { sourceId: string; folderId: string } | null = null, coverObserver: IntersectionObserver | null = null, coversOnScreen = new AbortController(), comicShelf: DriveComicShelf | null = null;
     const folderNodes = new Map<string, GoogleDriveFolderNode[]>();
     const applyMode = (next: "choice" | "book" | "comic"): void => { mode = next; selectedGenre = ""; visibleLimit = 60; welcome.hidden = mode !== "choice"; browser.hidden = mode === "choice"; if (mode !== "choice") { search.placeholder = mode === "comic" ? "Pesquisar quadrinhos" : "Pesquisar livros"; drawFilters(); drawGrid(); } };
-    const local = (entry: GoogleDriveLibraryEntry): Book | undefined => this.state.books.find(book => book.catalogBookId === `drive:${entry.fileId}` && book.sourceVersion === version(entry));
+    // The copy of this Drive file on the device. A copy whose version was not kept (saving the
+    // reading progress or a cloud merge rewrites the book without it) is still that file when
+    // it is on the device: it opens instead of being downloaded again.
+    const local = (entry: GoogleDriveLibraryEntry): Book | undefined => this.state.books.find(book => book.catalogBookId === `drive:${entry.fileId}`
+      && (book.sourceVersion === version(entry) || (!book.sourceVersion && book.availability === "AVAILABLE")));
+    // Downloads running now, who follows each one (an open details page), and the book each
+    // finished one became - so a details page can show Abrir before the library has it.
+    const downloads = new Map<string, DriveItemDownloadUpdate>(), watchers = new Map<string, Set<(update: DriveItemDownloadUpdate) => void>>(), finished = new Map<string, string>();
+    // The card on screen for each file: a sync redraw replaces the card a download started on,
+    // and the new one shows that download too.
+    const cards = new Map<string, { action: HTMLButtonElement; icon: DownloadProgressIcon }>();
+    const paint = (card: { action: HTMLButtonElement; icon: DownloadProgressIcon }, update: DriveItemDownloadUpdate): void => {
+      const busy = update.state === "downloading" || update.state === "indeterminate" || update.state === "saving";
+      if (busy) { card.action.disabled = true; card.action.setAttribute("aria-busy", "true"); } else { card.action.disabled = false; card.action.removeAttribute("aria-busy"); }
+      if (update.state === "downloading" || update.state === "indeterminate") card.icon.progress(update.percent); else card.icon.set(update.state, update.state === "error" ? 0 : 100);
+    };
+    const report = (fileId: string, update: DriveItemDownloadUpdate): void => {
+      if (update.state === "done" || update.state === "error") downloads.delete(fileId); else downloads.set(fileId, update);
+      const card = cards.get(fileId); if (card) paint(card, update);
+      watchers.get(fileId)?.forEach(listener => listener(update));
+    };
     const cardFor = (entry: GoogleDriveLibraryEntry): HTMLElement => {
       const book = local(entry), card = this.createElement("article", "catalog-card"), coverFrame = this.createElement("div", "catalog-card__cover-frame"), cover = this.createElement("button", "catalog-card__cover") as HTMLButtonElement;
       const title = entry.title || stripExtension(entry.name); cover.type = "button"; cover.setAttribute("aria-label", `Detalhes de ${title}`);
@@ -97,7 +119,15 @@ export class PersonalDriveLibraryView extends BaseView {
       const info = this.createElement("div", "catalog-card__info"); info.append(this.createElement("strong", "catalog-card__title", title)); if (entry.author) info.append(this.createElement("span", "catalog-card__author", entry.author));
       const action = this.createElement("button", "catalog-card__quick-action") as HTMLButtonElement; action.type = "button"; action.title = book ? "Abrir livro" : "Baixar livro"; action.setAttribute("aria-label", action.title);
       const icon = new DownloadProgressIcon(action, Boolean(book));
-      const details = (): void => this.showDetails(entry, local(entry), () => void (local(entry) ? this.open(local(entry)!.id) : download(entry, action, icon)));
+      cards.set(entry.fileId, { action, icon }); const running = downloads.get(entry.fileId); if (running) paint({ action, icon }, running);
+      const details = (): void => this.showDetails(entry, local(entry), {
+        coverUrl: image.parentNode === cover && image.complete && image.naturalWidth > 0 ? image.currentSrc || image.src : undefined,
+        downloaded: () => Boolean(local(entry) || finished.has(entry.fileId)),
+        current: () => downloads.get(entry.fileId) ?? null,
+        watch: listener => { const set = watchers.get(entry.fileId) ?? new Set(); set.add(listener); watchers.set(entry.fileId, set); return () => { set.delete(listener); if (!set.size) watchers.delete(entry.fileId); }; },
+        download: () => void download(entry, action, icon),
+        open: () => { const id = local(entry)?.id ?? finished.get(entry.fileId); if (id) this.open(id); },
+      });
       cover.addEventListener("click", details); action.addEventListener("click", event => { event.stopPropagation(); const current = local(entry); void (current ? this.open(current.id) : download(entry, action, icon)); }); coverFrame.append(cover, action); card.append(coverFrame, info); return card;
     };
     const resetCovers = (): void => {
@@ -211,12 +241,15 @@ export class PersonalDriveLibraryView extends BaseView {
     /* The icon follows the bytes really received; success is shown only after the file is
      * saved locally, and only then the book opens in the reader that fits it. */
     const download = async (entry: GoogleDriveLibraryEntry, button: HTMLButtonElement, icon: DownloadProgressIcon): Promise<void> => {
-      if (button.disabled) return;
-      const controller = new AbortController(); button.disabled = true; button.setAttribute("aria-busy", "true"); icon.set("downloading", 0); status.textContent = `Baixando ${stripExtension(entry.name)}…`;
-      try { const book = await this.importer.importListedFile({ id: entry.fileId, name: entry.name, mimeType: entry.mimeType, size: entry.size, modifiedTime: entry.modifiedTime, resourceKey: entry.resourceKey }, entry.genre, controller.signal, entry.contentType ?? "book", (done, _total, _name, percent) => { if (done > 0) return; icon.progress(percent ?? null); if (percent === 100) icon.set("saving", 100); });
-        icon.set("done", 100); await this.refreshGenres(); this.saved(book); status.textContent = `${entry.name} está disponível offline.`;
+      // One download per file, whether it was asked for on the card or on its details page.
+      if (button.disabled || downloads.has(entry.fileId)) return;
+      const controller = new AbortController(); button.disabled = true; button.setAttribute("aria-busy", "true"); icon.set("downloading", 0); report(entry.fileId, { state: "downloading", percent: 0 }); status.textContent = `Baixando ${stripExtension(entry.name)}…`;
+      try { const book = await this.importer.importListedFile({ id: entry.fileId, name: entry.name, mimeType: entry.mimeType, size: entry.size, modifiedTime: entry.modifiedTime, resourceKey: entry.resourceKey }, entry.genre, controller.signal, entry.contentType ?? "book", (done, _total, _name, percent) => { if (done > 0) return; icon.progress(percent ?? null); report(entry.fileId, percent == null ? { state: "indeterminate", percent: null } : { state: "downloading", percent }); if (percent === 100) { icon.set("saving", 100); report(entry.fileId, { state: "saving", percent: 100 }); } });
+        icon.set("done", 100); finished.set(entry.fileId, book.id); await this.refreshGenres(); this.saved(book); report(entry.fileId, { state: "done", percent: 100 }); status.textContent = `${entry.name} está disponível offline.`;
+        // With its details page open, the page's button turns into Abrir instead.
+        if (watchers.get(entry.fileId)?.size) return;
         await new Promise<void>(resolve => window.setTimeout(resolve, 420)); this.open(book.id);
-      } catch (error) { button.disabled = false; button.removeAttribute("aria-busy"); icon.set("error", 0); status.textContent = message(error, true); }
+      } catch (error) { button.disabled = false; button.removeAttribute("aria-busy"); icon.set("error", 0); report(entry.fileId, { state: "error", percent: 0, message: message(error, true) }); status.textContent = message(error, true); }
     };
     const openManager = (): void => {
       const dialog = document.createElement("dialog"); dialog.className = "catalog-genre-dialog"; const panel = this.createElement("section", "catalog-genre-dialog__panel personal-drive-library__manager"); panel.append(this.createElement("h2", "", "Adicionar pasta do Google Drive"), this.createElement("p", "personal-drive-library__manager-help", "Adicione o link do Google Drive aqui"));
@@ -293,13 +326,27 @@ export class PersonalDriveLibraryView extends BaseView {
       if (this.openLinkModal && section.isConnected && !document.querySelector("dialog[open] .personal-drive-library__manager")) openManager();
       for (const source of savedSources) { const state = await this.sources.syncState(source.id), cached = await this.sources.entries(source.id); if ((state && !state.completed) || (!state && cached.length === 0) || (state && state.version !== PERSONAL_DRIVE_SYNC_VERSION)) await sync(source); } })(); return section;
   }
-  private showDetails(entry: GoogleDriveLibraryEntry, book: Book | undefined, action: () => void): void {
-    const dialog = document.createElement("dialog"); dialog.className = "catalog-genre-dialog catalog-genre-dialog--details"; const panel = this.createElement("section", "catalog-genre-dialog__panel"); const title = entry.title || stripExtension(entry.name); const cover = this.createElement("img", "catalog-genre-dialog__cover") as HTMLImageElement; cover.src = book?.cover || entry.coverUrl || entry.thumbnailUrl; cover.alt = `Capa de ${title}`; cover.addEventListener("error", () => cover.remove(), { once: true }); panel.append(cover, this.createElement("h2", "", title), this.createElement("p", "catalog-genre-dialog__book", `Gênero: ${entry.genre}`));
-    if (entry.author) panel.append(this.createElement("p", "catalog-genre-dialog__book", `Autor: ${entry.author}`));
-    if (book?.publicationYear) panel.append(this.createElement("p", "catalog-genre-dialog__book", `Ano: ${book.publicationYear}`));
-    const synopsis = cleanText(entry.synopsis) ?? book?.summary ?? book?.description; if (synopsis) panel.append(this.createElement("p", "catalog-genre-dialog__book", synopsis));
-    panel.append(this.createElement("p", "catalog-genre-dialog__book", `Formato: ${extension(entry.name).toUpperCase() || "arquivo"}`));
-    const actions = this.createElement("div", "catalog-genre-dialog__actions"), close = this.createElement("button", "button button--secondary", "Fechar"), main = this.createElement("button", "button button--primary", book ? "Abrir" : "Baixar"); close.type = "button"; main.type = "button"; close.addEventListener("click", () => dialog.close()); main.addEventListener("click", () => { dialog.close(); action(); }); actions.append(close, main); panel.append(actions); dialog.append(panel); dialog.addEventListener("close", () => dialog.remove(), { once: true }); document.body.append(dialog); dialog.showModal();
+  /** The same page for every book and comic: only what the metadata really has is shown. */
+  private showDetails(entry: GoogleDriveLibraryEntry, book: Book | undefined, card: { coverUrl?: string } & Pick<DriveItemDetailsInput, "downloaded" | "current" | "watch" | "download" | "open">): void {
+    const comic = entry.contentType === "comic", title = cleanText(entry.title) ?? book?.title ?? stripExtension(entry.name);
+    const collection = (entry.collectionPath ?? []).map(name => name.trim()).filter(Boolean).join(" › ");
+    const author = cleanText(entry.author) ?? (book?.author && book.author !== "Autor desconhecido" ? cleanText(book.author) : undefined);
+    const facts: Array<readonly [string, string]> = [];
+    if (book?.publicationYear) facts.push(["Ano", String(book.publicationYear)]);
+    if (cleanText(book?.volume)) facts.push(["Edição", book!.volume!.trim()]);
+    if (cleanText(book?.series) && book!.series!.trim() !== collection) facts.push(["Série", book!.series!.trim()]);
+    facts.push(["Formato", extension(entry.name).toUpperCase() || "Arquivo"]);
+    const bytes = Number(entry.size ?? book?.fileSize ?? 0);
+    if (bytes > 0) facts.push(["Tamanho", `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024)} MB`]);
+    this.details.show({
+      kind: comic ? "comic" : "book", title, author, facts,
+      eyebrow: comic ? collection || cleanText(entry.genre) : cleanText(entry.genre),
+      synopsis: cleanText(entry.synopsis) ?? cleanText(book?.summary) ?? cleanText(book?.description),
+      coverUrl: card.coverUrl ?? (book?.cover || this.coverResolver.peek(entry) || undefined),
+      placeholder: () => createLumeoCoverPlaceholder(title),
+      resolveCover: signal => this.coverResolver.resolve(entry, signal),
+      downloaded: card.downloaded, current: card.current, watch: card.watch, download: card.download, open: card.open,
+    });
   }
 }
 function version(entry: GoogleDriveLibraryEntry): string { return entry.modifiedTime ?? `${entry.name}:${entry.size ?? ""}`; }
