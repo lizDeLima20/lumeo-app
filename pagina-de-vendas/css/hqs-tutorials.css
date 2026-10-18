@@ -1,0 +1,165 @@
+.hqs-tutorial-card {
+  gap: 1rem;
+  padding: 1rem;
+  color: #2b2032;
+  background: linear-gradient(145deg, #fffefd, #f5f0f8);
+  border-color: #e1d2b6;
+  box-shadow: 0 1rem 2.5rem rgba(46, 25, 60, 0.11);
+}
+
+.hqs-tutorial-card h3.hqs-tutorial-card__title {
+  margin: 0;
+  color: #302044;
+  font-size: clamp(1.25rem, 5vw, 1.62rem);
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.hqs-tutorial-card__body {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+}
+
+.hqs-tutorial-card__media {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: min(55vh, 29rem);
+  min-height: 20rem;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #d8a648;
+  border-radius: 1rem;
+  background: linear-gradient(90deg, #f1c568 0%, #d7a84b 20%, #9360ad 78%, #68408a 100%);
+  box-shadow: inset 0 0 2.4rem rgba(54, 28, 77, 0.18);
+}
+
+.hqs-tutorial-card__media::before {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.3), transparent 54%);
+  content: "";
+  pointer-events: none;
+}
+
+.hqs-tutorial-card video {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: min(55vh, 29rem);
+  max-height: 100%;
+  border-radius: 0.75rem;
+  background: transparent;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 0.75rem 1.25rem rgba(31, 15, 43, 0.24));
+}
+
+.hqs-tutorial-card__captions {
+  display: flex;
+  min-height: 8.7rem;
+  max-height: 10.5rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.3rem;
+  overflow: hidden;
+  border: 1px solid #e4dfe9;
+  border-radius: 1rem;
+  padding: 1rem 1.05rem;
+  color: #111;
+  background: #fff;
+  box-shadow: 0 0.55rem 1.4rem rgba(54, 35, 68, 0.07);
+  font-size: clamp(0.98rem, 4vw, 1.08rem);
+  font-weight: 800;
+  line-height: 1.48;
+}
+
+.hqs-tutorial-card__captions p {
+  margin: 0;
+  color: #332a39;
+  font-weight: 800;
+  opacity: 0.68;
+  transition: opacity 0.24s ease;
+  animation: hqs-tutorial-rise 0.24s ease both;
+}
+
+.hqs-tutorial-card .hqs-tutorial-card__captions p:not(.sales-eyebrow) {
+  margin: 0;
+  color: #332a39;
+  font-size: inherit;
+  font-weight: 800;
+  line-height: inherit;
+}
+
+.hqs-tutorial-card .hqs-tutorial-card__captions p:last-child {
+  color: #111;
+  opacity: 1;
+}
+
+.hqs-tutorial-card__captions p[data-typing="true"]::after {
+  display: inline-block;
+  width: 0.12em;
+  height: 1em;
+  margin-left: 0.14em;
+  background: #76509c;
+  content: "";
+  vertical-align: -0.12em;
+  animation: hqs-tutorial-caret 0.8s steps(1) infinite;
+}
+
+@keyframes hqs-tutorial-rise {
+  from {
+    transform: translateY(0.35rem);
+    opacity: 0;
+  }
+}
+
+@keyframes hqs-tutorial-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (min-width: 42rem) {
+  .hqs-tutorial-card {
+    padding: 1.15rem;
+  }
+
+  .hqs-tutorial-card__title {
+    text-align: left;
+  }
+
+  .hqs-tutorial-card__body {
+    grid-template-columns: minmax(0, 1.25fr) minmax(12rem, 0.75fr);
+    align-items: center;
+    gap: 1.1rem;
+  }
+
+  .hqs-tutorial-card__media,
+  .hqs-tutorial-card video {
+    height: min(54vh, 30rem);
+  }
+
+  .hqs-tutorial-card__captions {
+    min-height: 12rem;
+    max-height: 15rem;
+    font-size: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hqs-tutorial-card__captions p {
+    transition: none;
+    animation: none;
+  }
+
+  .hqs-tutorial-card__captions p[data-typing="true"]::after {
+    animation: none;
+  }
+}
