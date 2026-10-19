@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 432 996" role="img" aria-labelledby="title description">
+  <title id="title">Tutorial de importação pelo Google Drive</title>
+  <desc id="description">Tela roxa do Lumeo com um ícone de pasta e busca.</desc>
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#12091e"/><stop offset=".58" stop-color="#42235d"/><stop offset="1" stop-color="#1a0e29"/></linearGradient><radialGradient id="glow"><stop stop-color="#b87af0" stop-opacity=".7"/><stop offset="1" stop-color="#b87af0" stop-opacity="0"/></radialGradient></defs>
+  <rect width="432" height="996" fill="url(#bg)"/><circle cx="360" cy="135" r="210" fill="url(#glow)" opacity=".35"/><path d="M92 418h82l30 34h136v156H92z" fill="none" stroke="#efc573" stroke-width="12" stroke-linejoin="round"/><circle cx="244" cy="547" r="43" fill="none" stroke="#fff8ed" stroke-width="10"/><path d="m275 578 48 48" stroke="#fff8ed" stroke-width="10" stroke-linecap="round"/><text x="216" y="690" fill="#efc573" font-family="Arial,sans-serif" font-size="24" font-weight="700" text-anchor="middle">GOOGLE DRIVE + BUSCA</text><text x="216" y="728" fill="#dfd3e7" font-family="Arial,sans-serif" font-size="18" text-anchor="middle">Veja como adicionar sua coleção</text>
+</svg>

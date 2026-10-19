@@ -1,0 +1,556 @@
+body[data-sales-catalog="livros"] .sales-hero {
+  display: block;
+  min-height: 0;
+  padding: 1.35rem max(1rem, calc((100% - 1180px) / 2)) 1.5rem;
+}
+
+body[data-sales-catalog="livros"] .sales-hero__layout {
+  display: grid;
+  width: min(100%, 73.75rem);
+  margin-inline: auto;
+  gap: 1.35rem;
+}
+
+body[data-sales-catalog="livros"] .sales-hero__copy {
+  min-width: 0;
+  max-width: 45rem;
+}
+
+body[data-sales-catalog="livros"] .sales-hero h1 {
+  max-width: 43rem;
+  font-size: clamp(2.05rem, 9.3vw, 4.65rem);
+  line-height: 0.98;
+}
+
+body[data-sales-catalog="livros"] .sales-hero__lead {
+  max-width: 42rem;
+  margin-block: 0.72rem;
+  font-size: clamp(0.94rem, 3.45vw, 1.18rem);
+  line-height: 1.4;
+}
+
+body[data-sales-catalog="livros"] .sales-hero__offer {
+  gap: 0.4rem;
+  max-width: 31rem;
+  padding: 0.78rem 0.9rem;
+}
+
+body[data-sales-catalog="livros"] .sales-hero__price {
+  min-height: 2.65rem;
+}
+
+body[data-sales-catalog="livros"] .sales-hero__price strong {
+  font-size: clamp(2.35rem, 10vw, 4rem);
+}
+
+body[data-sales-catalog="livros"] .sales-button--hero {
+  min-height: 3rem;
+  padding-block: 0.7rem;
+}
+
+body[data-sales-catalog="livros"] .sales-guarantee {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
+  color: #f6d892;
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+body[data-sales-catalog="livros"] .sales-guarantee svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+body[data-sales-catalog="livros"] .sales-hero__legal {
+  text-align: center;
+}
+
+body[data-sales-catalog="livros"] .sales-hero__visual {
+  display: grid;
+  grid-template-columns: minmax(6.7rem, 8.2rem) minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  min-height: 0;
+  gap: 0.9rem;
+  margin: 0;
+}
+
+body[data-sales-catalog="livros"] .sales-hero__phone {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 432 / 984;
+  overflow: hidden;
+  border: 0.25rem solid rgba(247, 218, 154, 0.72);
+  border-radius: 1.35rem;
+  background: #100d13 url("../assets/tutorials/livros/lumeo-livros-hero-poster.webp") center / cover no-repeat;
+  box-shadow: 0 1.1rem 2.5rem rgba(0, 0, 0, 0.36), 0 0 0 0.1rem rgba(255, 255, 255, 0.12);
+}
+
+body[data-sales-catalog="livros"] .sales-hero__phone::before {
+  position: absolute;
+  z-index: 2;
+  top: 0.34rem;
+  left: 50%;
+  width: 31%;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: rgba(10, 8, 12, 0.86);
+  content: "";
+  transform: translateX(-50%);
+}
+
+body[data-sales-catalog="livros"] .sales-hero__phone video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  object-fit: contain;
+  transition: opacity 0.18s ease;
+}
+
+body[data-sales-catalog="livros"] .sales-hero__phone video[data-poster-only="true"] {
+  opacity: 0;
+}
+
+body[data-sales-catalog="livros"] .sales-hero__bullets {
+  width: 100%;
+  margin: 0;
+  gap: 0.48rem;
+}
+
+body[data-sales-catalog="livros"] .sales-hero__bullets li {
+  padding-left: 1.2rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+body[data-sales-catalog="livros"] .sales-proof-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.9rem;
+  overflow: visible;
+  text-align: center;
+}
+
+body[data-sales-catalog="livros"] .sales-proof-strip span {
+  flex: 0 1 auto;
+  white-space: normal;
+}
+
+body[data-sales-catalog="livros"] .sales-benefits__grid {
+  margin-top: 1.35rem;
+}
+
+body[data-sales-catalog="livros"] .sales-benefits__grid article {
+  min-height: 0;
+  padding: 0.9rem 1rem;
+}
+
+body[data-sales-catalog="livros"] .sales-benefits__grid span {
+  width: 2.75rem;
+  height: 2.75rem;
+  font-size: 1.42rem;
+  line-height: 1;
+}
+
+body[data-sales-catalog="livros"] .sales-benefits__grid h3 {
+  margin-top: 0.65rem;
+}
+
+body[data-sales-catalog="livros"] .sales-price-card > p {
+  color: #5d4970;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+body[data-sales-catalog="livros"] .sales-guarantee--offer {
+  color: #523178;
+}
+
+body[data-sales-catalog="livros"] .sales-offer {
+  padding-bottom: clamp(1.8rem, 4vw, 2.8rem);
+}
+
+body[data-sales-catalog="livros"] .sales-faq {
+  padding-top: clamp(1.4rem, 3vw, 2.3rem);
+}
+
+body[data-sales-catalog="livros"] .sales-footer {
+  padding-bottom: calc(5.8rem + env(safe-area-inset-bottom));
+}
+
+body[data-sales-catalog="livros"] .sales-mobile-cta {
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+}
+
+body[data-sales-catalog="livros"] .sales-mobile-cta[data-mobile-cta-ready="true"] {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.65rem);
+}
+
+body[data-sales-catalog="livros"] .sales-mobile-cta[data-mobile-cta-ready="true"].is-visible {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+@media (min-width: 56.25rem) {
+  body[data-sales-catalog="livros"] .sales-hero {
+    padding-block: clamp(2.2rem, 5vw, 4rem);
+  }
+
+  body[data-sales-catalog="livros"] .sales-hero__layout {
+    grid-template-columns: minmax(0, 1.22fr) minmax(15rem, 0.78fr);
+    align-items: center;
+    gap: clamp(2rem, 6vw, 5rem);
+  }
+
+  body[data-sales-catalog="livros"] .sales-hero__visual {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 1.15rem;
+  }
+
+  body[data-sales-catalog="livros"] .sales-hero__phone {
+    width: min(18vw, 14rem);
+  }
+
+  body[data-sales-catalog="livros"] .sales-hero__bullets {
+    width: min(100%, 31rem);
+    max-width: 22rem;
+    grid-template-columns: 1fr;
+  }
+
+  body[data-sales-catalog="livros"] .sales-hero__bullets li {
+    font-size: 0.9rem;
+  }
+}
+
+@media (min-width: 42rem) {
+  body[data-sales-catalog="livros"] .sales-footer {
+    padding-bottom: 2rem;
+  }
+}
+
+@media (max-width: 22.5rem) {
+  body[data-sales-catalog="livros"] .sales-hero__visual {
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    gap: 0.65rem;
+  }
+
+  body[data-sales-catalog="livros"] .sales-hero__bullets li {
+    font-size: 0.72rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-sales-catalog="livros"] .sales-hero__phone video {
+    opacity: 0;
+  }
+
+  body[data-sales-catalog="livros"] .sales-mobile-cta {
+    transition: none;
+  }
+}
+
+/* Bônus Lumeo Audiolivros: selo do hero, seção própria e item da oferta. */
+body[data-sales-catalog="livros"] .livros-bonus-badge {
+  justify-self: center;
+  margin: 0.1rem 0 0.15rem;
+  border: 1px solid rgba(255, 238, 196, 0.85);
+  border-radius: 999px;
+  padding: 0.34rem 0.85rem;
+  color: #2a1240;
+  background: linear-gradient(135deg, #ffe3a0, #e2ae4f 55%, #f6cf7c);
+  box-shadow: 0 0.35rem 1.1rem rgba(226, 174, 79, 0.38);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  text-align: center;
+}
+
+body[data-sales-catalog="livros"] .livros-receive {
+  display: grid;
+  gap: 0.45rem;
+  border-bottom: 1px dashed rgba(82, 49, 120, 0.28);
+  padding-bottom: 0.85rem;
+}
+
+body[data-sales-catalog="livros"] .livros-receive h3 {
+  margin: 0;
+  color: #35204f;
+  font-size: 0.95rem;
+}
+
+body[data-sales-catalog="livros"] .livros-receive ul {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body[data-sales-catalog="livros"] .livros-receive li {
+  color: #4b3a5c;
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+body[data-sales-catalog="livros"] .livros-receive li span {
+  display: inline-block;
+  min-width: 1.3rem;
+  color: #6f4594;
+  font-weight: 900;
+}
+
+body[data-sales-catalog="livros"] .livros-receive__bonus {
+  justify-self: start;
+  border-radius: 0.6rem;
+  padding: 0.3rem 0.55rem 0.3rem 0.35rem;
+  color: #2a1240 !important;
+  background: linear-gradient(135deg, #ffe3a0, #f0c46c);
+}
+
+.livros-bonus {
+  padding: clamp(1.2rem, 5vw, 3rem) 1rem;
+  background: #f8f3fb;
+}
+
+.livros-bonus__inner {
+  position: relative;
+  display: grid;
+  grid-template-areas: "copy" "visual" "cards" "details";
+  gap: 1.4rem;
+  width: min(1120px, 100%);
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid rgba(239, 197, 115, 0.45);
+  border-radius: 1.4rem;
+  padding: 2.2rem 1.15rem 1.6rem;
+  color: #fff;
+  background: radial-gradient(circle at 88% 12%, rgba(226, 174, 79, 0.26), transparent 18rem),
+    radial-gradient(circle at 8% 100%, rgba(126, 69, 182, 0.45), transparent 22rem),
+    linear-gradient(132deg, #12091e, #301443 58%, #160d23);
+  box-shadow: 0 1.4rem 3rem rgba(35, 16, 52, 0.28);
+}
+
+.livros-bonus__ribbon {
+  position: absolute;
+  z-index: 2;
+  top: 1.05rem;
+  right: -2.6rem;
+  width: 10rem;
+  padding: 0.32rem 0;
+  color: #2a1240;
+  background: linear-gradient(135deg, #ffe3a0, #e2ae4f);
+  box-shadow: 0 0.3rem 0.9rem rgba(0, 0, 0, 0.3);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-align: center;
+  transform: rotate(38deg);
+}
+
+.livros-bonus__copy { grid-area: copy; max-width: 36rem; padding-right: 2.2rem; }
+.livros-bonus .sales-eyebrow { margin: 0 0 0.5rem; color: #efc573; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.14em; }
+.livros-bonus h2 { margin: 0; color: #fffaf3; font-size: clamp(1.95rem, 8.4vw, 3.4rem); font-weight: 900; line-height: 1; letter-spacing: -0.05em; }
+.livros-bonus__lead { margin: 0.85rem 0 0; color: #eee7f4; font-size: clamp(0.95rem, 3.6vw, 1.1rem); line-height: 1.5; }
+
+.livros-bonus__visual { grid-area: visual; display: grid; place-items: center; }
+
+.livros-bonus__phone {
+  width: min(62vw, 15.5rem);
+  aspect-ratio: 9 / 15.5;
+  border: 0.3rem solid rgba(247, 218, 154, 0.72);
+  border-radius: 1.6rem;
+  padding: 0.35rem;
+  background: #0e0914;
+  box-shadow: 0 1.3rem 2.8rem rgba(0, 0, 0, 0.45), 0 0 2.5rem rgba(226, 174, 79, 0.18);
+  transform: rotate(-2.5deg);
+}
+
+.livros-bonus__screen {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto auto;
+  align-items: center;
+  gap: 0.55rem;
+  height: 100%;
+  border-radius: 1.2rem;
+  padding: 0.9rem 0.85rem 1rem;
+  background: radial-gradient(circle at 50% 38%, rgba(125, 84, 179, 0.35), transparent 70%), #160d22;
+}
+
+.livros-bonus__screen-title { margin: 0; color: #e9def3; font-size: 0.72rem; font-weight: 800; text-align: center; }
+
+.livros-bonus__turntable { position: relative; display: grid; place-items: center; height: 100%; }
+
+.livros-bonus__disc {
+  display: grid;
+  width: 82%;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 30%, rgba(255, 255, 255, 0.06) 31%, transparent 32%),
+    repeating-radial-gradient(circle, #1b1023 0 2px, #2a1838 2px 3px),
+    #1b1023;
+  box-shadow: 0 0.7rem 1.6rem rgba(0, 0, 0, 0.55), inset 0 0 0 0.18rem rgba(255, 255, 255, 0.05);
+}
+
+.livros-bonus__disc span {
+  display: grid;
+  width: 36%;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff6e3;
+  background: radial-gradient(circle, #160d22 0 7%, transparent 8%), linear-gradient(135deg, #8d5fc6, #4b2b70);
+  font-size: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.livros-bonus__arm {
+  position: absolute;
+  top: 2%;
+  right: 4%;
+  width: 0.28rem;
+  height: 52%;
+  border-radius: 999px;
+  background: linear-gradient(#efc573, #b98a3a);
+  transform: rotate(24deg);
+  transform-origin: top center;
+}
+
+.livros-bonus__arm::before {
+  position: absolute;
+  top: -0.35rem;
+  left: 50%;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: #efc573;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.livros-bonus__arm::after {
+  position: absolute;
+  bottom: -0.2rem;
+  left: 50%;
+  width: 0.6rem;
+  height: 0.85rem;
+  border-radius: 0.15rem;
+  background: #e2ae4f;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.livros-bonus__timeline { height: 0.26rem; border-radius: 999px; background: rgba(255, 255, 255, 0.16); }
+.livros-bonus__timeline span { display: block; width: 33%; height: 100%; border-radius: inherit; background: #efc573; }
+.livros-bonus__times { display: flex; justify-content: space-between; color: #b9a9c6; font-size: 0.56rem; font-weight: 700; }
+.livros-bonus__controls { display: flex; align-items: center; justify-content: space-between; color: #f3eaf9; font-size: 0.72rem; font-weight: 800; }
+.livros-bonus__controls b { display: grid; width: 2.3rem; height: 2.3rem; place-items: center; border-radius: 50%; color: #2a1240; background: #efc573; font-size: 0.85rem; }
+
+.livros-bonus__details { grid-area: details; display: grid; gap: 1rem; }
+
+.livros-bonus__cards { grid-area: cards; display: grid; gap: 0.8rem; margin: 0; padding: 0; list-style: none; }
+
+.livros-bonus__card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.6rem minmax(0, 1fr);
+  align-content: start;
+  column-gap: 0.8rem;
+  border: 1px solid rgba(239, 197, 115, 0.38);
+  border-radius: 1rem;
+  padding: 1rem 1rem 1.05rem;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
+}
+
+.livros-bonus__tag {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-bottom: 0.65rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  color: #2a1240;
+  background: linear-gradient(135deg, #ffe3a0, #e2ae4f);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.livros-bonus__icon {
+  display: grid;
+  grid-row: span 2;
+  width: 2.6rem;
+  height: 2.6rem;
+  place-items: center;
+  border-radius: 0.8rem;
+  background: rgba(239, 197, 115, 0.16);
+  font-size: 1.3rem;
+}
+
+.livros-bonus__card h3 { margin: 0 0 0.3rem; color: #fffaf3; font-size: 1.08rem; line-height: 1.2; }
+.livros-bonus__card p { margin: 0; color: #e3d8ec; font-size: 0.86rem; line-height: 1.5; }
+
+.livros-bonus__highlight {
+  margin: 0;
+  border-left: 0.22rem solid #efc573;
+  padding: 0.2rem 0 0.2rem 0.85rem;
+  color: #f4d38f;
+  font-size: 1.02rem;
+  font-style: italic;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.livros-bonus__cta {
+  width: 100%;
+  border: 2px solid #efc573;
+  color: #f6d892;
+  background: transparent;
+  font-size: 0.8rem;
+}
+
+.livros-bonus__cta:hover { background: rgba(239, 197, 115, 0.12); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .livros-bonus__disc { animation: livros-bonus-spin 7s linear infinite; }
+}
+
+@keyframes livros-bonus-spin { to { transform: rotate(360deg); } }
+
+@media (min-width: 42rem) {
+  body[data-sales-catalog="livros"] .livros-bonus-badge { justify-self: start; }
+}
+
+@media (min-width: 56.25rem) {
+  .livros-bonus__inner {
+    grid-template-columns: minmax(0, 1.15fr) minmax(16rem, 0.85fr);
+    grid-template-areas: "copy visual" "cards cards" "details details";
+    align-items: center;
+    column-gap: clamp(2rem, 5vw, 4rem);
+    padding: 3rem clamp(2rem, 4vw, 3.5rem);
+  }
+
+  .livros-bonus__phone { width: min(22vw, 15.5rem); }
+  .livros-bonus__cards { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 0.4rem; }
+  .livros-bonus__card { grid-template-columns: 1fr; }
+  .livros-bonus__icon { grid-row: auto; margin-bottom: 0.7rem; }
+  .livros-bonus__details { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 2rem; }
+  .livros-bonus__cta { width: auto; padding-inline: 1.6rem; }
+}

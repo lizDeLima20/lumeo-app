@@ -1,0 +1,150 @@
+body{overflow-x:clip;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:#fffdfa}h1,h2,h3,.sales-button{font-family:Manrope,Sora,"Avenir Next","Segoe UI",sans-serif}.sales-header{position:sticky;z-index:30;top:0;border-bottom:1px solid rgba(255,255,255,.12);background:rgba(20,11,32,.94);backdrop-filter:blur(14px)}.sales-header__inner{display:flex;align-items:center;justify-content:space-between;gap:1rem;width:min(1180px,calc(100% - 2rem));min-height:4.35rem;margin:auto}.sales-brand{display:flex;align-items:center;gap:.55rem;color:#fff8ed;font-size:1.16rem;font-weight:900;text-decoration:none}.sales-brand img{width:2.25rem;height:2.25rem;object-fit:contain}.sales-brand small{display:block;color:#cfc2d9;font-size:.5rem;letter-spacing:.11em;text-transform:uppercase}.sales-header__cta{border:1px solid rgba(239,197,115,.5);border-radius:999px;padding:.5rem .72rem;color:#f7d58e;background:transparent;font-size:.72rem;font-weight:850}
+.sales-section{width:min(1120px,calc(100% - 2rem));margin-inline:auto;padding-block:clamp(3.8rem,10vw,7rem)}.sales-heading{max-width:45rem}.sales-heading h2,.sales-devices h2,.sales-offer h2{margin:0;color:#35204f;font-size:clamp(2rem,8vw,4rem);line-height:1.02;letter-spacing:-.055em;text-wrap:balance}.sales-heading>p:not(.sales-eyebrow){color:#726b79;line-height:1.65}.sales-heading--center{margin-inline:auto;text-align:center}.sales-eyebrow{color:#73519b}.sales-button--primary{background:linear-gradient(135deg,#7d54b3,#4b2b70);box-shadow:0 .8rem 1.8rem rgba(82,49,120,.27)}
+.sales-hero{position:relative;display:grid;gap:2rem;overflow:hidden;padding:clamp(2.3rem,8vw,5.8rem) max(1rem,calc((100% - 1180px)/2));color:#fff;background:radial-gradient(circle at 86% 20%,rgba(226,174,79,.25),transparent 20rem),radial-gradient(circle at 12% 100%,rgba(126,69,182,.4),transparent 26rem),linear-gradient(132deg,#12091e,#301443 58%,#160d23)}.sales-hero__copy{position:relative;z-index:3}.sales-hero .sales-eyebrow{color:#efc573}.sales-hero h1{max-width:48rem;margin:0;color:#fffaf3;font-size:clamp(2.5rem,11vw,5.5rem);font-weight:900;line-height:.96;letter-spacing:-.065em;text-wrap:balance}.sales-hero h1 span{color:#f1c871}.sales-hero__lead{max-width:39rem;margin:1.15rem 0;color:#eee7f4;font-size:clamp(1.05rem,3.5vw,1.3rem);font-weight:650;line-height:1.48}.sales-hero__bullets{display:grid;gap:.55rem;max-width:40rem;margin:0 0 1.35rem;padding:0;list-style:none}.sales-hero__bullets li{position:relative;padding-left:1.55rem;color:#f8f1fc;font-size:.93rem;line-height:1.45}.sales-hero__bullets li::before{position:absolute;left:0;color:#efc573;content:"✓";font-weight:900}.sales-hero__offer{display:grid;gap:.55rem}.sales-button--hero{width:100%;font-size:.84rem}.sales-hero__offer p{margin:0;color:#d6cadd;font-size:.8rem;text-align:center}.sales-hero__offer strong{color:#f4d38f;font-size:1rem}.sales-hero__legal{display:block;max-width:39rem;margin-top:.9rem;color:#ad9fb8;font-size:.68rem;line-height:1.45}.sales-hero__visual{position:relative;display:grid;min-height:25rem;place-items:center}.sales-glow{position:absolute;width:20rem;height:20rem;border-radius:50%;background:radial-gradient(circle,#d8a54f50,transparent 68%);filter:blur(5px)}.sales-phone{position:relative;overflow:hidden;border:7px solid #21182a;border-radius:2.1rem;background:#111;box-shadow:0 2rem 4rem rgba(0,0,0,.45),0 0 0 1px #d7b26d66}.sales-phone::before{position:absolute;z-index:2;top:.45rem;left:50%;width:31%;height:.78rem;border-radius:999px;content:"";background:#151019;transform:translateX(-50%)}.sales-phone img{display:block;width:100%;height:100%;object-fit:cover}.sales-phone--hero{width:min(55vw,13.8rem);aspect-ratio:9/19.5;transform:rotate(4deg)}.sales-hero__note{position:absolute;right:0;bottom:1rem;display:grid;gap:.12rem;max-width:12rem;border:1px solid rgba(255,255,255,.18);border-radius:.8rem;padding:.75rem .9rem;background:rgba(35,18,49,.85);box-shadow:0 .8rem 2rem rgba(0,0,0,.28);backdrop-filter:blur(8px)}.sales-hero__note strong{color:#f5cf82;font-size:.82rem}.sales-hero__note span{color:#e7deeb;font-size:.66rem}.sales-proof-strip{display:flex;gap:.65rem;overflow-x:auto;padding:.85rem 1rem;color:#4e3862;background:#f5ecdc;font-size:.72rem;font-weight:800;scrollbar-width:none}.sales-proof-strip span{flex:0 0 auto}
+.sales-how__steps{display:grid;gap:.8rem;margin:2rem 0;padding:0;list-style:none}.sales-how__steps li{display:grid;grid-template-columns:2.3rem 1fr;gap:.8rem;border:1px solid #ece3ef;border-radius:1rem;padding:1.1rem;background:#fff;box-shadow:0 .6rem 1.5rem rgba(62,38,75,.05)}.sales-how__steps strong{color:#c28e3d;font-size:.73rem;letter-spacing:.1em}.sales-how__steps h3{margin:0 0 .3rem;color:#35204f;font-size:1.05rem}.sales-how__steps p{margin:0;color:#726b79;font-size:.88rem;line-height:1.5}.sales-demos{display:grid;gap:1rem;margin-top:1.5rem}.sales-demo{display:grid;gap:1rem;overflow:hidden;border-radius:1.2rem;padding:1.1rem;color:#fff;background:linear-gradient(140deg,#2b1942,#513176)}.sales-demo__copy span{color:#e9bd71;font-size:.68rem;font-weight:900;letter-spacing:.14em}.sales-demo__copy h3{margin:.35rem 0;color:#fff;font-size:1.4rem}.sales-demo__copy p{margin:0;color:#ded4e8;font-size:.88rem;line-height:1.55}.sales-video-placeholder,.sales-demo__animation{width:100%;aspect-ratio:16/10;border-radius:.85rem}.sales-video-placeholder{display:grid;place-content:center;justify-items:center;gap:.35rem;border:1px dashed rgba(239,197,115,.55);color:#f6e7c8;background:radial-gradient(circle at 50% 50%,#6c469455,transparent 45%),#170e23;text-align:center}.sales-video-placeholder>span{display:grid;width:3rem;height:3rem;place-items:center;border-radius:50%;color:#281537;background:#efc573}.sales-video-placeholder small{color:#ab9bb8;font-size:.68rem}.sales-demo__animation{display:block;object-fit:cover;background:#f8f2e7}
+.sales-tutorials{display:grid;grid-auto-columns:min(88vw,25rem);grid-auto-flow:column;gap:1rem;margin:1.5rem calc(50% - 50vw) 0;padding:0 max(1rem,calc((100vw - 1120px)/2));overflow-x:auto;overscroll-behavior-inline:contain;scroll-padding-inline:1rem;scroll-snap-type:inline mandatory;scrollbar-width:none}.sales-tutorials::-webkit-scrollbar{display:none}.sales-tutorial-card{display:grid;align-content:start;gap:1rem;overflow:hidden;border:1px solid rgba(222,180,102,.3);border-radius:1.25rem;padding:1.1rem;color:#fff;background:radial-gradient(circle at 90% 5%,rgba(154,94,211,.28),transparent 14rem),linear-gradient(145deg,#1a0e29,#36204d);box-shadow:0 1rem 2.5rem rgba(46,25,60,.15);scroll-snap-align:center}.sales-tutorial-card__copy span{color:#e9bd71;font-size:.66rem;font-weight:900;letter-spacing:.13em}.sales-tutorial-card__copy h3{margin:.4rem 0 .55rem;color:#fff8ed;font-size:clamp(1.25rem,5vw,1.65rem);line-height:1.08;text-transform:uppercase}.sales-tutorial-card__copy p{margin:0;color:#e6dceb;font-size:.88rem;line-height:1.56}.sales-tutorial-card__copy small{display:block;margin-top:.65rem;color:#cfb8da;font-size:.7rem;line-height:1.45}.sales-tutorial-card__media{position:relative;display:grid;min-height:24rem;overflow:hidden;place-items:center;border:1px solid rgba(255,255,255,.1);border-radius:1rem;background:#09060d}.sales-tutorial-card video{display:block;width:auto;max-width:100%;height:min(60vh,31rem);max-height:100%;object-fit:contain;background:#09060d}.sales-tutorial-card__play{position:absolute;z-index:2;display:grid;width:4rem;height:4rem;place-items:center;border:1px solid rgba(255,255,255,.6);border-radius:50%;padding:0;color:#2a1738;background:linear-gradient(145deg,#f7d995,#dba957);box-shadow:0 .8rem 2rem rgba(0,0,0,.42);cursor:pointer;transition:transform .2s ease,box-shadow .2s ease}.sales-tutorial-card__play:hover,.sales-tutorial-card__play:focus-visible{box-shadow:0 1rem 2.4rem rgba(0,0,0,.5),0 0 0 .3rem rgba(239,197,115,.2);transform:scale(1.06)}.sales-tutorial-card__play span{margin-left:.18rem;font-size:1.25rem}.sales-tutorial-card__play[hidden]{display:none}
+.sales-devices{display:grid;gap:2.2rem;align-items:center}.sales-devices__copy>p:not(.sales-eyebrow){color:#726b79;line-height:1.65}.sales-checklist,.sales-offer__copy ul{display:grid;gap:.55rem;margin:1.25rem 0 0;padding:0;list-style:none}.sales-checklist li,.sales-offer__copy li{position:relative;padding-left:1.4rem;color:#4f4659;line-height:1.5}.sales-checklist li::before,.sales-offer__copy li::before{position:absolute;left:0;color:#b67e31;content:"✓";font-weight:900}.sales-devices__stage{position:relative;display:grid;min-height:28rem;place-items:center;border-radius:1.4rem;background:radial-gradient(circle at 50% 45%,#fff 0,#f1e6d5 48%,#d5c0df);box-shadow:inset 0 0 0 1px #6a4a7c22}.sales-tablet{width:min(82%,24rem);height:22rem;overflow:hidden;border:8px solid #241a2d;border-radius:1.35rem;background:#121018;box-shadow:0 1.5rem 3rem rgba(57,37,66,.25);transform:rotate(-2deg)}.sales-tablet img{width:100%;height:100%;object-fit:cover;object-position:top}.sales-phone--devices{position:absolute;right:5%;bottom:1.2rem;width:7.2rem;height:15rem;transform:rotate(3deg)}
+.sales-library{width:100%;max-width:none;padding-inline:0;background:#140c20}.sales-library .sales-heading{padding-inline:1rem}.sales-library .sales-heading h2{color:#fff}.sales-library .sales-heading>p{color:#bdb0c7}.sales-library__rails{display:grid;gap:.8rem;margin-top:1.7rem;overflow:hidden}.sales-library__rail{display:flex;width:max-content;gap:.65rem;animation:sales-rail 52s linear infinite;will-change:transform}.sales-library__rail--reverse{animation-direction:reverse;animation-duration:58s}.sales-library__rail:hover,.sales-library__rail:focus-within{animation-play-state:paused}.sales-demo-book{position:relative;flex:0 0 7.1rem}.sales-demo-book__cover{display:block;width:100%;overflow:hidden;border:0;border-radius:.45rem;padding:0;background:#2a2132;box-shadow:0 .6rem 1.2rem rgba(0,0,0,.32)}.sales-demo-book__cover img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover}.sales-demo-book__download{position:absolute;right:.35rem;bottom:2.45rem;display:grid;width:2rem;height:2rem;place-items:center;border:1px solid #fff8;border-radius:50%;color:#fff;background:#38204ddd;box-shadow:0 .3rem .7rem #0007;font-size:.94rem}.sales-demo-book__download[aria-pressed="true"]{background:#8b5bc6}.sales-demo-book h3{display:-webkit-box;overflow:hidden;margin:.45rem 0 0;-webkit-box-orient:vertical;-webkit-line-clamp:2;color:#f6eff9;font-size:.72rem;line-height:1.2}.sales-library__notice{max-width:45rem;margin:1.35rem auto 0;padding-inline:1rem;color:#a99cb4;font-size:.72rem;line-height:1.5;text-align:center}@keyframes sales-rail{to{transform:translateX(calc(-50% - .325rem))}}
+.sales-benefits__grid{display:grid;gap:.8rem;margin-top:2rem}.sales-benefits__grid article{border:1px solid #eadfec;border-radius:1rem;padding:1.25rem;background:linear-gradient(145deg,#fff,#faf5fc)}.sales-benefits__grid span{display:grid;width:2.5rem;height:2.5rem;place-items:center;border-radius:.7rem;color:#6e4299;background:#eee1f7;font-weight:900}.sales-benefits__grid h3{margin:.8rem 0 .4rem;color:#35204f}.sales-benefits__grid p{margin:0;color:#726b79;font-size:.88rem;line-height:1.55}
+.sales-stories{border-radius:1.25rem;background:linear-gradient(135deg,#f7efe2,#f2e9f7)}.sales-stories .sales-heading small{display:block;color:#7a6f80;font-size:.7rem;line-height:1.45}.sales-stories__carousel{margin-top:1.4rem}.sales-stories__track{display:grid;grid-auto-columns:100%;grid-auto-flow:column;gap:.8rem;overflow-x:auto;scroll-behavior:smooth;scroll-snap-type:x mandatory;scrollbar-width:none}.sales-stories__track::-webkit-scrollbar{display:none}.sales-story-card{display:grid;gap:1rem;border:1px solid #4c315314;border-radius:1rem;padding:1rem;background:#fffc;scroll-snap-align:start}.sales-story-card__image{position:relative;display:grid;min-height:12rem;overflow:hidden;place-items:center;border:0;border-radius:.75rem;padding:.35rem;background:#e9e4e2}.sales-story-card__image img{width:100%;height:13rem;object-fit:contain}.sales-story-card__image span{position:absolute;right:.6rem;bottom:.6rem;border-radius:999px;padding:.35rem .55rem;color:#fff;background:#291a36dd;font-size:.65rem}.sales-story-card h3{margin:0;color:#35204f}.sales-story-card strong{display:block;margin:.5rem 0;color:#513765;line-height:1.4}.sales-story-card p{margin:0;color:#726b79;font-size:.86rem}.sales-stories__navigation{display:flex;align-items:center;justify-content:center;gap:.8rem;margin-top:1rem}.sales-stories__navigation>button{width:2.4rem;height:2.4rem;border:1px solid #52317833;border-radius:50%;color:#523178;background:#fff}.sales-stories__navigation [data-stories-indicators]{display:flex;gap:.3rem}.sales-stories__navigation [data-stories-indicators] button{width:.48rem;height:.48rem;border:0;border-radius:50%;padding:0;background:#cfc4d9}.sales-stories__navigation [data-stories-indicators] button[aria-current="true"]{width:1.1rem;border-radius:1rem;background:#523178}.sales-story-modal{display:grid;place-items:center}.sales-story-modal img{max-height:76vh;object-fit:contain;border-radius:.6rem}
+.sales-offer{display:grid;gap:1.5rem}.sales-offer__copy>p{color:#726b79;line-height:1.65}.sales-price-card{display:grid;gap:.8rem;border:1px solid #e6d4b6;border-radius:1.2rem;padding:1.4rem;background:linear-gradient(145deg,#faf0db,#f0e3ca);box-shadow:0 1rem 2rem rgba(74,45,66,.1)}.sales-price-card p,.sales-price-card small,.sales-price-card em{margin:0;color:#716477}.sales-price-card>strong{color:#523178;font-size:clamp(2.3rem,11vw,4.5rem);letter-spacing:-.07em}.sales-price-card small{font-weight:800}.sales-price-card em{font-size:.68rem;font-style:normal;line-height:1.4}.sales-faq [data-sales-faq]{display:grid;gap:.2rem;margin-top:1.5rem}.sales-faq details{border-bottom:1px solid #e7ddea;padding:.9rem 0}.sales-faq summary{color:#35204f;cursor:pointer;font-weight:850}.sales-faq details p{margin:.7rem 0 0;color:#726b79;font-size:.9rem;line-height:1.6}.sales-footer{display:flex;align-items:center;justify-content:center;gap:.55rem;border-top:1px solid #e7ddea;padding:2rem 1rem 6rem;color:#887d8d;font-size:.74rem;text-align:center}.sales-footer img{width:2rem;height:2rem}.sales-footer p{margin:0}.sales-whatsapp{position:fixed;z-index:20;right:1rem;bottom:5rem;border:0;border-radius:999px;padding:.75rem 1rem;color:#fff;background:#218c50;box-shadow:0 .6rem 1.3rem #0b54284a;font-size:.72rem;font-weight:850}.sales-mobile-cta{position:fixed;z-index:20;right:.65rem;bottom:max(.65rem,env(safe-area-inset-bottom));left:.65rem;font-size:.78rem}.sales-book-modal{display:grid;gap:1.1rem}.sales-book-modal>img{width:min(9rem,45%);aspect-ratio:2/3;object-fit:cover;border-radius:.45rem;box-shadow:.4rem .6rem 1.2rem #23142d2b}.sales-book-modal h2{padding-right:2rem}.sales-book-modal__author{margin-top:-.45rem!important;font-weight:700}.sales-book-modal__actions{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}.sales-book-modal__actions .sales-button{padding-inline:.7rem}.sales-book-modal__status{min-height:1.4rem;margin:0!important;color:#6f4594!important;font-weight:800}
+@media(min-width:42rem){.sales-hero{grid-template-columns:minmax(0,1.1fr) minmax(18rem,.9fr);align-items:center}.sales-button--hero{width:auto}.sales-hero__offer{justify-items:start}.sales-hero__offer p{text-align:left}.sales-phone--hero{width:min(30vw,16rem)}.sales-how__steps{grid-template-columns:repeat(3,1fr)}.sales-tutorials{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-columns:auto;grid-auto-flow:row;margin:1.5rem 0 0;padding:0;overflow:visible}.sales-demos{grid-template-columns:1fr}.sales-demo{grid-template-columns:minmax(14rem,.75fr) minmax(0,1.25fr);align-items:center}.sales-devices{grid-template-columns:1fr 1fr}.sales-benefits__grid{grid-template-columns:1fr 1fr}.sales-stories__track{grid-auto-columns:calc((100% - .8rem)/2)}.sales-story-card{grid-template-columns:minmax(8rem,.8fr) 1.2fr;align-items:center}.sales-offer{grid-template-columns:1.25fr .75fr;align-items:center}.sales-book-modal{grid-template-columns:8rem 1fr}.sales-book-modal>img{width:100%;grid-row:1/3}.sales-book-modal__actions{grid-column:2}}
+@media(min-width:64rem){.sales-header__cta{color:#21122f;background:#efc573}.sales-hero h1{font-size:4.7rem}.sales-hero__visual{min-height:38rem}.sales-phone--hero{width:18rem}.sales-library__rail{gap:.9rem}.sales-demo-book{flex-basis:8.2rem}.sales-benefits__grid{grid-template-columns:repeat(4,1fr)}.sales-stories__track{grid-auto-columns:calc((100% - 1.6rem)/3)}.sales-story-card{grid-template-columns:1fr}.sales-mobile-cta{display:none}.sales-footer{padding-bottom:2rem}}
+@media(prefers-reduced-motion:reduce){.sales-library__rail{animation:none}.sales-library__rails{overflow-x:auto}.sales-demo__animation{display:none}}
+.sales-tutorial-card{gap:.75rem;padding:.85rem}.sales-tutorial-card__copy h3{margin:.3rem 0 .4rem;font-size:clamp(1.15rem,4.6vw,1.5rem)}.sales-tutorial-card__copy p{font-size:.84rem;line-height:1.45}.sales-tutorial-card__copy small{margin-top:.45rem;font-size:.68rem;line-height:1.35}.sales-tutorial-card__media{min-height:0;height:min(42vh,22rem)}.sales-tutorial-card video{height:min(42vh,22rem)}
+@media(min-width:42rem){.sales-tutorial-card{gap:.8rem;padding:.9rem}.sales-tutorial-card__media,.sales-tutorial-card video{height:min(42vh,22rem)}}
+.sales-tutorial-card{gap:.8rem;padding:.85rem}.sales-tutorial-card__title{margin:0;color:#fff8ed;font-size:clamp(1.15rem,4.6vw,1.5rem);line-height:1.1;text-align:center}.sales-tutorial-card__body{display:grid;gap:.75rem;min-width:0}.sales-tutorial-card__media{height:min(37vh,19rem);min-height:0}.sales-tutorial-card video{width:auto;height:min(37vh,19rem);max-height:100%;pointer-events:none}.sales-tutorial-card__captions{display:flex;min-height:5.8rem;max-height:7.2rem;flex-direction:column;justify-content:flex-end;overflow:hidden;border:1px solid rgba(239,197,115,.24);border-radius:.85rem;padding:.7rem .8rem;background:rgba(11,6,18,.42);color:#f4e8d3;font-size:.86rem;line-height:1.35}.sales-tutorial-card__captions p{margin:0;color:#f4e8d3;opacity:.65;transition:transform .35s ease,opacity .35s ease;animation:tutorial-rise .35s ease both}.sales-tutorial-card__captions p:last-child{color:#fff8ed;opacity:1}.sales-tutorial-card__captions p[data-typing="true"]::after{display:inline-block;width:.45em;height:1em;margin-left:.12em;vertical-align:-.12em;content:"";border-right:2px solid #efc573;animation:tutorial-caret .8s steps(1,end) infinite}@keyframes tutorial-rise{from{opacity:0;transform:translateY(.5rem)}to{opacity:.65;transform:translateY(0)}}@keyframes tutorial-caret{50%{opacity:0}}
+@media(min-width:42rem){.sales-tutorial-card{padding:1rem}.sales-tutorial-card__title{text-align:left}.sales-tutorial-card__body{grid-template-columns:minmax(0,1.05fr) minmax(11rem,.8fr);align-items:center;gap:1rem}.sales-tutorial-card__media,.sales-tutorial-card video{height:min(37vh,19rem)}.sales-tutorial-card__captions{min-height:8rem;max-height:10rem;font-size:.92rem}}
+@media(prefers-reduced-motion:reduce){.sales-tutorial-card__captions p[data-typing="true"]::after{animation:none}.sales-tutorial-card__captions p{transition:none}}
+.sales-hero{min-height:0;gap:1rem;padding:1.55rem max(1rem,calc((100% - 1180px)/2)) 1.3rem}.sales-hero .sales-eyebrow{margin:0 0 .5rem;font-size:.63rem;letter-spacing:.13em}.sales-hero h1{max-width:37rem;font-size:clamp(2.15rem,10.1vw,4.5rem);line-height:.98;letter-spacing:-.058em}.sales-hero__lead{max-width:36rem;margin:.75rem 0;color:#eee7f4;font-size:clamp(.98rem,3.7vw,1.2rem);line-height:1.42}.sales-hero__bullets{gap:.42rem;margin:0 0 .9rem}.sales-hero__bullets li{padding-left:1.3rem;font-size:.84rem;line-height:1.38}.sales-hero__offer{gap:.4rem;max-width:25rem}.sales-button--hero{min-height:3.15rem;font-size:.8rem}.sales-hero__offer p{font-size:.76rem}.sales-hero__offer strong{font-size:1.2rem}.sales-hero__legal{margin:0;color:#c5b8ce;font-size:.66rem;line-height:1.38}.sales-hero__visual{min-height:13.75rem;margin-top:-.1rem}.sales-glow{width:14rem;height:14rem}.sales-phone--hero{width:min(34vw,7.5rem);transform:rotate(3deg)}.sales-hero__note{display:none}
+@media(min-width:42rem){.sales-hero{grid-template-columns:minmax(0,1.15fr) minmax(17rem,.85fr);align-items:center;gap:2rem;padding-block:clamp(2.7rem,5vw,4.25rem)}.sales-hero__visual{min-height:25rem;margin:0}.sales-phone--hero{width:min(28vw,14rem)}.sales-hero__note{display:grid}.sales-hero__bullets li{font-size:.9rem}.sales-button--hero{width:auto;padding-inline:1.3rem}}
+@media(min-width:64rem){.sales-hero h1{font-size:clamp(3.4rem,5.1vw,4.65rem)}.sales-hero__visual{min-height:27rem}.sales-phone--hero{width:15rem}}
+.sales-devices{gap:1.4rem;padding-block:clamp(3rem,7vw,4.5rem)}.sales-devices__copy .sales-eyebrow{margin:0 0 .55rem;color:#7650a1;font-size:.65rem;font-weight:900;letter-spacing:.12em}.sales-devices h2{font-size:clamp(2rem,8.1vw,3.55rem);line-height:1.02}.sales-devices__copy>p:not(.sales-eyebrow){max-width:39rem;margin:.85rem 0 0;font-size:.94rem;line-height:1.55}.sales-devices__features{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:1rem 0 0;padding:0;list-style:none}.sales-devices__features li{display:flex;align-items:flex-start;gap:.38rem;min-width:0;border:1px solid #d9c9e633;border-radius:.7rem;padding:.5rem .55rem;color:#4f4659;background:linear-gradient(145deg,#fff,#faf6fc);font-size:.72rem;font-weight:750;line-height:1.3}.sales-devices__features li::before{flex:0 0 auto;color:#b67e31;content:"✓";font-weight:900}.sales-devices__stage{min-height:18rem;border-radius:1.15rem;background:radial-gradient(circle at 50% 42%,#fff 0,#f0e4d4 50%,#d8c6e5)}.sales-tablet{width:min(78%,18rem);height:15rem;border-width:6px;border-radius:1rem}.sales-phone--devices{right:6%;bottom:.8rem;width:5.75rem;height:12rem}
+@media(min-width:42rem){.sales-devices{gap:2rem;padding-block:clamp(3.5rem,6vw,5rem)}.sales-devices__features{gap:.6rem}.sales-devices__features li{padding:.58rem .65rem;font-size:.76rem}.sales-devices__stage{min-height:23rem}.sales-tablet{width:min(78%,21rem);height:18rem}.sales-phone--devices{right:6%;bottom:1rem;width:6.7rem;height:14rem}}
+
+/* Hero comercial: foco na mensagem, preço e ação — sem mockup redundante. */
+.sales-header{border-bottom-color:rgba(239,197,115,.28);background:linear-gradient(100deg,rgba(15,8,25,.98),rgba(40,19,57,.96))}
+.sales-header__inner{min-height:4.15rem}
+.sales-brand{gap:.68rem;font-size:1.3rem;letter-spacing:-.035em}
+.sales-brand img{width:2.5rem;height:2.5rem;filter:drop-shadow(0 .16rem .45rem rgba(239,197,115,.22))}
+.sales-brand small{margin-top:.08rem;color:#eadbc4;font-size:.53rem;letter-spacing:.13em}
+.sales-header__cta{min-height:2.35rem;border-color:#f4cf82;color:#251530;background:linear-gradient(135deg,#ffe3a2,#e9b95d);box-shadow:0 .4rem 1.1rem rgba(0,0,0,.25);font-size:.74rem;font-weight:900}
+
+.sales-hero{display:block;min-height:0;padding-block:clamp(2rem,6vw,4.6rem);background:radial-gradient(circle at 91% 18%,rgba(226,174,79,.22),transparent 18rem),radial-gradient(circle at 8% 96%,rgba(126,69,182,.34),transparent 23rem),linear-gradient(132deg,#12091e,#301443 62%,#160d23)}
+.sales-hero__copy{max-width:48rem}
+.sales-hero h1{max-width:43rem}
+.sales-hero__lead{max-width:42rem}
+.sales-hero__bullets{grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));max-width:45rem;gap:.45rem .9rem;margin-bottom:1.35rem}
+.sales-hero__offer{max-width:32rem;gap:.6rem;border:1px solid rgba(239,197,115,.32);border-radius:1.1rem;padding:1rem;background:linear-gradient(135deg,rgba(12,6,20,.58),rgba(84,43,108,.4));box-shadow:0 1.1rem 2.6rem rgba(0,0,0,.2)}
+.sales-hero__price-label{margin:0;color:#d9cbed;font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.sales-hero__price{display:flex;align-items:baseline;gap:.55rem;color:#f3e9f7}
+.sales-hero__price span{font-size:.88rem;font-weight:750}
+.sales-hero__price strong{color:#ffda8b;font-size:clamp(2.45rem,11vw,4.3rem);font-weight:950;letter-spacing:-.075em;line-height:.9;text-shadow:0 .35rem 1.4rem rgba(226,174,79,.25)}
+.sales-button--hero{width:100%;min-height:3.3rem;font-size:.83rem}
+.sales-hero__legal{margin:0;color:#ded1e6;font-size:.67rem}
+
+@media(min-width:42rem){
+  .sales-hero{display:block;padding-block:clamp(2.7rem,5vw,4.2rem)}
+  .sales-hero__offer{padding:1.15rem 1.2rem}
+  .sales-button--hero{width:auto;padding-inline:1.45rem}
+}
+
+@media(max-width:25rem){
+  .sales-header__inner{width:calc(100% - 1.25rem)}
+  .sales-brand{font-size:1.12rem}
+  .sales-brand img{width:2.2rem;height:2.2rem}
+  .sales-header__cta{padding-inline:.58rem;font-size:.67rem}
+  .sales-hero__offer{padding:.85rem}
+  .sales-hero__price strong{font-size:2.3rem}
+}
+
+/* Tutoriais: o vídeo é o foco; a explicação deve continuar legível em qualquer tela. */
+.sales-tutorial-card{
+  gap:1rem;
+  border-color:#e1d2b6;
+  padding:1rem;
+  color:#25192f;
+  background:linear-gradient(145deg,#fffefd,#f4eff8);
+  box-shadow:0 1rem 2.2rem rgba(46,25,60,.11);
+}
+.sales-tutorial-card__title{
+  color:#2c1d3a;
+  font-size:clamp(1.28rem,5.3vw,1.7rem);
+  font-weight:900;
+  letter-spacing:-.035em;
+}
+.sales-tutorial-card__body{gap:1rem}
+.sales-tutorial-card__media{
+  height:min(55vh,29rem);
+  border:1px solid #d59e35;
+  border-radius:1.05rem;
+  background:linear-gradient(90deg,#4b2b70 0%,#9a6175 15%,#efc573 34%,#f6d98f 50%,#efc573 66%,#9a6175 85%,#4b2b70 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 .75rem 1.5rem rgba(35,19,49,.14);
+}
+.sales-tutorial-card video{
+  height:min(55vh,29rem);
+  filter:drop-shadow(0 .75rem 1.2rem rgba(0,0,0,.36));
+}
+.sales-tutorial-card__captions{
+  min-height:8.7rem;
+  max-height:10.5rem;
+  justify-content:center;
+  border-color:#e4dfe9;
+  border-radius:1rem;
+  padding:1rem 1.05rem;
+  background:#fff;
+  box-shadow:0 .5rem 1.2rem rgba(34,19,47,.07);
+  color:#18131d;
+  font-size:clamp(.98rem,4vw,1.08rem);
+  font-weight:700;
+  line-height:1.48;
+}
+.sales-tutorial-card__captions p{color:#292132;opacity:.52}
+.sales-tutorial-card__captions p:last-child{color:#111;font-weight:800;opacity:1}
+.sales-tutorial-card__captions p[data-typing="true"]::after{border-right-color:#8050ad}
+
+@media(min-width:42rem){
+  .sales-tutorial-card{gap:1.1rem;padding:1.15rem}
+  .sales-tutorial-card__body{grid-template-columns:minmax(0,1.28fr) minmax(13.5rem,.72fr);gap:1.1rem}
+  .sales-tutorial-card__media,.sales-tutorial-card video{height:min(54vh,30rem)}
+  .sales-tutorial-card__captions{min-height:12rem;max-height:15rem;padding:1.15rem;font-size:1rem;line-height:1.55}
+}
+
+/* Biblioteca e relatos: mais conteúdo útil em menos rolagem. */
+.sales-library{padding-block:clamp(2.35rem,6vw,3.75rem)}
+.sales-library__rails{gap:.5rem;margin-top:1rem}
+.sales-library__rail{gap:.42rem}
+.sales-demo-book{flex-basis:7.1rem}
+.sales-demo-book__cover{aspect-ratio:5/6;border-radius:.35rem;box-shadow:.35rem .5rem 1rem rgba(0,0,0,.28)}
+.sales-demo-book__cover img{height:100%;aspect-ratio:auto;object-position:center}
+.sales-demo-book__download{right:.15rem;bottom:1.7rem;width:1.55rem;height:1.55rem;font-size:.72rem}
+.sales-demo-book h3{margin-top:.32rem;font-size:.62rem;line-height:1.18}
+.sales-library__notice{margin-top:.9rem;font-size:.68rem}
+
+.sales-stories{padding-block:clamp(2.45rem,6vw,3.85rem);border-radius:0;background:linear-gradient(135deg,#fbf7f0,#f6f0fa)}
+.sales-stories .sales-heading small{max-width:39rem;margin-top:.62rem;font-size:.74rem;line-height:1.45}
+.sales-stories__carousel{margin-top:1rem}
+.sales-stories__track{gap:.65rem}
+.sales-story-card{gap:.7rem;border-radius:.85rem;padding:.75rem}
+.sales-story-card__image{min-height:12rem;border-radius:.62rem;padding:.25rem}
+.sales-story-card__image img{height:12.5rem}
+.sales-story-card h3{font-size:.92rem}.sales-story-card strong{margin:.35rem 0;font-size:.9rem;line-height:1.35}.sales-story-card p{font-size:.78rem;line-height:1.42}
+.sales-stories__navigation{margin-top:.75rem}
+
+.sales-how--reading{padding-top:0;padding-bottom:clamp(2.5rem,6vw,4rem)}
+.sales-demo__animation{width:70%;height:clamp(14rem,58vw,18rem);aspect-ratio:auto;justify-self:center;object-fit:cover;object-position:center}
+
+.sales-devices__stage{min-height:17rem}
+.sales-tablet{width:min(84%,19rem);height:15.5rem}
+
+.sales-whatsapp{display:flex;align-items:center;gap:.45rem;right:1rem;bottom:5rem;padding:.68rem .82rem;background:#1c9b5a;box-shadow:0 .65rem 1.35rem rgba(13,83,48,.28);font-size:.72rem}
+.sales-whatsapp[hidden]{display:none}
+.sales-whatsapp svg{width:1.18rem;height:1.18rem;fill:currentColor}.sales-whatsapp span{font-weight:850}
+
+@media(min-width:42rem){
+  .sales-demo-book{flex-basis:7.1rem}
+  .sales-demo-book h3{font-size:.68rem}
+  .sales-story-card__image{min-height:13rem}.sales-story-card__image img{height:13.5rem}
+  .sales-devices__stage{min-height:20rem}.sales-tablet{width:min(84%,21rem);height:17rem}
+}
+@media(min-width:64rem){.sales-demo-book{flex-basis:8.2rem}}
