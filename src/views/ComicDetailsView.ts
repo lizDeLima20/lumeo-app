@@ -1,3 +1,4 @@
+import { bindCoverBackdrop } from "../components/CoverBackdrop";
 import { I18nManager } from "../i18n/I18nManager";
 import type { Book } from "../models/Book";
 import { ComicCoverSource } from "../services/ComicCoverSource";
@@ -162,7 +163,7 @@ export class ComicDetailsView extends BaseView {
     image.src = url; image.alt = this.i18n.t("ui.catalog.coverOf", { title: entry.name.trim() });
     image.decoding = "async"; image.referrerPolicy = "no-referrer";
     image.addEventListener("error", fallback, { once: true });
-    root.append(image);
+    root.append(image); bindCoverBackdrop(root, image);
   }
 
   private meta(root: HTMLElement, label: string, value: string): void {

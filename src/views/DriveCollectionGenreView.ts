@@ -1,3 +1,4 @@
+import { bindCoverBackdrop } from "../components/CoverBackdrop";
 import { I18nManager } from "../i18n/I18nManager";
 import { ComicCoverSource, LazyCoverLoader } from "../services/ComicCoverSource";
 import type { CatalogService } from "../services/CatalogService";
@@ -139,7 +140,7 @@ export class DriveCollectionGenreView extends BaseView {
     const fallback = (): void => cover.replaceChildren(this.createElement("span", "drive-comic-card__fallback", "📚"));
     const image = this.createElement("img", "") as HTMLImageElement;
     image.alt = `Capa de ${entry.name.trim()}`; image.loading = "lazy"; image.decoding = "async"; image.referrerPolicy = "no-referrer";
-    image.addEventListener("error", fallback, { once: true }); cover.append(image);
+    image.addEventListener("error", fallback, { once: true }); cover.append(image); bindCoverBackdrop(cover, image);
     const title = this.createElement("h3", "drive-comic-card__title", this.presentations.present(entry, listing).title);
     this.coverLoader.observe(image, entry, this.collectionId, fallback, asset => {
       title.textContent = this.presentations.present(entry, listing, asset.metadata).title;

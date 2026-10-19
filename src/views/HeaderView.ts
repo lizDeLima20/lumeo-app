@@ -2,7 +2,7 @@ import type { RouteName } from "../core/Router";
 import { AUTHENTICATED_NAVIGATION, type NavigationItem } from "../navigation/NavigationItem";
 import { BaseView } from "./BaseView";
 import { HamburgerButton } from "./HamburgerButton";
-import { MobileNavigationDrawer } from "./MobileNavigationDrawer";
+import { MobileNavigationDrawer, type DrawerAccount } from "./MobileNavigationDrawer";
 import { I18nManager } from "../i18n/I18nManager";
 
 export class HeaderView extends BaseView {
@@ -11,7 +11,9 @@ export class HeaderView extends BaseView {
   private drawer: MobileNavigationDrawer | null = null;
 
   public constructor(private readonly onNavigate: (route: RouteName) => void, private readonly authenticated: boolean,
-    private readonly userName: string, private readonly onLogout: () => void, private readonly personalAndroid = false, private readonly onAddDriveLink?: () => void) { super(); }
+    private readonly userName: string, private readonly onLogout: () => void, private readonly personalAndroid = false, private readonly onAddDriveLink?: () => void,
+    /** The Lumeo account signed in on Android: its photo and name in the menu, and "Sair". */
+    private readonly account?: DrawerAccount) { super(); }
 
   public render(): HTMLElement {
     const wrapper = this.createElement("div", "header__inner");
@@ -22,13 +24,13 @@ export class HeaderView extends BaseView {
     brand.append(mark, identity); brand.addEventListener("click", () => this.onNavigate("home"));
 
     const desktopNav = this.createElement("nav", "header__nav header__nav--desktop"); desktopNav.setAttribute("aria-label", this.i18n.t("ui.navigation.main"));
-    const items = this.authenticated ? AUTHENTICATED_NAVIGATION.filter((item) => !this.personalAndroid || item.action !== "logout") : [];
+    const items = this.authenticated ? AUTHENTICATED_NAVIGATION.filter((item) => !this.personalAndroid || Boolean(this.account) || item.action !== "logout") : [];
     items.forEach((item) => desktopNav.append(this.navigationButton(item)));
     wrapper.append(brand, desktopNav);
 
     if (this.authenticated) {
       const hamburger = this.hamburger.render(); hamburger.addEventListener("click", () => this.drawer?.toggle()); wrapper.append(hamburger);
-      this.drawer = new MobileNavigationDrawer(items, this.userName, this.onNavigate, this.onLogout, (open) => this.hamburger.setOpen(open), this.personalAndroid ? this.onAddDriveLink : undefined);
+      this.drawer = new MobileNavigationDrawer(items, this.userName, this.onNavigate, this.onLogout, (open) => this.hamburger.setOpen(open), this.personalAndroid ? this.onAddDriveLink : undefined, this.account);
       // The header uses backdrop-filter, which creates a containing block for
       // fixed descendants. Mounting the drawer at body level keeps it between
       // the header and mobile bottom navigation instead of clipping its links.

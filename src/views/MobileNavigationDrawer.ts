@@ -2,6 +2,8 @@ import type { RouteName } from "../core/Router";
 import type { NavigationItem } from "../navigation/NavigationItem";
 import { I18nManager } from "../i18n/I18nManager";
 
+export interface DrawerAccount { name?: string; email?: string; avatarUrl?: string; }
+
 export class MobileNavigationDrawer {
   public static readonly motionDuration = 460;
   public static readonly hasOwnBackground = true;
@@ -14,7 +16,9 @@ export class MobileNavigationDrawer {
 
   public constructor(private readonly items: readonly NavigationItem[], private readonly userName: string,
     private readonly onNavigate: (route: RouteName) => void, private readonly onLogout: () => void,
-    private readonly onStateChange: (open: boolean) => void, private readonly onAddDriveLink?: () => void) {}
+    private readonly onStateChange: (open: boolean) => void, private readonly onAddDriveLink?: () => void,
+    /** The signed-in Google account: its photo and the owner's name (the email when there is no name). */
+    private readonly account?: DrawerAccount) {}
 
   public render(): HTMLElement {
     const root = document.createElement("div"); root.className = "mobile-navigation";
@@ -24,18 +28,33 @@ export class MobileNavigationDrawer {
     drawer.setAttribute("aria-label", this.i18n.t("ui.navigation.menu")); drawer.setAttribute("aria-hidden", "true"); drawer.setAttribute("role", "navigation");
     const profile = document.createElement("div"); profile.className = "drawer-profile";
     const avatar = document.createElement("img"); avatar.className = "drawer-avatar"; avatar.src = "/icons/lumeo-logo.png"; avatar.alt = ""; avatar.width = 64; avatar.height = 64;
+    if (this.account?.avatarUrl) {
+      // Google's photo, round; if it cannot load (offline), the Lumeo mark stays.
+      avatar.classList.add("drawer-avatar--account"); avatar.referrerPolicy = "no-referrer"; avatar.src = this.account.avatarUrl;
+      avatar.addEventListener("error", () => { avatar.classList.remove("drawer-avatar--account"); avatar.src = "/icons/lumeo-logo.png"; }, { once: true });
+    }
     const greeting = document.createElement("div");
-    const hello = document.createElement("strong"); hello.textContent = this.i18n.t("ui.greeting.hello", { name: this.userName });
+    const name = this.account?.name?.trim() || this.account?.email?.trim() || this.userName;
+    const hello = document.createElement("strong"); hello.textContent = this.i18n.t("ui.greeting.hello", { name });
     const wish = document.createElement("span"); wish.textContent = this.i18n.t("ui.greeting.goodReading"); greeting.append(hello, wish); profile.append(avatar, greeting);
     const nav = document.createElement("nav"); nav.className = "drawer-links"; nav.setAttribute("aria-label", this.i18n.t("ui.navigation.mobile"));
-    this.items.forEach((item) => {
+    // "Sair" stays in the footer, always in view; the list above it scrolls on short screens.
+    this.items.filter(item => item.action !== "logout").forEach((item) => {
       nav.append(this.navigationButton(item));
       if (item.route === "import" && this.onAddDriveLink) nav.append(this.addDriveLinkButton());
     });
     const footer = document.createElement("footer"); footer.className = "drawer-footer";
     const privacy = document.createElement("button"); privacy.type = "button"; privacy.className = "drawer-privacy";
     privacy.textContent = this.i18n.t("ui.navigation.privacy");
-    privacy.addEventListener("click", () => { this.close(false); this.onNavigate("privacy"); }); footer.append(privacy);
+    privacy.addEventListener("click", () => { this.close(false); this.onNavigate("privacy"); });
+    if (this.items.some(item => item.action === "logout")) {
+      const logout = document.createElement("button"); logout.type = "button"; logout.className = "drawer-logout";
+      const icon = document.createElement("span"); icon.className = "drawer-link__icon"; icon.textContent = "↗"; icon.setAttribute("aria-hidden", "true");
+      logout.append(icon, document.createTextNode(this.account ? "Sair da conta" : this.i18n.t("ui.navigation.logout")));
+      logout.addEventListener("click", () => { this.close(false); this.onLogout(); });
+      footer.append(logout);
+    }
+    footer.append(privacy);
     drawer.append(profile, nav, footer); root.append(overlay, drawer); this.root = root; this.drawer = drawer; return root;
   }
 

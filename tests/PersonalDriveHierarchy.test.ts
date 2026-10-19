@@ -281,6 +281,18 @@ describe("Drive covers", () => {
     assert.equal(cache.get("drive-cover:f1:t"), url);
   });
 
+  it("a book whose catalog cover URL fails here gets its cover from the catalog's cover file, then from memory", async () => {
+    const webp = new Uint8Array([0x52, 0x49, 0x46, 0x46, 4, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 1, 2, 3, 4]);
+    const { value, calls, cache } = resolver({ range: async (s, e) => webp.slice(s, e + 1) });
+    const book = entry({ fileId: "b1", name: "bk_1.epub", contentType: "book", coverUrl: "https://lh3.googleusercontent.com/d/cover-1", coverDriveFileId: "cover-1" });
+    assert.equal(await value.resolve(book), book.coverUrl, "the catalog URL first, without network");
+    const made = await value.resolve(book, undefined, true);
+    assert.match(made!, /^data:image\/webp/); assert.ok(calls.some(call => call.startsWith("range:0-")));
+    assert.equal(cache.get("drive-cover:b1:t"), made, "kept for the other genres and the next visits");
+    // Every genre that draws this book now gets the processed cover at once.
+    assert.equal(value.peek(book), made);
+  });
+
   it("a cover still queued when its card left the screen is skipped; asking again works", async () => {
     const archive = cbz(); let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
     const { value, calls } = resolver({ range: async (s, e) => { await gate; return archive.slice(s, e + 1); } });

@@ -1,7 +1,16 @@
 import { BookVolumeFormatter } from "./BookVolumeFormatter";
 import type { Book3DModel } from "./Book3DModel";
+import { bindCoverBackdrop } from "./CoverBackdrop";
+import { CoverRatioCache, SHELF_RATIO_DEFAULT, coverNeedsBand, shelfCoverRatio } from "./CoverRatio";
 
-abstract class Book3DFace {
+export abstract class Book3DFace {
+  /** The face keeps the width the shelf gives it at this screen size and takes its height from
+   *  the cover's shape. Inline and !important: the responsive rules set --physical-height per
+   *  breakpoint (some with !important), and a fixed value there would ignore the cover. */
+  public static shape(book: HTMLElement, ratio: number): void {
+    // The 3px board around the cover is part of both sides, so the picture inside it has the cover's shape.
+    book.style.setProperty("--physical-height", `calc((var(--physical-width) - 6px) / ${ratio} + 6px)`, "important");
+  }
   protected element(className: string): HTMLSpanElement {
     const face = document.createElement("span"); face.className = className; face.setAttribute("aria-hidden", "true"); return face;
   }
@@ -17,9 +26,31 @@ export class BookFrontFace extends Book3DFace {
       // loaded. Broken URLs leave a useful, local cover instead of a blank card.
       image.addEventListener("load", () => placeholder.remove(), { once: true });
       image.addEventListener("error", () => image.remove(), { once: true });
+      // The face takes the cover's shape (within the shelf's limits). A cover outside them
+      // is fitted whole on its own blurred backdrop; inside them there is no band at all.
+      const known = CoverRatioCache.shared.get(model.bookId, model.cover);
+      if (known !== undefined && coverNeedsBand(known, 1)) face.dataset.coverBand = "true";
+      bindCoverBackdrop(face, image, () => shelfCoverRatio(image.naturalWidth, image.naturalHeight));
+      image.addEventListener("load", () => this.fitShape(face, model, image), { once: true });
       image.src = model.cover; face.append(placeholder, image);
     } else face.append(placeholder);
     return face;
+  }
+
+  /** Learns the cover's shape once it loads: remembers it, and reshapes the book if it was
+   *  drawn in another shape (first time seen, or a new cover). */
+  private fitShape(face: HTMLElement, model: Book3DModel, image: HTMLImageElement): void {
+    const width = image.naturalWidth, height = image.naturalHeight;
+    if (!width || !height) return;
+    CoverRatioCache.shared.set(model.bookId, model.cover, width / height);
+    if (coverNeedsBand(width, height)) face.dataset.coverBand = "true"; else delete face.dataset.coverBand;
+    const ratio = shelfCoverRatio(width, height), drawn = model.dimensions.aspectRatio || SHELF_RATIO_DEFAULT;
+    if (Math.abs(ratio - drawn) < .004) return;
+    const book = face.closest<HTMLElement>(".book-3d");
+    if (!book) return;
+    book.classList.add("book-3d--ratio-shift");
+    Book3DFace.shape(book, ratio);
+    window.setTimeout(() => book.classList.remove("book-3d--ratio-shift"), 320);
   }
 }
 

@@ -22,3 +22,17 @@
 .button--google { display: inline-flex; width: 100%; min-height: 2.8rem; align-items: center; justify-content: center; gap: .6rem; border: 0; border-radius: var(--radius-sm); color: #1f1f1f; background: #fff; font-weight: 600; box-shadow: inset 0 0 0 1px color-mix(in srgb,#1f1f1f 15%,transparent); }
 .button--google:disabled { cursor: progress; opacity: .6; }
 .button--google__mark { width: 18px; height: 18px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'/%3E%3Cpath fill='%23FBBC05' d='M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'/%3E%3C/svg%3E") center / contain no-repeat; }
+
+/* Android sign-in before the library: one Google button on the Lumeo dark page. */
+.account-gate{display:grid;min-height:calc(100dvh - 9rem);place-items:center;padding:1.25rem 1rem 2rem}
+.account-gate__card{display:grid;gap:1rem;justify-items:center;width:min(100%,24rem);padding:clamp(1.5rem,6vw,2.25rem) clamp(1.1rem,5vw,1.75rem);border:1px solid color-mix(in srgb,#d9ad5c 22%,var(--color-border));border-radius:1.25rem;background:radial-gradient(120% 70% at 50% 0,color-mix(in srgb,#d9ad5c 10%,transparent),transparent 70%),var(--color-surface);box-shadow:0 18px 44px rgba(0,0,0,.32);text-align:center}
+.account-gate__brand{display:grid;place-items:center}
+.account-gate__logo{width:4.5rem;height:4.5rem;object-fit:contain;filter:drop-shadow(0 8px 18px rgba(217,173,92,.25))}
+.account-gate__title{margin:0;font:700 clamp(1.45rem,6.5vw,1.85rem)/1.15 Georgia,"Times New Roman",serif}
+.account-gate__copy{margin:0;color:var(--color-muted);font-size:.95rem;line-height:1.5}
+.account-gate__google{gap:.7rem;min-height:3.25rem;border-radius:.95rem;font-size:1rem;font-weight:650;box-shadow:inset 0 0 0 1px rgba(31,31,31,.12),0 8px 20px rgba(0,0,0,.18)}
+.account-gate__google:disabled{cursor:progress;opacity:.7}
+.account-gate__status{min-height:1.4rem;margin:0;font-size:.88rem;line-height:1.4}
+.account-gate__status[data-kind=error]{color:#e08a7c}
+.account-gate__status[data-kind=info]{color:var(--color-muted)}
+.account-gate__note{margin:0;padding-top:.85rem;border-top:1px solid var(--color-border);color:var(--color-muted);font-size:.8rem;line-height:1.45}

@@ -38,7 +38,8 @@ void (async () => {
   await I18nManager.shared.initialize();
   nativeSplash.show();
   AndroidRuntimeDiagnostics.start(new EnvironmentConfig().read());
-  await app.start();
+  // The sign-in screen, when there is one, shows only after the launch splash has left.
+  await app.start(() => nativeSplash.hide());
   await nativeSplash.hide();
 })().catch(async error => {
   await nativeSplash.hide();

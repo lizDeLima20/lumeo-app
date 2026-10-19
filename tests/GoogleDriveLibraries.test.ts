@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { readFile } from "node:fs/promises";
 import { GoogleDriveLibraryRepository } from "../src/external/GoogleDriveLibraryRepository";
-import { GoogleDriveLibraryService } from "../src/external/GoogleDriveLibraryService";
+import { GoogleDriveAccessError, GoogleDriveLibraryService } from "../src/external/GoogleDriveLibraryService";
 import { AuthManager, type AuthSession } from "../src/services/AuthManager";
 import { ApiError } from "../src/services/ApiClient";
 import { AppState } from "../src/core/AppState";
@@ -40,6 +40,41 @@ it("rejectsFileLinksAndHostSpoofingAndEmptyNames", async () => {
 it("unconfiguredGoogleErrorsOnlyWhenOpeningNotWhenSaving", async () => {
   await new GoogleDriveLibraryRepository(new Memory(), "u").save("Works", url);
   await assert.rejects(new GoogleDriveLibraryService("").prepare(), /Google Drive ainda não está configurado/);
+});
+it("public Drive listing uses only the restricted API key and Android identity headers", async () => {
+  const requests: Array<{ url: string; headers: Headers }> = [];
+  const service = new GoogleDriveLibraryService("", async (input, init) => {
+    requests.push({ url: String(input), headers: new Headers(init?.headers) });
+    if (String(input).includes("fields=mimeType")) return Response.json({ mimeType: GoogleDriveLibraryService.FOLDER });
+    return Response.json({ files: [{ id: "pdf", name: "public.pdf", mimeType: "application/pdf", resourceKey: "child-key" }] });
+  }, "test-public-key", async () => ({ packageName: "com.lumeo.reader", sha1: Array.from({ length: 20 }, () => "AA").join(":") }));
+  const result = await service.listRaw("public_folder", "root-key", new AbortController().signal);
+  assert.equal(result.files[0]?.name, "public.pdf");
+  assert.equal(requests.length, 2);
+  for (const request of requests) {
+    assert.equal(request.headers.get("x-goog-api-key"), "test-public-key");
+    assert.equal(request.headers.get("authorization"), null);
+    assert.equal(request.headers.get("x-android-package"), "com.lumeo.reader");
+    assert.equal(request.headers.get("x-android-cert"), "AA".repeat(20));
+    assert.equal(request.headers.get("x-goog-drive-resource-keys"), "public_folder/root-key");
+  }
+});
+it("public Drive rejects a restricted key and rate limits without asking for OAuth", async () => {
+  const keyRejected = new GoogleDriveLibraryService("", async () => Response.json({ error: { errors: [{ reason: "keyInvalid" }] } }, { status: 403 }), "test-public-key", async () => null);
+  await assert.rejects(keyRejected.metadata("public_file", undefined, new AbortController().signal), (error: unknown) => error instanceof GoogleDriveAccessError && error.code === "DRIVE_PUBLIC_KEY_REJECTED");
+  const limited = new GoogleDriveLibraryService("", async () => Response.json({ error: { errors: [{ reason: "rateLimitExceeded" }] } }, { status: 429 }), "test-public-key", async () => null);
+  await assert.rejects(limited.metadata("public_file", undefined, new AbortController().signal), (error: unknown) => error instanceof GoogleDriveAccessError && error.code === "DRIVE_RATE_LIMITED");
+});
+it("a blocked public media request never opens the private Drive consent flow", async () => {
+  const service = new GoogleDriveLibraryService("", async () => Response.json({ error: { errors: [{ reason: "insufficientFilePermissions" }] } }, { status: 403 }), "test-public-key", async () => null);
+  await assert.rejects(service.download({ id: "blocked_public", name: "book.pdf", mimeType: "application/pdf", size: "10" }, new AbortController().signal, () => undefined),
+    (error: unknown) => error instanceof BookDownloadError && error.code === "DOWNLOAD_HTTP_403");
+});
+it("audiobook download uses the same public Drive transport without private OAuth", async () => {
+  const requests: Array<{ headers: Headers }> = [];
+  const service = new GoogleDriveLibraryService("", async (_input, init) => { requests.push({ headers: new Headers(init?.headers) }); return new Response("audio", { headers: { "content-length": "5" } }); }, "test-public-key", async () => null);
+  const file = await service.downloadAudio({ id: "audio_1", name: "chapter.mp3", mimeType: "audio/mpeg", size: "5" }, new AbortController().signal, () => undefined);
+  assert.equal(await file.text(), "audio"); assert.equal(requests[0]?.headers.get("authorization"), null); assert.equal(requests[0]?.headers.get("x-goog-api-key"), "test-public-key");
 });
 it("native Android Drive preparation does not load browser OAuth", async () => {
   const source = await readFile("src/external/GoogleDriveLibraryService.ts", "utf8");

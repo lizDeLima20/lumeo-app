@@ -1,3 +1,4 @@
+import { bindCoverBackdrop } from "../components/CoverBackdrop";
 import type { AppState } from "../core/AppState";
 import type { CatalogBookData } from "../models/CatalogBook";
 import { CatalogService } from "../services/CatalogService";
@@ -90,7 +91,7 @@ export class CatalogBookView extends BaseView {
   private appendCover(root: HTMLElement, book: CatalogBookData): void {
     const fallback = (): void => root.replaceChildren(this.createElement("span", "catalog-card__placeholder", "📖"));
     if (!book.coverUrl) { fallback(); return; }
-    const image = this.createElement("img", "") as HTMLImageElement; image.src = book.coverUrl; image.alt = this.t("ui.catalog.coverOf", { title: book.title }); image.decoding = "async"; image.referrerPolicy = "no-referrer"; image.addEventListener("error", fallback, { once: true }); root.append(image);
+    const image = this.createElement("img", "") as HTMLImageElement; image.src = book.coverUrl; image.alt = this.t("ui.catalog.coverOf", { title: book.title }); image.decoding = "async"; image.referrerPolicy = "no-referrer"; image.addEventListener("error", fallback, { once: true }); root.append(image); bindCoverBackdrop(root, image);
   }
   private meta(root: HTMLElement, label: string, value: string): void { root.append(this.createElement("dt", "", label), this.createElement("dd", "", value)); }
   private formatSize(bytes: number): string { return new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024) + " MB"; }

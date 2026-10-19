@@ -2,14 +2,14 @@ import { GoogleDriveAccessError, GoogleDriveLibraryService, type GoogleLibraryFi
 import type { GoogleDriveFolderNode, GoogleDriveLibraryEntry, GoogleDriveLibrarySource, GoogleDriveLibrarySyncState, GoogleDriveSyncTask } from "../external/GoogleDriveLibraryRepository";
 import { resolvePersonalDriveGenre } from "./PersonalDriveGenreResolver";
 import { PersonalDriveCatalogResolver, driveThumbnailUrl } from "./PersonalDriveCatalogResolver";
-import { describeDriveFolder, readDriveCatalogCategory, type DriveFolderDescription } from "./PersonalDriveCatalogSource";
+import { PERSONAL_DRIVE_CATALOG_RULES, describeDriveFolder, readDriveCatalogCategory, type DriveFolderDescription } from "./PersonalDriveCatalogSource";
 import { GoogleDriveLibraryRepository } from "../external/GoogleDriveLibraryRepository";
 
 /** Bumped when listing learns something new; an older completed sync is redone once.
  *  v2 read structured catalog folders (books/ + covers/ + catalog.json).
  *  v3 keeps Drive's real folder tree: one category per source, every subfolder a child.
  *  v4 accepts catalog.json above 4 MB (those sources were listed as empty). */
-export const PERSONAL_DRIVE_SYNC_VERSION = 4;
+export const PERSONAL_DRIVE_SYNC_VERSION = 5;
 
 export interface PersonalDriveListingProgress { folders: number; files: number; current: string; }
 export interface PersonalDriveListingOptions {
@@ -21,7 +21,12 @@ export interface PersonalDriveListingOptions {
 type PageCallback = (entries: GoogleDriveLibraryEntry[], state: GoogleDriveLibrarySyncState, progress: PersonalDriveListingProgress,
   folders: GoogleDriveFolderNode[]) => Promise<void>;
 const METADATA_BATCH_SIZE = 24;
-const READABLE = /\.(pdf|epub|cbr|cbz)$/i;
+const READABLE_BOOK = /\.(pdf|epub|cbr|cbz)$/i;
+/** Audio is listed as metadata only. Playback is the only operation that downloads a chapter. */
+export const READABLE_AUDIO = /\.(mp3|m4a|aac|ogg|opus|wav)$/i;
+export function isReadableForSource(name: string, contentType: GoogleDriveLibrarySource["contentType"]): boolean {
+  return contentType === "audiobook" ? READABLE_AUDIO.test(name) : READABLE_BOOK.test(name);
+}
 
 /**
  * Page-by-page Drive walker. The caller checkpoints every page before continuing, so an
@@ -70,9 +75,9 @@ export class PersonalDriveLibraryService {
     // walking, in whichever folder they are - the root or any subfolder - so the tree stays
     // one category and nothing is listed twice.
     const resumable = Boolean(resume?.queue.length) && !resume?.completed && resume?.version === PERSONAL_DRIVE_SYNC_VERSION;
-    const seen = new Set(existing.map(entry => entry.fileId)); let folders = resume?.folders ?? 0, files = Math.max(existing.length, resume?.files ?? 0);
+    const known = new Set(existing.map(entry => entry.fileId)), seen = new Set(known), catalogued = new Set<string>(); let folders = resume?.folders ?? 0, files = Math.max(existing.length, resume?.files ?? 0);
     const state: GoogleDriveLibrarySyncState = resumable && resume ? { ...resume, queue: [...resume.queue], completed: false } : {
-      version: PERSONAL_DRIVE_SYNC_VERSION,
+      version: PERSONAL_DRIVE_SYNC_VERSION, catalogRules: PERSONAL_DRIVE_CATALOG_RULES,
       queue: [{ folderId: root.id, genre: category, resourceKey: rootNode.resourceKey, collectionPath: [], folderPath: [] }], completed: false,
       folders, files, current: root.name, updatedAt: new Date().toISOString(),
     };
@@ -114,10 +119,14 @@ export class PersonalDriveLibraryService {
         await page([], skipped, { folders, files, current: node.name }, [{ ...node, listed: true, error: error.code }]);
         continue;
       }
-      const listing = { ...raw, files: raw.files.filter(item => item.mimeType === GoogleDriveLibraryService.FOLDER || READABLE.test(item.name)) };
+      const listing = { ...raw, files: raw.files.filter(item => item.mimeType === GoogleDriveLibraryService.FOLDER || isReadableForSource(item.name, contentType)) };
+      // A folder's own cover is optional metadata, never a chapter and never a download.
+      // Drive gives image thumbnails in the same listing; use only clear cover names so a
+      // random illustration cannot silently become the collection art.
+      const audioFolderCover = contentType === "audiobook" ? raw.files.find(item => /^(cover|capa|folder|front)(?:[ ._-]|$).*\.(jpe?g|png|webp)$/i.test(item.name) && Boolean(item.thumbnailLink)) : undefined;
       const catalogFile = task.pageToken ? null : compatibleDrive.childNamed ? await compatibleDrive.childNamed(task.folderId, "catalog.json", task.resourceKey, signal) : raw.files.find(item => item.name.toLocaleLowerCase("en-US") === "catalog.json") ?? null;
       let catalog: PersonalDriveCatalogResolver | null = null;
-      if (catalogFile) {
+      if (catalogFile && contentType !== "audiobook") {
         try { catalog = new PersonalDriveCatalogResolver(await this.drive.json(catalogFile, signal), raw.files); }
         catch (error) { console.warn(JSON.stringify({ event: "DRIVE_CATALOG_INVALID", sourceId: source.id, folderId: task.folderId, reason: error instanceof Error ? error.message : "unknown" })); }
       }
@@ -125,12 +134,14 @@ export class PersonalDriveLibraryService {
       const path = task.folderPath ?? [];
       // A catalog folder: its books come from catalog.json with real titles, synopses and
       // covers; its books/ and covers/ folders are storage, not folders to browse.
-      const structure = task.pageToken ? null : catalogStructure(raw.files);
+      const structure = contentType === "audiobook" || task.pageToken ? null : catalogStructure(raw.files);
       if (structure && typeof this.drive.json === "function") {
         try {
-          const { entries: catalogued } = await readDriveCatalogCategory(this.drive, { name: node.name, folderId: task.folderId, resourceKey: task.resourceKey, ...structure },
+          const { entries: records } = await readDriveCatalogCategory(this.drive, { name: node.name, folderId: task.folderId, resourceKey: task.resourceKey, ...structure },
             source.id, contentType, signal, { genre: category, parentFolderId: task.folderId, folderPath: path });
-          for (const entry of catalogued) if (!seen.has(entry.fileId)) { seen.add(entry.fileId); entries.push(entry); }
+          // Catalog records are written again even when already cached: a re-read brings their
+          // corrected titles, covers and synopses (stored by file id, never duplicated).
+          for (const entry of records) if (!catalogued.has(entry.fileId)) { catalogued.add(entry.fileId); seen.add(entry.fileId); entries.push(entry); }
         } catch (error) { console.warn(JSON.stringify({ event: "DRIVE_CATALOG_INVALID", sourceId: source.id, folderId: task.folderId, reason: error instanceof Error ? error.message : "unknown" })); }
       }
       for (const item of listing.files) {
@@ -143,7 +154,9 @@ export class PersonalDriveLibraryService {
           childNodes.push({ sourceId: source.id, folderId: item.id, parentFolderId: task.folderId, name: item.name, depth: childPath.length, resourceKey: item.resourceKey });
         } else if (!seen.has(item.id)) {
           seen.add(item.id);
-          entries.push(toEntry(source.id, item, category, contentType, task.folderId, path, catalog?.resolve(item) ?? undefined));
+          const entry = toEntry(source.id, item, category, contentType, task.folderId, path, catalog?.resolve(item) ?? undefined);
+          if (audioFolderCover?.thumbnailLink && !entry.coverUrl) { entry.coverUrl = audioFolderCover.thumbnailLink; entry.thumbnailUrl = audioFolderCover.thumbnailLink; }
+          entries.push(entry);
         }
       }
       const nextQueue = state.queue.slice(1);
@@ -156,9 +169,9 @@ export class PersonalDriveLibraryService {
       const chunks = entries.length ? Array.from({ length: Math.ceil(entries.length / batchSize) }, (_, index) => entries.slice(index * batchSize, (index + 1) * batchSize)) : [[]];
       for (let index = 0; index < chunks.length; index++) {
         if (signal.aborted) throw new DOMException("Listagem cancelada.", "AbortError");
-        const chunk = chunks[index]!; files += chunk.length;
+        const chunk = chunks[index]!; files += chunk.filter(entry => !known.has(entry.fileId)).length;
         const last = index === chunks.length - 1;
-        const checkpoint: GoogleDriveLibrarySyncState = { version: PERSONAL_DRIVE_SYNC_VERSION, queue: last ? [...nextQueue] : [...state.queue], completed: last && nextQueue.length === 0,
+        const checkpoint: GoogleDriveLibrarySyncState = { version: PERSONAL_DRIVE_SYNC_VERSION, catalogRules: state.catalogRules ?? PERSONAL_DRIVE_CATALOG_RULES, queue: last ? [...nextQueue] : [...state.queue], completed: last && nextQueue.length === 0,
           folders: last ? folders : foldersBeforePage, files, current: chunk.at(-1)?.name ?? listing.files.at(-1)?.name ?? node.name, updatedAt: new Date().toISOString() };
         await page(chunk, checkpoint, { folders: checkpoint.folders ?? folders, files, current: checkpoint.current ?? node.name }, last ? pageNodes : []);
         // Yield a browser task so even one small Drive response paints progressively.
@@ -180,7 +193,7 @@ function catalogStructure(children: readonly GoogleLibraryFile[]): { books: Goog
 }
 function keyOf(folderUrl: string): string | undefined { try { return new URL(folderUrl).searchParams.get("resourcekey") ?? undefined; } catch { return undefined; } }
 function resourceKey(source: GoogleDriveLibrarySource): string | undefined { return keyOf(source.folderUrl); }
-function toEntry(sourceId: string, file: GoogleLibraryFile, genre: string, contentType: "book" | "comic", parentFolderId: string,
+function toEntry(sourceId: string, file: GoogleLibraryFile, genre: string, contentType: GoogleDriveLibrarySource["contentType"], parentFolderId: string,
   folderPath: Array<{ id: string; name: string }>, metadata?: ReturnType<PersonalDriveCatalogResolver["resolve"]>): GoogleDriveLibraryEntry {
   const value = metadata ?? undefined;
   // Only a catalog's own cover is used as a URL here; anything else is resolved and cached by

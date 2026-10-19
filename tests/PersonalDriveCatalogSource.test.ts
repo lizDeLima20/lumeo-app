@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { GoogleDriveLibraryService, type GoogleLibraryFile } from "../src/external/GoogleDriveLibraryService";
 import { GoogleDriveLibraryRepository, type GoogleDriveLibraryEntry, type GoogleDriveLibrarySyncState } from "../src/external/GoogleDriveLibraryRepository";
 import type { StorageAdapter } from "../src/services/StorageService";
-import { catalogRows, describeDriveFolder, readDriveCatalogCategory, resolveCatalogRecord } from "../src/services/PersonalDriveCatalogSource";
+import { PERSONAL_DRIVE_CATALOG_RULES, catalogRows, catalogTitle, describeDriveFolder, readDriveCatalogCategory, resolveCatalogRecord } from "../src/services/PersonalDriveCatalogSource";
 import { PERSONAL_DRIVE_SYNC_VERSION, PersonalDriveLibraryService } from "../src/services/PersonalDriveLibraryService";
 
 /* The structure published by the former Lumeo catalogue:
@@ -91,6 +91,35 @@ describe("structured Drive catalog folders, read on the device", () => {
     assert.deepEqual(described.categories.map(value => value.name), ["Romance", "História"]);
     const historia = await readDriveCatalogCategory(drive, described.categories[1]!, "src", "book", new AbortController().signal);
     assert.equal(historia.entries[0]!.genre, "História"); assert.equal(historia.entries[0]!.title, "História 1");
+  });
+
+  it("a title that is an id or a slug gives way to the original file name (real cases from História and Romance)", () => {
+    const cases: Array<[string, string, string]> = [
+      ["1b95f813d4e04939c1d5dfc0e3439890", "Alegorias da Maldição.epub", "Alegorias da Maldição"],
+      ["ConfissoesdoHomemErotico2", "Confissões do Homem Erótico.epub", "Confissões do Homem Erótico"],
+      ["PERIGO-PARA-UM-INGLES-revisado-1", "Perigo Para Um Ingles.epub", "Perigo Para Um Ingles"],
+      ["o-pensamento-indio-contra-a-colonialidade-download", "O Pensamento Índio Contra a Colonialidade.epub", "O Pensamento Índio Contra a Colonialidade"],
+      // Real titles stay, short or long, with digits or not.
+      ["21 lições para o século 21", "21 Lições para o Século 21.epub", "21 lições para o século 21"],
+      ["1789", "1789.epub", "1789"], ["Extraordinariamente", "x.epub", "Extraordinariamente"],
+    ];
+    for (const [title, sourceName, expected] of cases) assert.equal(catalogTitle({ title, sourceName }, "bk_ab12.epub"), expected);
+    // No usable title nor source name: the file name, as before.
+    assert.equal(catalogTitle({}, "Livro.epub"), "Livro");
+  });
+
+  it("reading a catalog again rewrites the cached records (corrected titles) without duplicating or recounting them", async () => {
+    const service = new PersonalDriveLibraryService(fakeDrive(tree, { cat: catalog }));
+    const source = { id: "src", userId: "personal", name: "Desenvolvimento pessoal", folderUrl: "https://drive.google.com/drive/folders/root", folderId: "root", contentType: "book" as const, createdAt: "", updatedAt: "" };
+    const first: GoogleDriveLibraryEntry[] = [];
+    await service.listProgressively(source, [], null, new AbortController().signal, async entries => { first.push(...entries); });
+    const stale = first.map(entry => entry.fileId === "book-1" ? { ...entry, title: "1b95f813d4e04939c1d5dfc0e3439890" } : entry);
+    const again: GoogleDriveLibraryEntry[] = []; let last: GoogleDriveLibrarySyncState | null = null;
+    await service.listProgressively(source, stale, { version: PERSONAL_DRIVE_SYNC_VERSION, queue: [], completed: true, files: stale.length, updatedAt: "" }, new AbortController().signal, async (entries, state) => { again.push(...entries); last = state; });
+    assert.equal(again.find(entry => entry.fileId === "book-1")!.title, "Hábitos Atômicos");
+    assert.equal(new Set(again.map(entry => entry.fileId)).size, again.length);
+    assert.equal(last!.files, stale.length, "no record counted twice");
+    assert.equal(last!.catalogRules, PERSONAL_DRIVE_CATALOG_RULES);
   });
 
   it("the sync shows the catalog as one genre, completes as v2 and returns the folder's real name", async () => {

@@ -1,7 +1,8 @@
 import type { StorageAdapter } from "../services/StorageService";
 import { I18nManager } from "../i18n/I18nManager";
 
-export type GoogleDriveLibraryContentType = "book" | "comic";
+/** Local routing choice for one Drive source. It never changes anything in Drive. */
+export type GoogleDriveLibraryContentType = "book" | "comic" | "audiobook";
 /** A source taken off the shelf: its listing, folders and sync state are kept so it can come back. */
 export interface GoogleDriveRemovedSource { source: GoogleDriveLibrarySource; removedAt: string; origin: string; }
 /** One change to the list of sources, kept on the device so a missing source can be explained. */
@@ -49,6 +50,8 @@ export interface GoogleDriveLibrarySyncState {
   folders?: number; files?: number; current?: string;
   /** Listing version that wrote this state (PERSONAL_DRIVE_SYNC_VERSION); absent = before v2. */
   version?: number;
+  /** Catalog reading rules that wrote it (PERSONAL_DRIVE_CATALOG_RULES); absent = before rules 1. */
+  catalogRules?: number;
 }
 export class GoogleDriveLibraryRepository {
   private queue: Promise<unknown> = Promise.resolve();
@@ -163,8 +166,15 @@ export class GoogleDriveLibraryRepository {
       if (!previous) return null;
       const source = { ...previous, contentType, updatedAt: new Date().toISOString() };
       await this.writeSources(rows.map(row => row.id === id ? source : row));
-      const entries = await this.entries(id);
-      await this.storage.save(`googleLibraryEntries:${this.owner}:${id}`, entries.map(entry => ({ ...entry, contentType })));
+      // A book/HQ entry is not an audio chapter. Rebuild metadata when crossing this
+      // boundary, while leaving downloaded files, their progress and the Drive source intact.
+      if ((previous.contentType === "audiobook") !== (contentType === "audiobook")) {
+        await this.storage.save(`googleLibraryEntries:${this.owner}:${id}`, []);
+        await this.clearSyncState(id);
+      } else {
+        const entries = await this.entries(id);
+        await this.storage.save(`googleLibraryEntries:${this.owner}:${id}`, entries.map(entry => ({ ...entry, contentType })));
+      }
       await this.log("retyped", source, "updateContentType", contentType);
       return source;
     });

@@ -90,3 +90,32 @@ body.drawer-open { overflow: hidden; }
 .google-library-editor label { display: grid; gap: 6px; width: 100%; min-width: 0; }
 .google-library-editor input { box-sizing: border-box; width: 100%; min-width: 0; }
 .google-library-file { width: 100%; margin-block: 4px; text-align: left; overflow-wrap: anywhere; white-space: normal; }
+/* The signed-in Google account's photo in the menu: round, with a thin gold ring. */
+.drawer-avatar--account { border-radius: 50%; object-fit: cover; filter: none; box-shadow: 0 0 0 2px color-mix(in srgb, #d9ad5c 70%, transparent), 0 6px 14px rgba(0, 0, 0, .3); }
+/* A long name or email breaks inside the menu instead of running past its edge. */
+.drawer-profile > div { min-width: 0; }
+.drawer-profile strong { overflow-wrap: anywhere; }
+/* "Sair da conta" in the menu's footer: always in view, quieter than the links above. */
+.drawer-footer { display: grid; gap: .25rem; }
+.drawer-logout { display: flex; align-items: center; gap: .75rem; width: 100%; min-height: 2.8rem; border: 1px solid rgba(255, 212, 151, .32); border-radius: var(--radius-sm); color: #ffe2c2; background: rgba(0, 0, 0, .12); padding: .6rem .8rem; text-align: left; font-weight: 700; }
+.drawer-logout:hover, .drawer-logout:focus-visible { color: #fff7e8; background: rgba(255, 232, 195, .14); }
+/* Phones: every menu item and "Sair da conta" fit without scrolling the list. */
+@media (max-height: 54rem) {
+  .drawer-profile { min-height: 6rem; padding: 1rem 1.25rem; }
+  .drawer-links { gap: .15rem; padding: .7rem .75rem; }
+  .drawer-link { min-height: 2.65rem; padding: .4rem .85rem; }
+  .drawer-link--drive { min-height: 2.5rem; margin-bottom: .45rem; }
+  .drawer-footer { padding-top: .5rem; padding-bottom: calc(.5rem + env(safe-area-inset-bottom)); }
+  .drawer-logout { min-height: 2.6rem; }
+  .drawer-privacy { min-height: 2.4rem; padding-block: .45rem; }
+}
+
+/* One way to fit a flat cover (cards, previews, collections, audiobooks): the whole cover,
+   centred (contain), over a blurred, darkened copy of itself that fills what its shape
+   leaves free. `cover` is allowed only on that backdrop; the cover itself is never cropped
+   or zoomed. Geometry is !important so a card's own img rule cannot turn the backdrop into
+   a second, contained image. */
+:where(.cover-fit) { position: relative; overflow: hidden; isolation: isolate; }
+.cover-fit > .cover-fit__backdrop { position: absolute !important; inset: -8% !important; z-index: 0; width: 116% !important; height: 116% !important; max-width: none !important; padding: 0 !important; object-fit: cover !important; filter: blur(10px) brightness(.62) saturate(1.1); pointer-events: none; user-select: none; }
+.cover-fit > .cover-fit__backdrop:not([src]) { display: none; }
+.cover-fit > .cover-fit__image { position: relative; z-index: 1; transform: none; }

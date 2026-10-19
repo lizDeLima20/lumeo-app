@@ -61,6 +61,8 @@ import { HomeView } from "../views/HomeView";
 import { AudiobooksView } from "../views/AudiobooksView";
 import { LibraryView } from "../views/LibraryView";
 import { LoginView } from "../views/LoginView";
+import { AccountGateView } from "../views/AccountGateView";
+import { FirebaseAccount, type FirebaseAccountUser } from "../services/FirebaseAccount";
 import { OnboardingView } from "../views/OnboardingView";
 import { ReaderView } from "../views/ReaderView";
 import { RegisterView } from "../views/RegisterView";
@@ -87,6 +89,11 @@ import { PersonalDriveImporter } from "../services/PersonalDriveImporter";
 import { GoogleDriveLibraryService } from "../external/GoogleDriveLibraryService";
 import { GoogleDriveLibraryRepository } from "../external/GoogleDriveLibraryRepository";
 import { PersonalDriveLibraryView } from "../views/PersonalDriveLibraryView";
+import { AudiobookFileRepository } from "../repositories/AudiobookFileRepository";
+import { AudiobookProgressRepository } from "../repositories/AudiobookProgressRepository";
+import { LocalAudiobookFileStore } from "../services/LocalAudiobookFileStore";
+import { AudiobookPlayer } from "../audiobooks/AudiobookPlayer";
+import { PersonalDriveLibraryService } from "../services/PersonalDriveLibraryService";
 
 export class App {
   /** Android is intentionally a serverless personal-library mode. */
@@ -101,6 +108,9 @@ export class App {
   private collections = new CollectionRepository(this.database);
   private limaDocuments=new LimaDocumentRepository(this.database);
   private preferences = new UserLibraryPreferencesRepository(this.database);
+  private readonly audiobookFiles = new LocalAudiobookFileStore(new AudiobookFileRepository(this.database), "personal");
+  private readonly audiobookProgress = new AudiobookProgressRepository(this.database);
+  private readonly audiobookPlayer = new AudiobookPlayer(new GoogleDriveLibraryService(), this.audiobookFiles, this.audiobookProgress);
   private readonly metadataExtractor = new BookMetadataExtractor();
   private readonly covers = new CoverService();
   private readonly driveConfig: GoogleDriveConfig = { clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "",
@@ -123,7 +133,7 @@ export class App {
   private readonly connectivity = new ConnectivityManager();
   private readonly pwaInstall = new PwaInstallManager();
 
-  public constructor(outlet: HTMLElement, private readonly headerRoot: HTMLElement, private readonly footerRoot: HTMLElement) {
+  public constructor(private readonly outlet: HTMLElement, private readonly headerRoot: HTMLElement, private readonly footerRoot: HTMLElement) {
     this.router = new Router(outlet);
     this.router.setGuard((route) => this.guardRoute(route));
     this.registerRoutes();
@@ -137,18 +147,34 @@ export class App {
     this.renderHeader();
   }
 
-  public async start(): Promise<void> {
+  /** `beforeSignIn`: clears whatever covers the screen (the launch splash) before the sign-in screen. */
+  public async start(beforeSignIn: () => Promise<void> = async () => undefined): Promise<void> {
     await I18nManager.shared.initialize();
     await this.restoreTheme();
     this.pwaInstall.bind();
+    // On Android the library opens with a Lumeo account (Firebase, signed in with Google).
+    // The account owns the library that is already here: its id stays "personal", so books,
+    // files and progress are found exactly where they were.
+    const account = FirebaseAccount.required ? await this.signedInAccount(beforeSignIn) : null;
     // The personal edition never contacts Supabase, a catalogue, licences or a BFF.
-    this.state.currentUser = { id: "personal", email: "local@lumeo" };
+    this.state.currentUser = { id: "personal", email: account?.email ?? "local@lumeo",
+      displayName: account?.displayName ?? undefined, avatarUrl: account?.photoUrl ?? undefined };
     this.state.deviceStatus = "authorized"; this.state.licenseStatus = "active";
     this.configureLocalLibrary("personal"); await this.hydrateLibrary(false);
     this.state.authStatus = "LOCAL_LIBRARY_READY"; this.state.onboardingCompleted = true; this.state.notify();
     this.router.start("library");
     this.comicPreparation = new ComicPreparationQueue(() => this.books.getAll(), id => this.localFileStore().get(id), () => this.router.currentRoute === "reader");
     void this.comicPreparation.start();
+  }
+
+  /** The signed-in account, or the sign-in screen until there is one. */
+  private async signedInAccount(beforeSignIn: () => Promise<void>): Promise<FirebaseAccountUser> {
+    const state = await FirebaseAccount.current().catch(() => ({ configured: false } as { configured: boolean; user?: FirebaseAccountUser }));
+    if (state.user) return state.user;
+    await beforeSignIn();
+    return new Promise(resolve => {
+      this.outlet.replaceChildren(new AccountGateView(state.configured, user => { this.outlet.replaceChildren(); resolve(user); }).render());
+    });
   }
 
   private registerRoutes(): void {
@@ -161,7 +187,10 @@ export class App {
     this.router.register("onboarding", () => new OnboardingView(this.state, this.userName(), () => void this.finishOnboarding()));
     this.router.register("home", () => new HomeView(this.state, this.userName(),
       () => this.router.navigate("library"), () => this.router.navigate("import"), () => this.router.navigate("audiobooks")));
-    this.router.register("audiobooks", () => new AudiobooksView(() => this.router.navigate("home")));
+    this.router.register("audiobooks", () => new AudiobooksView({
+      sources: new GoogleDriveLibraryRepository(new ExternalLibraryStorage(this.database), "personal"), service: new PersonalDriveLibraryService(new GoogleDriveLibraryService()), player: this.audiobookPlayer,
+      onAdd: () => this.router.navigate("explore", { addLink: "1" }),
+    }, () => this.router.navigate("home")));
     this.router.register("library", () => new LibraryView(this.state,
       (genreId) => this.router.navigate("genre", { id: genreId }), (bookId) => this.openLibraryBook(bookId), (bookId) => void this.deleteBook(bookId, false)));
     this.router.register("explore", (params) => {
@@ -556,7 +585,9 @@ export class App {
     this.headerView = new HeaderView((route) => this.router.navigate(route),
       this.isAuthenticated() && this.state.deviceStatus === "authorized",
       this.userName(), () => void this.logout(), this.personalAndroid,
-      () => this.router.navigate("explore", { addLink: "1" }));
+      () => this.router.navigate("explore", { addLink: "1" }),
+      FirebaseAccount.required && this.state.currentUser && this.state.currentUser.email !== "local@lumeo"
+        ? { name: this.state.currentUser.displayName, email: this.state.currentUser.email, avatarUrl: this.state.currentUser.avatarUrl } : undefined);
     this.headerView.mount(this.headerRoot);
     const authenticated = this.isAuthenticated() && this.state.deviceStatus === "authorized";
     this.footerRoot.replaceChildren(...(authenticated ? [new MobileBottomNavigation((route)=>this.router.navigate(route)).render()] : []));
@@ -567,6 +598,9 @@ export class App {
   private hasUsableLicense(): boolean { return this.state.licenseStatus === "active" || this.state.licenseStatus === "offline_grace" || this.state.licenseStatus === "grace"; }
 
   private async logout(): Promise<void> {
+    // Android: leaving the account keeps every book and file on the device; the app starts
+    // again at the sign-in screen.
+    if (FirebaseAccount.required) { await FirebaseAccount.signOut().catch(() => undefined); window.location.replace("/library"); return; }
     // Sign-out invalidates only the remote session. OPFS, IndexedDB and the
     // per-user library database are intentionally retained for offline use.
     await this.auth.logout(); this.state.library.replaceBooks([]); this.state.library.replaceGenres([]); this.state.onboardingCompleted = false; this.state.notify(); this.router.navigate("login");

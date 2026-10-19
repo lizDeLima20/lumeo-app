@@ -172,7 +172,11 @@
 .book-card--selected .physical-front::after,.book-card--activating .physical-front::after{opacity:.86}
 .physical-front,.physical-back {inset:0;background:var(--spine-color);border:3px solid color-mix(in srgb,var(--spine-color) 80%,#100c08);border-radius:7px 4px 4px 7px;box-shadow:inset 3px 0 4px #ffffff2d,inset -4px 0 5px #00000030}
 .physical-front {transform:translateZ(0);overflow:hidden;display:grid;place-items:center}
-.physical-front img{display:block;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.physical-front img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
+/* The cover's own backdrop shows only when its shape is outside the shelf's limits (data-cover-band). */
+.physical-front:not([data-cover-band]) .cover-fit__backdrop{display:none}
+/* Pinned to the face: in the grid, a tall cover's own height would otherwise push past the face and be clipped. */
+.physical-front > .cover-fit__image{position:absolute;inset:0;width:100%;height:100%}
 .lumeo-cover-placeholder{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:10% 9%;box-sizing:border-box;background:radial-gradient(circle at 50% 38%,rgba(152,97,211,.18),transparent 32%),linear-gradient(150deg,#21172c,#100d17 61%,#29191d);color:#ba91e9;text-align:center}.lumeo-cover-placeholder::before{position:absolute;inset:7px;content:"";border:1px solid rgba(193,149,239,.4);border-radius:3px;pointer-events:none}.lumeo-cover-placeholder__mark{width:42%;max-width:5rem;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 2px 3px rgba(0,0,0,.48))}.lumeo-cover-placeholder__wordmark{margin-top:.38rem;color:#a978da;font:700 clamp(.34rem,2.4vw,.62rem)/1 system-ui,sans-serif;letter-spacing:.16em}.lumeo-cover-placeholder__title{position:absolute;right:10%;bottom:11%;left:10%;display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:3;color:#f6e7cb;font:700 clamp(.48rem,3.2vw,.92rem)/1.16 Georgia,serif;letter-spacing:.01em;text-shadow:0 1px 2px #000}
 .physical-back{transform:translateZ(calc(-1 * var(--physical-depth))) rotateY(180deg)}
 /* Generated spine: derived colour + typography only. No raster cover art. */
@@ -351,3 +355,9 @@
      off, not a dissolve. */
   transition:opacity 80ms linear 700ms,transform 800ms cubic-bezier(.4,.12,.8,.7);
 }
+
+/* A book's height follows its cover's shape (--physical-height); when the shape is only learned
+   as the cover loads, the change is a short ease instead of a jump. */
+@property --physical-height { syntax: "<length>"; inherits: true; initial-value: 13.8rem; }
+.book-3d.book-3d--physical.book-3d--ratio-shift { transition: --lit-front 800ms cubic-bezier(.20,.72,.18,1), --physical-height 220ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .book-3d.book-3d--physical.book-3d--ratio-shift { transition: none; } }

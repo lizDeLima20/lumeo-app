@@ -28,10 +28,10 @@ export interface DriveCatalogCategory {
 export interface DriveFolderDescription { folderId: string; folderName: string; children: string[]; categories: DriveCatalogCategory[]; }
 export interface DriveCatalogStats { records: number; booksResolved: number; booksFailed: number; coversExpected: number; coversResolved: number; coversFailed: number; synopses: number; }
 
-interface CatalogRow {
+export interface CatalogRow {
   title?: unknown; author?: unknown; genre?: unknown; synopsis?: unknown; summary?: unknown; description?: unknown; bookId?: unknown;
   format?: unknown; bookPath?: unknown; coverPath?: unknown; driveFileId?: unknown; bookDriveFileId?: unknown; downloadUrl?: unknown;
-  coverDriveFileId?: unknown; coverUrl?: unknown; fileSize?: unknown; resourceKey?: unknown;
+  coverDriveFileId?: unknown; coverUrl?: unknown; fileSize?: unknown; resourceKey?: unknown; sourceName?: unknown;
 }
 export interface ResolvedCatalogBook {
   file: GoogleLibraryFile; title: string; author: string; synopsis?: string;
@@ -125,15 +125,41 @@ export function resolveCatalogRecord(row: CatalogRow, bookFiles: readonly Google
     const name = basename(text(row.bookPath) ?? "") || `${text(row.title) ?? id}.${format}`;
     file = { id, name: READABLE.test(name) ? name : `${name}.${format}`, mimeType: MIME[format]!, resourceKey: text(row.resourceKey) };
   }
-  const title = text(row.title) ?? stem(file.name), author = text(row.author) ?? "";
+  const title = catalogTitle(row, file.name), author = text(row.author) ?? "";
   const synopsis = text(row.synopsis) ?? text(row.summary) ?? text(row.description);
   const coverUrl = https(row.coverUrl);
-  if (coverUrl) return { file, title, author, synopsis, coverUrl, coverSource: "coverUrl" };
   const declaredCover = text(row.coverDriveFileId);
   const cover = byId(coverFiles, declaredCover) ?? byName(coverFiles, text(row.coverPath));
+  // The URL is shown first; the cover file's id is kept too, so a device that cannot load that
+  // URL makes the cover from the file itself.
+  if (coverUrl) return { file, title, author, synopsis, coverUrl, coverDriveFileId: cover?.id ?? declaredCover, coverSource: "coverUrl" };
   if (cover) return { file, title, author, synopsis, coverUrl: driveThumbnailUrl(cover.id, cover.id), coverDriveFileId: cover.id, coverSource: cover.id === declaredCover ? "coverDriveFileId" : "coverPath" };
   if (declaredCover) return { file, title, author, synopsis, coverUrl: driveThumbnailUrl(declaredCover, declaredCover), coverDriveFileId: declaredCover, coverSource: "coverDriveFileId" };
   return { file, title, author, synopsis, coverUrl: "", coverSource: "placeholder" };
+}
+
+/** Bumped when reading a catalog changes what is stored for its books; book sources read
+ *  with older rules are read once again. 1: titles that are ids or slugs give way to sourceName. */
+export const PERSONAL_DRIVE_CATALOG_RULES = 1;
+
+/** The title people read. Some catalogs carry the EPUB's own metadata title, which can be a
+ *  hash or a slug ("1b95f813d4e0…", "ConfissoesdoHomemErotico2"); the original file name
+ *  (sourceName, "Confissões do Homem Erótico.epub") then names the book. The record stays the
+ *  same - file, cover and synopsis keep their ids. */
+export function catalogTitle(row: CatalogRow, fileName: string): string {
+  const declared = text(row.title), sourceName = text(row.sourceName), original = sourceName ? stem(basename(sourceName)) : undefined;
+  if (declared && !looksLikeCode(declared)) return declared;
+  if (original && !looksLikeCode(original)) return original;
+  return declared ?? original ?? stem(fileName);
+}
+
+/** An id or a slug rather than a title: long hex, "bk_<hash>", or one long token joined by
+ *  hyphens, underscores, digits or camel case. */
+function looksLikeCode(value: string): boolean {
+  const clean = value.trim();
+  if (/^(bk[_\s-]?)?[0-9a-f]{16,}$/i.test(clean)) return true;
+  if (/\s/.test(clean)) return false;
+  return clean.length >= 16 && /[-_\d]|[a-z][A-Z]/.test(clean);
 }
 
 /** A bare array of records or { books: [...] }; anything else is not a catalog. */

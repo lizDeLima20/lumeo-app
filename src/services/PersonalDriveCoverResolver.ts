@@ -5,7 +5,7 @@ import { cbrCoverArchiveByRange } from "./RarRangeCover";
 import { Capacitor, CapacitorHttp } from "@capacitor/core";
 
 /** Where a cover came from; logged so a missing cover can be explained. */
-export type DriveCoverSource = "catalog" | "cache" | "drive-thumbnail" | "cbz-first-page" | "cbr-first-page" | "local-file" | "none";
+export type DriveCoverSource = "catalog" | "catalog-file" | "cache" | "drive-thumbnail" | "cbz-first-page" | "cbr-first-page" | "local-file" | "none";
 
 export interface DriveCoverCache { get(key: string): Promise<string | null>; save(key: string, dataUrl: string): Promise<void>; }
 
@@ -24,6 +24,8 @@ export interface DriveCoverDependencies {
 }
 
 const MAX_PARALLEL = 3;
+/** A catalog's cover file is read whole only up to this size. */
+const MAX_COVER_FILE_BYTES = 2 * 1024 * 1024;
 /** Covers kept in memory so a redrawn card shows its cover at once (about 50 KB each). */
 const RECENT_COVERS = 120;
 /** A file with no cover is not asked again for a while (every redraw would repeat its requests). */
@@ -54,13 +56,16 @@ export class PersonalDriveCoverResolver {
   /** The catalog cover, if any, without any network or cache access. */
   public static immediate(entry: GoogleDriveLibraryEntry): string | null { return entry.coverUrl || null; }
 
-  /** A cover resolved recently in this session, without waiting. */
+  /** A cover resolved recently in this session, without waiting: the one already processed
+   *  here first (it worked), else the catalog's URL. */
   public peek(entry: GoogleDriveLibraryEntry): string | null {
-    return PersonalDriveCoverResolver.immediate(entry) ?? this.recent.get(PersonalDriveCoverResolver.key(entry)) ?? null;
+    return this.recent.get(PersonalDriveCoverResolver.key(entry)) ?? PersonalDriveCoverResolver.immediate(entry);
   }
 
-  public resolve(entry: GoogleDriveLibraryEntry, signal?: AbortSignal): Promise<string | null> {
-    const immediate = this.peek(entry);
+  /** `catalogFailed`: the catalog's cover URL did not load on this device, so the cover is made
+   *  from the cover file itself (or the other sources below) instead of that URL. */
+  public resolve(entry: GoogleDriveLibraryEntry, signal?: AbortSignal, catalogFailed = false): Promise<string | null> {
+    const immediate = catalogFailed ? this.recent.get(PersonalDriveCoverResolver.key(entry)) ?? null : this.peek(entry);
     if (immediate) return Promise.resolve(immediate);
     const key = PersonalDriveCoverResolver.key(entry);
     // A job queued for a card that left the screen is skipped when its turn comes, so a newer
@@ -68,7 +73,9 @@ export class PersonalDriveCoverResolver {
     const existing = this.pending.get(key); if (existing && !existing.signal?.aborted) return existing.job;
     if (Date.now() - (this.missing.get(key) ?? -Infinity) < MISSING_RETRY_MS) return Promise.resolve(null);
     let skipped = false;
-    const job = this.limited(() => { skipped = Boolean(signal?.aborted); return skipped ? Promise.resolve(null) : this.produce(entry, key); }).then(url => {
+    // A cover already made on this device is read straight away: it never waits in the queue
+    // behind covers that still have to come from the network.
+    const job = this.deps.cache.get(key).catch(() => null).then(cached => cached ?? this.limited(() => { skipped = Boolean(signal?.aborted); return skipped ? Promise.resolve(null) : this.produce(entry, key); })).then(url => {
       if (!url && !skipped) this.missing.set(key, Date.now());
       if (url) { this.recent.delete(key); this.recent.set(key, url); if (this.recent.size > RECENT_COVERS) this.recent.delete(this.recent.keys().next().value!); }
       return url;
@@ -78,8 +85,6 @@ export class PersonalDriveCoverResolver {
 
   /** Runs to the end once started, even if its card left the screen: the result is cached. */
   private async produce(entry: GoogleDriveLibraryEntry, key: string): Promise<string | null> {
-    const cached = await this.deps.cache.get(key).catch(() => null);
-    if (cached) return cached;
     const started = Date.now(); let requests = 0, bytesRead = 0;
     const attempt = async (source: DriveCoverSource, image: () => Promise<Blob | null>): Promise<string | null> => {
       try {
@@ -94,6 +99,19 @@ export class PersonalDriveCoverResolver {
       }
     };
     const controller = new AbortController().signal;
+    // A catalog names its cover file in covers/: read it through the Drive API (a few dozen KB)
+    // when the catalog's public URL cannot be loaded here.
+    // Entries cached before the id was stored still name the file in their URL (".../d/<id>").
+    const coverFileId = entry.coverDriveFileId ?? /^https:\/\/lh3\.googleusercontent\.com\/d\/([\w-]+)/.exec(entry.coverUrl ?? "")?.[1];
+    if (coverFileId) {
+      const fromFile = await attempt("catalog-file", async () => {
+        const { bytes, total } = await this.deps.drive.range({ id: coverFileId }, 0, MAX_COVER_FILE_BYTES - 1, controller);
+        requests++; bytesRead += bytes.length;
+        if (total !== null && total > bytes.length) throw new Error("COVER_FILE_TOO_LARGE");
+        return imageBlob(bytes);
+      });
+      if (fromFile) return fromFile;
+    }
     // Without a token every Drive request below fails.
     if (!await this.authorized()) { console.info(JSON.stringify({ event: "DRIVE_COVER_PLACEHOLDER", fileId: entry.fileId, reason: "not-authorized" })); return null; }
     // Drive has no thumbnail for CBR/CBZ (its endpoint answers 404), so they skip straight to
@@ -154,6 +172,13 @@ export class PersonalDriveCoverResolver {
     try { return await task(); }
     finally { this.running--; this.waiting.shift()?.(); }
   }
+}
+
+/** The bytes of an image file as a typed Blob (JPEG, PNG, WebP or GIF), else null. */
+export function imageBlob(bytes: Uint8Array): Blob | null {
+  const at = (index: number, ...values: number[]) => values.every((value, offset) => bytes[index + offset] === value);
+  const type = at(0, 0xff, 0xd8, 0xff) ? "image/jpeg" : at(0, 0x89, 0x50, 0x4e, 0x47) ? "image/png" : at(0, 0x52, 0x49, 0x46, 0x46) && at(8, 0x57, 0x45, 0x42, 0x50) ? "image/webp" : at(0, 0x47, 0x49, 0x46, 0x38) ? "image/gif" : null;
+  return type ? new Blob([new Uint8Array(bytes)], { type }) : null;
 }
 
 /** Drive's image hosts send no CORS headers, so the WebView cannot read their bytes with

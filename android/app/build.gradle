@@ -24,6 +24,25 @@ android {
         }
     }
     buildTypes {
+        debug {
+            // Optional, controlled local experiment. OAuth client IDs are public identifiers;
+            // do not put a client secret here. Release builds never use this override.
+            def testWebClient = System.getenv('LUMEO_GOOGLE_TEST_WEB_CLIENT_ID')?.trim() ?: ''
+            // Android's Gradle process does not load Vite's .env.local automatically.
+            // Read just this public identifier for the debug-only experiment; .env.local is
+            // gitignored and never copied to an Android resource as a whole.
+            if (!testWebClient) {
+                def localEnv = rootProject.file('../.env.local')
+                if (localEnv.isFile()) {
+                    def entry = localEnv.readLines().find { it ==~ /^\s*LUMEO_GOOGLE_TEST_WEB_CLIENT_ID\s*=.*$/ }
+                    if (entry != null) testWebClient = entry.substring(entry.indexOf('=') + 1).trim().replaceAll(/^['"]|['"]$/, '')
+                }
+            }
+            if (testWebClient && !(testWebClient ==~ /[A-Za-z0-9_-]+\.apps\.googleusercontent\.com/)) {
+                throw new GradleException('LUMEO_GOOGLE_TEST_WEB_CLIENT_ID has an invalid format')
+            }
+            resValue 'string', 'lumeo_test_web_client_id', testWebClient
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
@@ -48,6 +67,13 @@ dependencies {
     // 21.6.0 retains support for the app's existing minSdk 23. Do not raise
     // minSdk merely to add OAuth; the authorization API is available here.
     implementation "com.google.android.gms:play-services-auth:21.6.0"
+    // The Lumeo account: Firebase Authentication, signed in with Google through Android's
+    // own account picker (Credential Manager). Configured by google-services.json.
+    implementation platform("com.google.firebase:firebase-bom:33.7.0")
+    implementation "com.google.firebase:firebase-auth"
+    implementation "androidx.credentials:credentials:1.3.0"
+    implementation "androidx.credentials:credentials-play-services-auth:1.3.0"
+    implementation "com.google.android.libraries.identity.googleid:googleid:1.1.1"
     // MobileSAM executes entirely inside the app process. No model input, page,
     // embedding or mask leaves the device.
     // 1.20 keeps Android API 23 support. Newer 1.31 raises its manifest to API 24;

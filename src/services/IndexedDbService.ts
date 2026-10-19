@@ -21,13 +21,15 @@ export const STORE_NAMES = {
   readingReviews: "readingReviews",
   syncOutbox: "syncOutbox",
   comicCoverCache: "comicCoverCache",
+  audiobookFiles: "audiobookFiles",
+  audiobookProgress: "audiobookProgress",
 } as const;
 
 export type StoreName = typeof STORE_NAMES[keyof typeof STORE_NAMES];
 export type TransactionMode = "readonly" | "readwrite";
 
 export class IndexedDbService {
-  public static readonly SCHEMA_VERSION = 12;
+  public static readonly SCHEMA_VERSION = 13;
   private connection: Promise<IDBDatabase> | null = null;
   public constructor(private readonly databaseName = "lumeo-library", private readonly version = IndexedDbService.SCHEMA_VERSION) {}
 
@@ -74,6 +76,10 @@ export class IndexedDbService {
           const store = database.createObjectStore(STORE_NAMES.comicCoverCache, { keyPath: "key" });
           store.createIndex("updatedAt", "updatedAt", { unique: false });
         }
+        // Audio is deliberately isolated from BookFileRepository/reading progress. A chapter
+        // cache can be evicted independently without touching books, HQs or LIMA documents.
+        if (!database.objectStoreNames.contains(STORE_NAMES.audiobookFiles)) database.createObjectStore(STORE_NAMES.audiobookFiles, { keyPath: "audiobookId" });
+        if (!database.objectStoreNames.contains(STORE_NAMES.audiobookProgress)) database.createObjectStore(STORE_NAMES.audiobookProgress, { keyPath: "audiobookId" });
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error("Não foi possível abrir o armazenamento local."));

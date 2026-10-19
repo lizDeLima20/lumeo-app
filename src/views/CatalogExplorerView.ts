@@ -1,3 +1,4 @@
+import { bindCoverBackdrop } from "../components/CoverBackdrop";
 import type { AppState } from "../core/AppState";
 import type { CatalogBookData } from "../models/CatalogBook";
 import { CatalogService } from "../services/CatalogService";
@@ -201,7 +202,7 @@ export class CatalogExplorerView extends BaseView {
     const fallback = (): void => cover.replaceChildren(this.createElement("span", "drive-comic-card__fallback", "📚"));
     const image = this.createElement("img", "") as HTMLImageElement;
     image.alt = `Capa de ${entry.name.trim()}`; image.loading = "lazy"; image.decoding = "async"; image.referrerPolicy = "no-referrer";
-    image.addEventListener("error", fallback, { once: true }); cover.append(image);
+    image.addEventListener("error", fallback, { once: true }); cover.append(image); bindCoverBackdrop(cover, image);
     this.comicCoverLoader.observe(image, entry, collection.id, fallback);
     const path = listing.breadcrumb.slice(1).map(step => step.name).join(" · ") || collection.name;
     card.append(cover, this.createElement("h3", "drive-comic-card__title", entry.name.trim()), this.createElement("small", "drive-comic-card__format", path));
@@ -272,7 +273,7 @@ export class CatalogExplorerView extends BaseView {
     const fallback = (): void => root.replaceChildren(this.createElement("span", "catalog-card__placeholder", "📖"));
     if (!book.coverUrl) { fallback(); return; }
     const image = this.createElement("img", "") as HTMLImageElement; image.src = book.coverUrl; image.alt = this.t("ui.catalog.coverOf", { title: book.title }); image.loading = "lazy"; image.decoding = "async"; image.referrerPolicy = "no-referrer";
-    image.addEventListener("error", fallback, { once: true }); root.append(image);
+    image.addEventListener("error", fallback, { once: true }); root.append(image); bindCoverBackdrop(root, image);
   }
   private isUnclassified(book: CatalogBookData): boolean { return !book.genreId || book.genreId === "sem-genero" || /^sem gênero$/i.test(book.genreName.trim()); }
 

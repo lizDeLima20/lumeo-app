@@ -123,7 +123,7 @@ export const PT_BR = {
   "reader.card.title": "Ficha de estudo", "reader.card.book": "Livro", "reader.card.location": "Local", "reader.card.locationValue": "Página {page}",
   "reader.card.definition": "Significado", "reader.card.lookupDefinition": "Consultar significado", "reader.card.translation": "Tradução", "reader.card.lookupTranslation": "Traduzir trecho",
   "reader.card.myNote": "Minha nota", "reader.card.myNotePlaceholder": "Escreva sua observação", "reader.card.save": "Salvar", "reader.card.notSaved": "Ainda não salvo", "reader.card.looking": "Consultando…", "reader.card.lookupFailed": "Não foi possível concluir a consulta.",
-  "ui.home.audiobooks": "Audiolivros", "ui.audiobooks.eyebrow": "Em breve", "ui.audiobooks.title": "Audiolivros", "ui.audiobooks.description": "Estamos preparando uma experiência de audiolivros para você.",
+  "ui.home.audiobooks": "Audiolivros", "ui.audiobooks.eyebrow": "Biblioteca pessoal", "ui.audiobooks.title": "Audiolivros", "ui.audiobooks.description": "Sua estante de audiobooks em um só lugar.", "ui.audiobooks.emptyTitle": "Sua biblioteca de audiobooks está vazia", "ui.audiobooks.emptyDescription": "Adicione uma pasta do Google Drive como Audiolivros para ouvir seus próprios capítulos. Seus livros e HQs permanecem inalterados.",
 } as const;
 
 export type TranslationKey = keyof typeof PT_BR;
