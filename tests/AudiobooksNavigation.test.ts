@@ -40,13 +40,33 @@ it("mantém player dentro da viewport e usa uma entrada de histórico para Volta
   assert.match(styles, /\.audiobook-miniplayer \{ position: fixed;/);
 });
 
-it("renderiza uma vitrola Lumeo com disco giratório e agulha fixa durante a reprodução", () => {
+it("mantém o disco contínuo no DOM e coordena capa, agulha e reprodução", () => {
   const view = source("src/views/AudiobooksView.ts");
   const styles = source("src/styles/home.css");
   assert.match(view, /audiobook-turntable__brand", "LUMEO"/);
   assert.match(view, /audiobook-turntable__note", "♫"/);
   assert.match(view, /audiobook-turntable__hole/);
   assert.match(view, /audiobook-turntable__arm/);
-  assert.match(styles, /\.audiobook-full-player__cover\.is-playing \.audiobook-turntable__record \{ animation:audiobook-disc-spin/);
+  assert.match(view, /visualChapterId !== active\.id/);
+  assert.match(view, /audiobook-turntable__cover/);
+  assert.match(styles, /\.audiobook-full-player__cover\.is-playing \.audiobook-turntable__record,\.audiobook-main-player__visual\.is-playing \.audiobook-turntable__record \{ animation:audiobook-disc-spin/);
+  assert.match(styles, /\.audiobook-main-player__visual\.is-cueing \.audiobook-turntable__arm/);
   assert.doesNotMatch(styles, /audiobook-turntable__arm[^\n]*animation:/);
+});
+
+it("exibe o player principal e as coleções em carrossel horizontal", () => {
+  const view = source("src/views/AudiobooksView.ts");
+  const styles = source("src/styles/home.css");
+  assert.match(view, /createMainPlayer/);
+  assert.match(view, /audiobook-collections-carousel/);
+  assert.match(styles, /\.audiobook-collections-carousel \{[^}]*overflow-x:auto/);
+  assert.match(styles, /\.audiobook-main-player \{[^}]*grid-template-columns/);
+});
+
+it("aguarda a agulha antes de iniciar o áudio e para durante download", () => {
+  const player = source("src/audiobooks/AudiobookPlayer.ts");
+  assert.match(player, /cueing: boolean/);
+  assert.match(player, /setTimeout\(resolve, 560\)/);
+  assert.match(player, /update\(\{ downloading: true, cueing: false/);
+  assert.match(player, /await this\.cueAndPlay\(chapter\.id\)/);
 });
