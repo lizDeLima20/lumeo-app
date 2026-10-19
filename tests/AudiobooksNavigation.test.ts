@@ -49,9 +49,10 @@ it("mantém o disco contínuo no DOM e coordena capa, agulha e reprodução", ()
   assert.match(view, /audiobook-turntable__arm/);
   assert.match(view, /visualChapterId !== active\.id/);
   assert.match(view, /audiobook-turntable__cover/);
-  assert.match(styles, /\.audiobook-full-player__cover\.is-playing \.audiobook-turntable__record,\.audiobook-main-player__visual\.is-playing \.audiobook-turntable__record \{ animation:audiobook-disc-spin/);
+  assert.match(styles, /\.audiobook-main-player__visual \.audiobook-turntable__record \{ animation:audiobook-disc-spin[^}]*animation-play-state:paused/);
+  assert.match(styles, /\.audiobook-main-player__visual\.is-playing \.audiobook-turntable__record \{ animation-play-state:running/);
   assert.match(styles, /\.audiobook-main-player__visual\.is-cueing \.audiobook-turntable__arm/);
-  assert.doesNotMatch(styles, /audiobook-turntable__arm[^\n]*animation:/);
+  assert.match(styles, /\.audiobook-turntable__arm \{[^}]*transition:transform/);
 });
 
 it("exibe o player principal e as coleções em carrossel horizontal", () => {
@@ -60,7 +61,23 @@ it("exibe o player principal e as coleções em carrossel horizontal", () => {
   assert.match(view, /createMainPlayer/);
   assert.match(view, /audiobook-collections-carousel/);
   assert.match(styles, /\.audiobook-collections-carousel \{[^}]*overflow-x:auto/);
-  assert.match(styles, /\.audiobook-main-player \{[^}]*grid-template-columns/);
+  assert.match(styles, /\.audiobook-main-player \{[^}]*justify-items:center/);
+  assert.match(view, /collectionArt\(collection\)/);
+  // First touch opens the LP, the second closes it. The card is kept between touches (it is not
+  // rebuilt), so the toggle compares with the collection open now.
+  assert.match(view, /const closing = selectedCollectionId === collection\.id; selectedCollectionId = closing \? "" : collection\.id;/);
+  // 46% of the disc's width puts its centre on the sleeve's edge: half of it outside (was 48%).
+  assert.match(styles, /\.audiobook-collection-card\.is-expanded \.audiobook-lp__disc \{ transform:translateX\(46%\)/);
+});
+
+it("remove o cabeçalho duplicado e mantém os controles completos abaixo do disco", () => {
+  const view = source("src/views/AudiobooksView.ts");
+  assert.doesNotMatch(view, /const badge =/);
+  assert.doesNotMatch(view, /section\.append\(back, badge/);
+  assert.match(view, /audiobook-main-player__timeline/);
+  assert.match(view, /audiobook-main-player__secondary/);
+  assert.match(view, /Retroceder 15 segundos/);
+  assert.match(view, /Avançar 15 segundos/);
 });
 
 it("aguarda a agulha antes de iniciar o áudio e para durante download", () => {
@@ -69,4 +86,22 @@ it("aguarda a agulha antes de iniciar o áudio e para durante download", () => {
   assert.match(player, /setTimeout\(resolve, 560\)/);
   assert.match(player, /update\(\{ downloading: true, cueing: false/);
   assert.match(player, /await this\.cueAndPlay\(chapter\.id\)/);
+});
+
+it("faixa anterior navega diretamente pela fila e próxima respeita os limites", async () => {
+  const { queuedNext, queuedPrevious } = await import("../src/audiobooks/AudiobookPlayer.ts");
+  const queue = [{ id: "one" }, { id: "two" }, { id: "three" }] as never[];
+  assert.equal(queuedPrevious(queue, "two")?.id, "one");
+  assert.equal(queuedPrevious(queue, "one"), undefined);
+  assert.equal(queuedNext(queue, "two")?.id, "three");
+  assert.equal(queuedNext(queue, "three"), undefined);
+  assert.doesNotMatch(source("src/audiobooks/AudiobookPlayer.ts"), /currentTime > 3/);
+});
+
+it("inicia os seletores de velocidade em 1x e evita promoção permanente de GPU", () => {
+  const view = source("src/views/AudiobooksView.ts");
+  const styles = source("src/styles/home.css");
+  assert.equal((view.match(/speed\.value = "1"/g) ?? []).length, 2);
+  assert.doesNotMatch(styles, /audiobook-turntable__record[^}]*will-change/);
+  assert.match(styles, /\.audiobook-main-player__visual \{[^}]*width:min\(56vw,13\.25rem\)/);
 });

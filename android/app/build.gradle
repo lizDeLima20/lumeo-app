@@ -23,6 +23,23 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Production signing. The keystore and its passwords live outside the project, by default in
+    // ~/.lumeo/release/keystore.properties (storeFile, storePassword, keyAlias, keyPassword), or
+    // wherever LUMEO_RELEASE_KEYSTORE_PROPERTIES points. Nothing secret is read into the repo.
+    // Without that file a release build stays unsigned; debug builds never use this key.
+    def releaseSigningFile = file(System.getenv('LUMEO_RELEASE_KEYSTORE_PROPERTIES') ?: "${System.getProperty('user.home')}/.lumeo/release/keystore.properties")
+    def releaseSigning = new Properties()
+    if (releaseSigningFile.isFile()) releaseSigningFile.withInputStream { releaseSigning.load(it) }
+    signingConfigs {
+        if (releaseSigning.getProperty('storeFile')) {
+            release {
+                storeFile file(releaseSigning.getProperty('storeFile'))
+                storePassword releaseSigning.getProperty('storePassword')
+                keyAlias releaseSigning.getProperty('keyAlias')
+                keyPassword releaseSigning.getProperty('keyPassword')
+            }
+        }
+    }
     buildTypes {
         debug {
             // Optional, controlled local experiment. OAuth client IDs are public identifiers;
@@ -44,6 +61,7 @@ android {
             resValue 'string', 'lumeo_test_web_client_id', testWebClient
         }
         release {
+            if (signingConfigs.findByName('release')) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -78,6 +96,13 @@ dependencies {
     // embedding or mask leaves the device.
     // 1.20 keeps Android API 23 support. Newer 1.31 raises its manifest to API 24;
     // do not silently drop devices or override a runtime's declared minimum.
+    // Audiobooks: ExoPlayer in a MediaSessionService, so a chapter goes on with the app in the
+    // background and is controlled from the notification, the lock screen and headsets.
+    // 1.4.1 keeps Android API 21+ support.
+    implementation "androidx.media3:media3-exoplayer:1.4.1"
+    implementation "androidx.media3:media3-session:1.4.1"
+    implementation "androidx.media3:media3-datasource:1.4.1"
+    implementation "androidx.media3:media3-database:1.4.1"
     implementation "com.microsoft.onnxruntime:onnxruntime-android:1.20.0"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"

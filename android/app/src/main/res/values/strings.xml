@@ -4,4 +4,8 @@
     <string name="title_activity_main">Lumeo</string>
     <string name="package_name">com.lumeo.reader</string>
     <string name="custom_url_scheme">com.lumeo.reader</string>
+    <string name="audiobook_channel_name">Audiolivros em reprodução</string>
+    <string name="audiobook_rewind">Voltar 15 segundos</string>
+    <string name="audiobook_forward">Avançar 15 segundos</string>
+    <string name="audiobook_close">Fechar o player</string>
 </resources>

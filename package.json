@@ -18,6 +18,7 @@
     "android:java": "./scripts/android-terminal.sh java",
     "android:sync": "./scripts/android-terminal.sh sync",
     "android:build": "./scripts/android-terminal.sh build",
+    "android:release": "./scripts/android-terminal.sh release",
     "android:install": "./scripts/android-terminal.sh install",
     "android:logs": "./scripts/android-terminal.sh logs",
     "android:dev": "./scripts/android-terminal.sh dev",

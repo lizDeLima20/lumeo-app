@@ -23,7 +23,7 @@ type PageCallback = (entries: GoogleDriveLibraryEntry[], state: GoogleDriveLibra
 const METADATA_BATCH_SIZE = 24;
 const READABLE_BOOK = /\.(pdf|epub|cbr|cbz)$/i;
 /** Audio is listed as metadata only. Playback is the only operation that downloads a chapter. */
-export const READABLE_AUDIO = /\.(mp3|m4a|aac|ogg|opus|wav)$/i;
+export const READABLE_AUDIO = /\.(mp3|m4a|m4b|aac|ogg|opus|wav|flac)$/i;
 export function isReadableForSource(name: string, contentType: GoogleDriveLibrarySource["contentType"]): boolean {
   return contentType === "audiobook" ? READABLE_AUDIO.test(name) : READABLE_BOOK.test(name);
 }

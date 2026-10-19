@@ -11,3 +11,22 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(89, 70, 178,
 .page-subtitle { color: var(--color-muted); }
 .section-title { font-size: 1.15rem; }
 .eyebrow { color: var(--color-primary); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+
+/* Touch, not selection. Android's WebView paints a translucent blue box over every element
+   that is tapped (its default tap highlight), and a long press on a button or card selected
+   its label in blue. The highlight is turned off once here (it is inherited); controls and
+   cards no longer select their text or start dragging their images. Reading surfaces keep
+   their text selection - the readers' pages are not in this list - and so do the fields
+   people type in. Keyboard focus keeps its visible ring. */
+html { -webkit-tap-highlight-color: transparent; }
+button, [role="button"], [role="tab"], label, summary, select,
+.catalog-card, .drive-comic-card, .book-card, .book-3d, .catalog__genre-chip,
+.audiobook-collection-card, .audiobook-chapter, .audiobook-miniplayer, .audiobook-main-player__visual,
+.mobile-bottom-navigation, .navigation-drawer, .drawer-link, .brand,
+.personal-drive-library__source, .personal-drive-library__choice {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+button img, [role="button"] img, .catalog-card img, .drive-comic-card img, .book-card img, .book-3d img,
+.audiobook-collection-card img, .audiobook-chapter img, .audiobook-miniplayer img, .brand img { -webkit-user-drag: none; }
+input, textarea, [contenteditable="true"], [contenteditable=""] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+[role="button"]:focus-visible, [role="tab"]:focus-visible, a:focus-visible, .catalog-card:focus-visible, .drive-comic-card:focus-visible, .audiobook-chapter:focus-visible { outline: 3px solid rgba(89, 70, 178, .45); outline-offset: 2px; }

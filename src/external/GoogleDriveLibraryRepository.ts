@@ -6,7 +6,7 @@ export type GoogleDriveLibraryContentType = "book" | "comic" | "audiobook";
 /** A source taken off the shelf: its listing, folders and sync state are kept so it can come back. */
 export interface GoogleDriveRemovedSource { source: GoogleDriveLibrarySource; removedAt: string; origin: string; }
 /** One change to the list of sources, kept on the device so a missing source can be explained. */
-export interface GoogleDriveSourceEvent { at: string; action: "added" | "removed" | "restored" | "renamed" | "retyped" | "refused"; sourceId: string; name: string; origin: string; detail?: string; }
+export interface GoogleDriveSourceEvent { at: string; action: "added" | "removed" | "restored" | "renamed" | "retyped" | "refused" | "purged"; sourceId: string; name: string; origin: string; detail?: string; }
 
 export interface GoogleDriveLibrarySource {
   id: string; userId: string; name: string; folderUrl: string; folderId: string;
@@ -250,6 +250,24 @@ export class GoogleDriveLibraryRepository {
     await this.storage.save(`googleLibrariesRemoved:${this.owner}`, [...removedRows.filter(row => row.source.id !== id), { source, removedAt: new Date().toISOString(), origin }]);
     await this.writeSources(rows.filter(row => row.id !== id), id);
     await this.log("removed", source, origin);
+  }); }
+  /**
+   * Deletes a source from the trash for good: its row and the metadata this device kept for
+   * it (files listed, folders, sync state). Only a source already in the trash can be deleted,
+   * so an active one is never lost by one tap. The Drive folder itself is never touched, and
+   * books, comics and audio already downloaded stay on the device. The same link can then be
+   * added again as a new source, listed from scratch. The history keeps a "purged" line.
+   */
+  public purge(id: string, origin = "unknown"): Promise<boolean> { return this.mutate(async () => {
+    const removedRows = await this.storage.load<GoogleDriveRemovedSource[]>(`googleLibrariesRemoved:${this.owner}`) ?? [];
+    const gone = removedRows.find(row => row.source.id === id && row.source.userId === this.owner);
+    if (!gone || (await this.all()).some(row => row.id === id)) return false;
+    await this.storage.save(`googleLibrariesRemoved:${this.owner}`, removedRows.filter(row => row !== gone));
+    await this.storage.remove(`googleLibraryEntries:${this.owner}:${id}`);
+    await this.storage.remove(`googleLibraryFolders:${this.owner}:${id}`);
+    await this.storage.remove(`googleLibrarySync:${this.owner}:${id}`);
+    await this.log("purged", gone.source, origin);
+    return true;
   }); }
   /** Puts a removed source back with its data; a name taken meanwhile gets a number. */
   public restore(id: string, origin = "unknown"): Promise<GoogleDriveLibrarySource | null> { return this.mutate(async () => {

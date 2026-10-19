@@ -320,7 +320,18 @@ export class PersonalDriveLibraryView extends BaseView {
             const row = this.createElement("div", "personal-drive-library__source personal-drive-library__source--removed"), folder = this.createElement("span", "personal-drive-library__source-folder"), name = this.createElement("span", "personal-drive-library__source-name", gone.name), restore = this.createElement("button", "personal-drive-library__type", "Restaurar") as HTMLButtonElement;
             folder.append(icon("folder")); restore.type = "button"; restore.setAttribute("aria-label", `Restaurar ${gone.name}`);
             restore.addEventListener("click", () => void (async () => { restore.disabled = true; const back = await this.sources.restore(gone.id, "modal").catch(error => { note.textContent = message(error); return null; }); if (!back) { restore.disabled = false; return; } await cache(); await renderSources(); note.textContent = `${back.name} foi restaurada.`; })());
-            row.append(folder, name, restore); list.append(row);
+            // Excluir definitivamente: only from the trash, after a confirmation that says what
+            // stays (the Drive folder and anything downloaded).
+            const purge = this.createElement("button", "personal-drive-library__delete personal-drive-library__purge") as HTMLButtonElement; purge.type = "button";
+            purge.setAttribute("aria-label", `Excluir definitivamente ${gone.name}`); purge.title = "Excluir definitivamente"; purge.append(icon("trash"));
+            purge.addEventListener("click", () => void (async () => {
+              if (!window.confirm(`Excluir definitivamente "${gone.name}"?\n\nA lista e os dados dela neste aparelho serão apagados e ela não poderá ser restaurada. A pasta no Google Drive e os arquivos já baixados não serão apagados. Depois você pode cadastrar o mesmo link de novo.`)) return;
+              purge.disabled = true; restore.disabled = true;
+              const done = await this.sources.purge(gone.id, "lixeira-definitiva").catch(error => { note.textContent = message(error); return false; });
+              if (!done) { purge.disabled = false; restore.disabled = false; return; }
+              await renderSources(); note.textContent = `${gone.name} foi excluída definitivamente. O mesmo link pode ser cadastrado de novo.`;
+            })());
+            row.append(folder, name, restore, purge); list.append(row);
           });
         }
       };

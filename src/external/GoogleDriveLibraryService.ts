@@ -71,6 +71,24 @@ export class GoogleDriveLibraryService {
     if (response.status === 401) this.dispose();
     if (!response.ok) throw new GoogleDriveRequestError(response.status, (await PublicGoogleDriveTransport.failure(response)).reason); return response;
   }
+  /**
+   * How a native player reads files' media straight from Drive: the request headers common to
+   * every file (the public API-key transport, or the current private-session token when
+   * `privateSession` is asked for after a public read was refused), and each file's URL with
+   * its own resource-key header. Null when neither is available; this never asks for consent.
+   */
+  public async mediaAccess(privateSession = false): Promise<{ headers: Record<string, string>; file: (file: Pick<GoogleLibraryFile, "id" | "resourceKey">) => { uri: string; headers: Record<string, string> } } | null> {
+    let headers: Record<string, string>;
+    if (!privateSession && this.publicTransport.configured) headers = await this.publicTransport.headers();
+    else if (this.authorizedPrivate()) headers = { Authorization: `Bearer ${this.token}` };
+    else return null;
+    return { headers, file: file => ({
+      uri: `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media&supportsAllDrives=true`,
+      headers: file.resourceKey ? { "X-Goog-Drive-Resource-Keys": `${file.id}/${file.resourceKey}` } : {} as Record<string, string>,
+    }) };
+  }
+  /** Whether a refused public read can be retried with a private session already granted. */
+  public get privateSessionReady(): boolean { return this.authorizedPrivate(); }
   private authorizedPrivate(): boolean { return !!this.token && Date.now() < this.expires; }
   private mayUsePrivateFallback(failure: PublicDriveRequestFailure): boolean {
     if (failure.status === 404) return true;
@@ -190,7 +208,7 @@ export class GoogleDriveLibraryService {
   }
   private async downloadAudioOnce(file: GoogleLibraryFile, signal: AbortSignal, progress: (percent: number | null) => void): Promise<File> {
     const max = 512 * 1024 * 1024, size = Number(file.size) || 0;
-    if (size > max || !/\.(mp3|m4a|aac|ogg|opus|wav)$/i.test(file.name)) throw new BookDownloadError("EPUB_INVALID", "VALIDATING", file.id);
+    if (size > max || !/\.(mp3|m4a|m4b|aac|ogg|opus|wav|flac)$/i.test(file.name)) throw new BookDownloadError("EPUB_INVALID", "VALIDATING", file.id);
     const endpoint = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}`;
     StartTelemetry.request(file.id, endpoint, "DOWNLOADING");
     const timed = portableTimeout(signal, 180_000);
@@ -266,7 +284,7 @@ export class GoogleDriveLibraryService {
 function assertNotAborted(signal: AbortSignal): void { if (signal.aborted) throw new DOMException("Download cancelado.", "AbortError"); }
 function audioMime(name: string): string {
   const extension = name.split(".").pop()?.toLocaleLowerCase("en-US");
-  return extension === "mp3" ? "audio/mpeg" : extension === "m4a" ? "audio/mp4" : extension === "aac" ? "audio/aac" : extension === "wav" ? "audio/wav" : extension === "opus" ? "audio/ogg; codecs=opus" : "audio/ogg";
+  return extension === "mp3" ? "audio/mpeg" : extension === "m4a" || extension === "m4b" ? "audio/mp4" : extension === "flac" ? "audio/flac" : extension === "aac" ? "audio/aac" : extension === "wav" ? "audio/wav" : extension === "opus" ? "audio/ogg; codecs=opus" : "audio/ogg";
 }
 function portableTimeout(parent: AbortSignal, milliseconds: number): { signal: AbortSignal; timedOut: boolean; dispose(): void } {
   const controller = new AbortController(); let timedOut = false;

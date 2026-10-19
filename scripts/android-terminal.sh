@@ -46,6 +46,34 @@ build_apk() {
   echo "APK=$apk_path"
 }
 
+# Signed production APK. The key stays in ~/.lumeo/release (or LUMEO_RELEASE_KEYSTORE_PROPERTIES);
+# the APK is copied out only after apksigner accepts it and its certificate is that key's.
+release_apk() {
+  local properties="${LUMEO_RELEASE_KEYSTORE_PROPERTIES:-$HOME/.lumeo/release/keystore.properties}"
+  local release_apk_path="$project_root/android/app/build/outputs/apk/release/app-release.apk"
+  local output="${LUMEO_RELEASE_OUTPUT:-$HOME/Downloads/Lumeo-Android.apk}"
+  test -f "$properties" || { echo "Configuração de assinatura não encontrada: $properties" >&2; exit 1; }
+  local build_tools
+  build_tools="$(ls -d "${ANDROID_HOME:-$HOME/Android/Sdk}"/build-tools/* | sort -V | tail -1)"
+  sync_android
+  cd "$project_root/android"
+  rm -f "$release_apk_path"
+  ./gradlew --no-daemon assembleRelease
+  test -f "$release_apk_path" || { echo "APK assinado não foi gerado (o release saiu sem assinatura?)." >&2; exit 1; }
+  "$build_tools/apksigner" verify --verbose --print-certs "$release_apk_path" 2>/dev/null | grep -E "Verified using|[Ss]igner.*certificate (DN|SHA-256)"
+  # The certificate in the APK must be the Lumeo release key, never the debug one.
+  local store alias apk_sha key_sha
+  store="$(grep '^storeFile=' "$properties" | cut -d= -f2-)"; alias="$(grep '^keyAlias=' "$properties" | cut -d= -f2-)"
+  # apksigner prints "Signer #1 certificate ..." or "V2 Signer: certificate ..." depending on version.
+  apk_sha="$("$build_tools/apksigner" verify --print-certs "$release_apk_path" 2>/dev/null | sed -n 's/^.*[Ss]igner.*certificate SHA-256 digest: //p' | head -1)"
+  key_sha="$(LUMEO_KS_PASS="$(grep '^storePassword=' "$properties" | cut -d= -f2-)" keytool -list -v -keystore "$store" -alias "$alias" -storepass:env LUMEO_KS_PASS 2>/dev/null | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ':' | tr 'A-F' 'a-f')"
+  [[ -n "$apk_sha" && "$apk_sha" == "$key_sha" ]] || { echo "O certificado do APK não é o da chave de release do Lumeo." >&2; exit 1; }
+  mkdir -p "$(dirname "$output")"
+  cp "$release_apk_path" "$output"
+  echo "APK_RELEASE=$output"
+  sha256sum "$output"
+}
+
 require_device() {
   local device_count
   device_count="$(adb devices | awk 'NR>1 && $2 == "device" { count++ } END { print count + 0 }')"
@@ -71,6 +99,7 @@ case "${1:-}" in
   java) java_info ;;
   sync) sync_android ;;
   build) build_apk ;;
+  release) release_apk ;;
   install) install_apk ;;
   logs)
     require_device
