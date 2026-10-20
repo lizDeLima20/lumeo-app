@@ -1,5 +1,6 @@
 import { META_PIXEL_ID } from "./hqs-tracking-config.js";
 import { createMetaPixel, createViewContentController, mergeCheckoutAttribution } from "./hqs-tracking.js";
+import { hasAnalyticsConsent, SALES_CONSENT_EVENT } from "./sales-consent.js";
 
 export const LIVROS_EVENT_PAYLOAD = Object.freeze({
   content_name: "Lumeo Livros",
@@ -42,14 +43,28 @@ export function mountLivrosTracking({
   documentRef = globalThis.document,
   Observer = globalThis.IntersectionObserver,
   sessionStorageRef = globalThis.sessionStorage,
+  hasConsent = () => hasAnalyticsConsent(),
 } = {}) {
   if (!windowRef || !documentRef) return () => {};
-  const basePixel = createMetaPixel({ pixelId, windowRef, documentRef });
+  let consented = Boolean(hasConsent());
+  let basePixel = consented ? createMetaPixel({ pixelId, windowRef, documentRef }) : null;
+  let pageViewTracked = false;
   const tracker = {
-    enabled: basePixel.enabled,
-    track: (eventName, details = {}) => basePixel.track(eventName, { ...LIVROS_EVENT_PAYLOAD, ...details }),
+    enabled: Boolean(consented && basePixel?.enabled),
+    track: (eventName, details = {}) => consented && basePixel?.enabled
+      ? basePixel.track(eventName, { ...LIVROS_EVENT_PAYLOAD, ...details }) : false,
   };
-  if (tracker.enabled) tracker.track("PageView");
+  const sendPageView = () => {
+    if (!pageViewTracked && tracker.enabled) { tracker.track("PageView"); pageViewTracked = true; }
+  };
+  sendPageView();
+  const onConsentChange = (event) => {
+    consented = event?.detail?.choice === "accepted";
+    if (consented && !basePixel) basePixel = createMetaPixel({ pixelId, windowRef, documentRef });
+    tracker.enabled = Boolean(consented && basePixel?.enabled);
+    sendPageView();
+  };
+  windowRef.addEventListener?.(SALES_CONSENT_EVENT, onConsentChange);
 
   const trackViewContent = createViewContentController({ tracker });
   const offer = documentRef.querySelector?.(".sales-offer");
@@ -76,7 +91,7 @@ export function mountLivrosTracking({
     event.preventDefault?.();
     event.stopImmediatePropagation?.();
     if (!checkoutTrackedInMemory && !readSession(sessionStorageRef)) {
-      if (tracker.enabled) tracker.track("InitiateCheckout", { cta_location: ctaLocation });
+      if (consented && tracker.enabled) tracker.track("InitiateCheckout", { cta_location: ctaLocation });
       checkoutTrackedInMemory = true;
       writeSession(sessionStorageRef);
     }
@@ -87,6 +102,7 @@ export function mountLivrosTracking({
   return () => {
     observer?.disconnect?.();
     windowRef.removeEventListener?.("scroll", onScroll);
+    windowRef.removeEventListener?.(SALES_CONSENT_EVENT, onConsentChange);
     documentRef.removeEventListener?.("click", onCheckoutClick, true);
   };
 }

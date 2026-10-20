@@ -1,1 +1,1 @@
-export const META_PIXEL_ID = ""; // TODO: Alan coloca o ID do Pixel aqui
+export const META_PIXEL_ID = ""; // Inserir somente o ID real, após revisar o consentimento e a política.

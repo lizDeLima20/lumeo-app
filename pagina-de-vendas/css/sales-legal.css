@@ -1,0 +1,12 @@
+body[data-sales-catalog="legal"] { min-height: 100vh; }
+body[data-sales-catalog="legal"] .sales-header__inner { width: min(72rem, calc(100% - 2rem)); }
+.sales-legal-nav { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+.sales-legal-nav a, .sales-legal-footer a { color: #f5d28e; font-size: .78rem; font-weight: 750; text-decoration: none; }
+.sales-legal { width: min(48rem, calc(100% - 2rem)); margin: clamp(2rem, 8vw, 5rem) auto; border: 1px solid var(--sales-line); border-radius: 1.25rem; padding: clamp(1.25rem, 5vw, 2.5rem); background: #fff; box-shadow: 0 .8rem 2.2rem #2a19390d; }
+.sales-legal h1 { margin: 0; color: var(--sales-plum-dark); font-size: clamp(2rem, 7vw, 3.25rem); line-height: 1.05; letter-spacing: -.055em; }
+.sales-legal h2 { margin: 1.7rem 0 .45rem; color: var(--sales-plum-dark); font-size: 1.08rem; }
+.sales-legal p { color: var(--sales-muted); font-size: .95rem; line-height: 1.65; }
+.sales-legal a { color: var(--sales-plum); }
+.sales-legal .sales-legal__updated { margin: .55rem 0 1.5rem; font-size: .78rem; }
+.sales-legal-footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; border-top: 1px solid var(--sales-line); padding: 1.5rem 1rem 2rem; background: #21142d; }
+@media (max-width: 26rem) { .sales-legal-nav { justify-content: flex-end; gap: .35rem .65rem; } .sales-legal-nav a { font-size: .68rem; } }

@@ -9,6 +9,7 @@ const pageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (relativePath) => readFileSync(resolve(pageRoot, relativePath), "utf8");
 const sha256 = (relativePath) => createHash("sha256").update(readFileSync(resolve(pageRoot, relativePath))).digest("hex");
 const html = read("index-livros.html");
+const hqsHtml = read("index-hqs.html");
 const css = `${read("css/livros.css")}\n${read("css/livros-conversion.css")}`;
 const js = read("js/livros.js");
 const relevantSource = `${html}\n${css}\n${js}`;
@@ -19,17 +20,17 @@ const normalizeText = (markup) => markup.replace(/<[^>]+>/g, " ").replace(/\s+/g
 test("headline AIDA e destaque estão exatos", () => {
   const headline = html.match(/<h1\s+id="sales-title"[^>]*>([\s\S]*?)<\/h1>/)?.[1];
   assert.ok(headline);
-  assert.equal(normalizeText(headline), "Leia mais livros no celular, com cara de livro de verdade.");
-  assert.equal(normalizeText(headline.match(/<span>([\s\S]*?)<\/span>/)?.[1] || ""), "livro de verdade");
+  assert.equal(normalizeText(headline), "Seus livros no Android. Sua leitura do seu jeito.");
+  assert.equal(normalizeText(headline.match(/<span>([\s\S]*?)<\/span>/)?.[1] || ""), "Sua leitura do seu jeito.");
 });
 
 test("hero não usa altura baseada na viewport", () => {
   assert.equal(/\.sales-hero\s*\{[^}]*\b(?:min-height|height)\s*:[^;}]*(?:dvh|svh|vh)/i.test(css), false);
 });
 
-test("garantia aparece no hero, oferta e FAQ", () => {
-  assert.equal((html.match(/Garantia de 7 dias/g) || []).length, 2);
-  assert.match(js, /\["Tem garantia\?",\s*"Sim\. Você tem 7 dias de garantia/);
+test("não anuncia garantia ou condição comercial ainda não configurada", () => {
+  assert.doesNotMatch(`${html}\n${js}`, /Garantia de 7 dias|7 dias de garantia/i);
+  assert.match(html, /condições de pagamento serão exibidas no checkout antes da confirmação/i);
 });
 
 test("copy comercial não contém condições removidas nem pagamento único", () => {
@@ -37,17 +38,8 @@ test("copy comercial não contém condições removidas nem pagamento único", (
   assert.doesNotMatch(relevantSource, /pagamento\s+único/i);
 });
 
-test("depoimentos vêm logo após a demonstração de leitura", () => {
-  const readingStart = html.indexOf('class="sales-how sales-section sales-how--reading"');
-  const readingEnd = html.indexOf("</section>", readingStart);
-  const nextSection = html.indexOf("<section", readingEnd + 10);
-  assert.ok(readingStart >= 0 && readingEnd > readingStart && nextSection > readingEnd);
-  assert.match(html.slice(nextSection, nextSection + 100), /class="sales-stories sales-section"/);
-});
-
-test("aviso autorizado dos depoimentos substituiu o texto antigo", () => {
-  assert.match(html, /Mensagens enviadas por leitores do Lumeo e publicadas com autorização\./);
-  assert.doesNotMatch(html, /Não são avaliações verificadas por uma plataforma independente/);
+test("depoimentos ficam ocultos até validação de autenticidade e autorização", () => {
+  assert.match(html, /class="sales-stories sales-section"[^>]*hidden/);
 });
 
 test("vídeo leve do hero está configurado e os arquivos existem", () => {
@@ -155,7 +147,7 @@ test("Pixel de Livros envia InitiateCheckout com payload e localização", async
       removeEventListener: (type) => windowListeners.delete(type),
     };
     const sessionStorageRef = { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)) };
-    const cleanup = mountLivrosTracking({ pixelId: "TEST", checkoutUrl: "https://checkout.test/?produto=livros", windowRef, documentRef, Observer: FakeObserver, sessionStorageRef });
+    const cleanup = mountLivrosTracking({ pixelId: "TEST", checkoutUrl: "https://checkout.test/?produto=livros", windowRef, documentRef, Observer: FakeObserver, sessionStorageRef, hasConsent: () => true });
     const button = { dataset: { salesCtaLocation: location }, matches: () => false, closest: () => null };
     const event = { target: { closest: () => button }, preventDefault() {}, stopImmediatePropagation() {} };
     documentListeners.get("click")(event);
@@ -170,6 +162,20 @@ test("Pixel de Livros envia InitiateCheckout com payload e localização", async
     assert.match(assignments[0], /utm_source=meta/);
     cleanup();
   }
+});
+
+test("Pixel de Livros não carrega nem envia eventos sem consentimento", async () => {
+  const { mountLivrosTracking } = await import(pathToFileURL(resolve(pageRoot, "js/livros-tracking.js")).href);
+  const scripts = [], windowListeners = new Map();
+  const windowRef = { location: { href: "https://lumeo.test/livros", assign() {} }, addEventListener: (name, listener) => windowListeners.set(name, listener), removeEventListener() {} };
+  const documentRef = { head: { append: (script) => scripts.push(script) }, createElement: () => ({}), getElementsByTagName: () => [], querySelector: () => null, addEventListener() {}, removeEventListener() {} };
+  const cleanup = mountLivrosTracking({ pixelId: "TEST", windowRef, documentRef, Observer: null, hasConsent: () => false });
+  assert.equal(scripts.length, 0);
+  assert.equal(windowRef.fbq, undefined);
+  windowListeners.get("lumeo:sales-analytics-consent-change")({ detail: { choice: "accepted" } });
+  assert.equal(scripts.length, 1);
+  assert.equal(windowRef.fbq.queue.filter((call) => call[0] === "track" && call[1] === "PageView").length, 1);
+  cleanup();
 });
 
 test("vídeo otimizado respeita codec, tamanho, duração e ausência de áudio", () => {
@@ -188,16 +194,14 @@ test("vídeo otimizado respeita codec, tamanho, duração e ausência de áudio"
   assert.equal(metadata.streams.some((stream) => stream.codec_type === "audio"), false);
 });
 
-test("página de HQs permanece inalterada", () => {
-  const expected = {
-    "index-hqs.html": "c5fcc8237bccf43f630bb6e3d8fd6bbe4aab019a8f6fd893c7429feb7d41ed4c",
-    "css/hqs.css": "82d8bb2e1306d8227ba17388ed898fcc2f66802db7dd110991d7e9dd794736b7",
-    "css/hqs-conversion.css": "5e2c10bafa212ef21fd5b7142a8f0e8cb33401cd97445682fe2b8a887b3105c1",
-    "js/hqs.js": "23a88a0619dbcbf7bc3b5199e3652ee457dd396d1bbdd4373fefee894b860768",
-    "js/hqs-tracking.js": "74bd752d5a7bdcf1aef3f363d386bbadd7ae90af03a5b0b48bd153a68d917919",
-    "js/hqs-hero-video.js": "ab0deeb21313d464197c728ada0e6432220fa5f8569fec63744ec405742f8541",
-  };
-  Object.entries(expected).forEach(([file, hash]) => assert.equal(sha256(file), hash, `${file} foi alterado`));
+test("a página de HQs mantém proposta própria e descreve o bônus separado", () => {
+  assert.match(hqsHtml, /data-sales-catalog="hqs"/);
+  assert.match(hqsHtml, /quadrinhos e mangás/i);
+  assert.doesNotMatch(hqsHtml, /200 audiolivros|lista de 1\.500 livros/i);
+  assert.match(hqsHtml, /coleção bônus não fica pré-instalada no aplicativo/i);
+  assert.match(hqsHtml, /link do Google Drive é entregue separadamente após a compra/i);
+  assert.match(hqsHtml, /ampliação automatizada de balões é experimental/i);
+  assert.doesNotMatch(hqsHtml, /inteligência artificial|IA que amplia/i);
 });
 
 const sectionAt = (className) => {
@@ -205,73 +209,79 @@ const sectionAt = (className) => {
   return start < 0 ? "" : html.slice(start, html.indexOf("</section>", start));
 };
 
-// Ajuste (complemento dos 3 bônus): o selo deixou de ser "BÔNUS INCLUSO: Lumeo Audiolivros" e passou
-// a anunciar os 200 audiolivros e as músicas; a posição (no card, antes do botão) continua a mesma.
-test("selo de bônus fica no card de oferta do hero, antes do botão", () => {
-  const offer = html.match(/<div class="sales-hero__offer"[\s\S]*?<\/div>\s*<\/div>/)?.[0] || "";
-  const badge = offer.indexOf("BÔNUS: 200 audiolivros + músicas para ler ouvindo"), button = offer.indexOf("data-hqs-hero-cta");
-  assert.ok(badge > 0, "selo ausente no card do hero");
-  assert.ok(button > badge, "selo deve vir antes do botão principal");
-  assert.match(offer, /class="livros-bonus-badge"/);
+test("hero destaca o aplicativo e os bônus entregues separadamente", () => {
+  const hero = html.slice(html.indexOf('<section class="sales-hero"'), html.indexOf("</section>"));
+  assert.match(hero, /ACESSO AO APLICATIVO LUMEO/);
+  assert.match(hero, /QUERO LER NO LUMEO/);
+  assert.match(hero, /Use com seus próprios livros\. Livros não incluídos\./);
+  assert.match(hero, /🎁 BÔNUS EXCLUSIVO/);
+  assert.match(hero, /1\.500 LIVROS DIGITAIS E 200 AUDIOLIVROS/);
+  assert.match(hero, /Coleção disponibilizada separadamente por link do Google Drive/);
 });
 
-test("seção .livros-bonus vem logo depois dos 3 passos e tem aria-labelledby", () => {
-  const stepsStart = html.indexOf('<section class="sales-how sales-section" aria-labelledby="how-title">');
-  const stepsEnd = html.indexOf("</section>", stepsStart);
-  const next = html.indexOf("<section", stepsEnd);
-  assert.ok(stepsStart >= 0 && stepsEnd > stepsStart);
-  assert.match(html.slice(next, next + 80), /^<section class="livros-bonus" aria-labelledby="bonus-title">/);
-  assert.match(html, /<h2 id="bonus-title">/);
+test("seção de bônus explica a entrega externa pelo Google Drive", () => {
+  const start = html.indexOf('<section class="livros-bonus"');
+  const end = html.indexOf("</section>", start);
+  const section = html.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(section, /aria-labelledby="audiobooks-title"/);
+  assert.match(section, /<h2 id="audiobooks-title">/);
+  assert.match(section, /data-livros-audiobooks-cta/);
+  assert.match(section, /BÔNUS EXCLUSIVOS/);
+  assert.match(section, /acesso separado pelo Google Drive/);
 });
 
-test("headline do bônus é exata", () => {
-  const headline = html.match(/<h2 id="bonus-title">([\s\S]*?)<\/h2>/)?.[1];
-  assert.equal(normalizeText(headline || ""), "Leia e ouça ao mesmo tempo.");
+test("seção restaura os bônus e preserva a separação do aplicativo", () => {
+  const headline = html.match(/<h2 id="audiobooks-title">([\s\S]*?)<\/h2>/)?.[1];
+  assert.equal(normalizeText(headline || ""), "Mais leitura para aproveitar no Lumeo.");
+  assert.match(sectionAt("livros-bonus"), /1\.500 livros digitais/);
+  assert.match(sectionAt("livros-bonus"), /200 audiolivros/);
 });
 
-// Ajuste (complemento dos 3 bônus): eyebrow e subheadline novos; a lista de 4 itens virou os 3 cards
-// (verificados no teste seguinte) e a nota "Os áudios não acompanham o aplicativo" foi removida.
-test("textos do bônus e CTA secundário presentes", () => {
-  const bonus = normalizeText(sectionAt("livros-bonus"));
-  for (const text of ["3 BÔNUS INCLUSOS", "Chuva tocando, uma música de meditação no fone ou um audiolivro enquanto você vira as páginas. Junto com o leitor, você leva:",
-    "Chuva lá fora, trilha tocando e um bom livro aberto. Do seu jeito.", "QUERO LER E OUVIR NO LUMEO"]) assert.ok(bonus.includes(text), `Texto ausente: ${text}`);
-  assert.doesNotMatch(sectionAt("livros-bonus"), /sales-button--primary/);
+test("descrição esclarece que os bônus não ficam pré-instalados", () => {
+  const audio = normalizeText(sectionAt("livros-bonus"));
+  for (const text of ["1.500 livros digitais", "200 audiolivros", "não ficam pré-instalados no aplicativo", "QUERO CONHECER O LUMEO"]) assert.ok(audio.includes(text), `Texto ausente: ${text}`);
 });
 
-test("a seção tem exatamente 3 cards de bônus numerados, na ordem", () => {
+test("a seção tem os dois bônus anunciados e o recurso de reprodução", () => {
   const cards = [...sectionAt("livros-bonus").matchAll(/<li class="livros-bonus__card">([\s\S]*?)<\/li>/g)].map((match) => match[1]);
   assert.equal(cards.length, 3);
-  assert.deepEqual(cards.map((card) => normalizeText(card.match(/<h3>([\s\S]*?)<\/h3>/)?.[1] || "")), ["Lumeo Audiolivros", "200 audiolivros clássicos", "Músicas para leitura"]);
-  cards.forEach((card, index) => { assert.match(card, new RegExp(`BÔNUS ${index + 1}<`)); assert.match(card, /class="livros-bonus__icon"/); });
-  assert.ok(normalizeText(cards[2]).includes("Diversas músicas e sons para acompanhar a leitura"));
+  assert.deepEqual(cards.map((card) => normalizeText(card.match(/<h3>([\s\S]*?)<\/h3>/)?.[1] || "")), ["1.500 livros digitais", "200 audiolivros", "Ouça por capítulos"]);
+  cards.forEach((card) => assert.match(card, /class="livros-bonus__icon"/));
 });
 
-// Ajuste (complemento dos 3 bônus): a lista passou de 1 para 3 bônus, numerados.
-test("O que você recebe lista o leitor e os 3 bônus acima do preço", () => {
+test("a oferta discrimina o aplicativo e os bônus entregues separadamente", () => {
   const card = html.match(/<aside class="sales-price-card"[\s\S]*?<\/aside>/)?.[0] || "";
   const text = normalizeText(card);
   assert.ok(text.includes("O que você recebe:"));
-  assert.ok(text.includes("Lumeo: leitor de livros para Android"));
-  for (const bonus of ["Bônus 1: Lumeo Audiolivros", "Bônus 2: 200 audiolivros clássicos", "Bônus 3: Músicas para leitura"]) assert.ok(text.includes(bonus), `Ausente: ${bonus}`);
+  assert.ok(text.includes("Aplicativo leitor para Android"));
+  for (const item of ["Aplicativo leitor para Android", "Bônus: 1.500 livros digitais", "Bônus: 200 audiolivros", "Biblioteca e progresso locais"]) assert.ok(text.includes(item), `Ausente: ${item}`);
   assert.ok(card.indexOf("O que você recebe") < card.indexOf("data-sales-price"));
-  assert.ok(text.includes("MENOS QUE UM LIVRO. BEM MENOS QUE UM LEITOR DIGITAL."));
+  assert.ok(text.includes("PREÇO DO APLICATIVO"));
+  assert.ok(text.includes("bônus são entregues separadamente por link do Google Drive"));
 });
 
-// Ajuste (complemento dos 3 bônus): "Os audiolivros vêm inclusos?" saiu (agora há audiolivros nos bônus)
-// e entraram 4 perguntas sobre os bônus; as demais continuam.
-test("FAQ tem as perguntas dos bônus e mantém as atuais", () => {
-  for (const question of ["Quais são os bônus?", "Que audiolivros vêm na lista de bônus?", "Posso adicionar meus próprios áudios?", "Como recebo os bônus?",
-    "O que é o bônus Lumeo Audiolivros?", "Posso ouvir enquanto leio?", "Quais formatos de áudio funcionam?",
-    "Como acesso o Lumeo?", "Os livros já vêm inclusos?", "Quais formatos posso adicionar?", "Tem garantia?"]) {
+test("FAQ responde formatos, áudio e compra sem prometer garantia", () => {
+  for (const question of ["O Lumeo vem com livros ou áudios?", "Como funcionam os audiolivros?", "Posso adicionar meus próprios áudios?", "Como funciona a compra?",
+    "Posso ouvir enquanto leio?", "Quais formatos de áudio funcionam?",
+    "Como acesso o Lumeo?", "Os livros já vêm inclusos?", "Quais formatos posso adicionar?"]) {
     assert.ok(js.includes(`["${question}"`), `Pergunta ausente: ${question}`);
   }
-  assert.match(js, /\["Como recebo os bônus\?", "Junto com o acesso ao Lumeo, depois da confirmação da compra\."\]/);
+  assert.doesNotMatch(js, /Tem garantia\?/);
+  assert.match(js, /\["Como funciona a compra\?", "O pagamento será concluído em um checkout externo quando a integração da Hotmart estiver configurada/);
 });
 
-// Ajuste (complemento dos 3 bônus): com audiolivros e músicas nos bônus, as microcopies falam só de livros.
-test("microcopies dizem que livros não acompanham e que os bônus vão com o acesso", () => {
+test("microcopies diferenciam o app da entrega separada dos bônus", () => {
   assert.match(html, /<small class="sales-hero__legal">Use com seus próprios livros\. Livros não incluídos\.<\/small>/);
-  assert.match(html, /<small>O aplicativo não inclui livros\. Os bônus são enviados junto com o acesso\.<\/small>/);
+  assert.match(html, /bônus são entregues separadamente por link do Google Drive/i);
+});
+
+test("página anuncia somente os bônus comerciais autorizados pelo proprietário", () => {
+  const source = `${html}\n${js}`;
+  assert.match(source, /200 audiolivros/i);
+  assert.match(source, /1\.500 livros/i);
+  assert.doesNotMatch(source, /músicas para ler ouvindo|Músicas para leitura/i);
+  assert.match(source, /Google Drive/i);
 });
 
 test("frases de que nenhum áudio vem incluso foram removidas", () => {
@@ -281,40 +291,40 @@ test("frases de que nenhum áudio vem incluso foram removidas", () => {
   }
 });
 
-test("página não usa termos proibidos", () => {
-  const forbidden = ["grátis", "de graça", "+ 200", "+200", "1.500", "12 Regras", "1984", "Lei da Atração", "pagamento único"];
+test("página não usa condições comerciais não confirmadas", () => {
+  const forbidden = ["grátis", "de graça", "12 Regras", "1984", "Lei da Atração", "pagamento único", "Garantia de 7 dias"];
   const pageSource = `${html}\n${css}\n${js}\n${read("js/mobile-cta.js")}\n${read("js/livros-tracking.js")}`.toLocaleLowerCase("pt-BR");
   forbidden.forEach((term) => assert.equal(pageSource.includes(term.toLocaleLowerCase("pt-BR")), false, `Termo proibido: ${term}`));
 });
 
-test("CTA do bônus dispara InitiateCheckout com cta_location bonus", async () => {
+test("CTA da seção de audiolivros mantém o rastreamento e localização próprios", async () => {
   const { mountLivrosTracking } = await import(pathToFileURL(resolve(pageRoot, "js/livros-tracking.js")).href);
-  const cta = html.match(/<button[^>]*data-livros-bonus-cta[^>]*>/)?.[0] || "";
-  assert.match(cta, /data-sales-cta(?:\s|>)/); assert.match(cta, /data-sales-cta-location="bonus"/);
+  const cta = html.match(/<button[^>]*data-livros-audiobooks-cta[^>]*>/)?.[0] || "";
+  assert.match(cta, /data-sales-cta(?:\s|>)/); assert.match(cta, /data-sales-cta-location="audiobooks"/);
   const documentListeners = new Map(), assignments = [];
   class FakeObserver { constructor() {} observe() {} disconnect() {} }
   const documentRef = { documentElement: { scrollHeight: 1000 }, head: { append() {} }, createElement: () => ({}), getElementsByTagName: () => [],
     querySelector: () => null, addEventListener: (type, listener) => documentListeners.set(type, listener), removeEventListener() {} };
   const windowRef = { innerHeight: 200, scrollY: 0, location: { href: "https://lumeo.test/index-livros.html", assign: (url) => assignments.push(url) }, addEventListener() {}, removeEventListener() {} };
   const storage = new Map();
-  mountLivrosTracking({ pixelId: "TEST", checkoutUrl: "https://checkout.test/", windowRef, documentRef, Observer: FakeObserver,
+  mountLivrosTracking({ pixelId: "TEST", checkoutUrl: "https://checkout.test/", windowRef, documentRef, Observer: FakeObserver, hasConsent: () => true,
     sessionStorageRef: { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) } });
-  const button = { dataset: { salesCtaLocation: "bonus" }, matches: () => false, closest: () => null };
+  const button = { dataset: { salesCtaLocation: "audiobooks" }, matches: () => false, closest: () => null };
   documentListeners.get("click")({ target: { closest: () => button }, preventDefault() {}, stopImmediatePropagation() {} });
   const checkout = windowRef.fbq.queue.map((args) => [...args]).filter((call) => call[1] === "InitiateCheckout");
-  assert.equal(checkout.length, 1); assert.equal(checkout[0][2].cta_location, "bonus");
+  assert.equal(checkout.length, 1); assert.equal(checkout[0][2].cta_location, "audiobooks");
   assert.equal(assignments.length, 1);
 });
 
-test("botão fixo se esconde quando o CTA do bônus está visível", async () => {
+test("botão fixo se esconde quando o CTA de audiolivros está visível", async () => {
   const { mountMobileCtaVisibility } = await import(pathToFileURL(resolve(pageRoot, "js/mobile-cta.js")).href);
-  assert.match(js, /mountMobileCtaVisibility\(\{ extraCtaSelectors: \["\[data-livros-bonus-cta\]"\] \}\)/);
+  assert.match(js, /mountMobileCtaVisibility\(\{ extraCtaSelectors: \["\[data-livros-audiobooks-cta\]"\] \}\)/);
   const element = () => { const attributes = new Map(), classes = new Set(); return { dataset: {}, classList: { toggle: (name, force) => force ? classes.add(name) : classes.delete(name), contains: (name) => classes.has(name) },
     getAttribute: (name) => attributes.get(name) ?? null, setAttribute: (name, value) => attributes.set(name, String(value)), removeAttribute: (name) => attributes.delete(name) }; };
   const mobile = element(), hero = element(), offer = element(), bonus = element(), observed = [];
-  const root = { querySelector: (selector) => ({ ".sales-mobile-cta": mobile, "[data-hqs-hero-cta]": hero, "[data-hqs-offer-cta]": offer, "[data-livros-bonus-cta]": bonus })[selector] };
+  const root = { querySelector: (selector) => ({ ".sales-mobile-cta": mobile, "[data-hqs-hero-cta]": hero, "[data-hqs-offer-cta]": offer, "[data-livros-audiobooks-cta]": bonus })[selector] };
   class FakeObserver { constructor(callback) { this.callback = callback; FakeObserver.instance = this; } observe(target) { observed.push(target); } disconnect() {} }
-  mountMobileCtaVisibility({ root, Observer: FakeObserver, extraCtaSelectors: ["[data-livros-bonus-cta]"] });
+  mountMobileCtaVisibility({ root, Observer: FakeObserver, extraCtaSelectors: ["[data-livros-audiobooks-cta]"] });
   assert.ok(observed.includes(bonus));
   FakeObserver.instance.callback([{ target: hero, isIntersecting: false, intersectionRatio: 0 }, { target: offer, isIntersecting: false, intersectionRatio: 0 }]);
   assert.equal(mobile.classList.contains("is-visible"), true);

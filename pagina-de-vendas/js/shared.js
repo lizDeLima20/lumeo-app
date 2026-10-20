@@ -1,8 +1,10 @@
+import { hasAnalyticsConsent } from "./sales-consent.js";
+
 export const SALES_CONFIG = Object.freeze({
   productName: "Lumeo",
   price: 9.99,
   currency: "BRL",
-  checkoutUrl: "",
+  checkoutUrls: Object.freeze({ livros: "", hqs: "" }),
   whatsappNumber: "",
   checkoutProvider: "pending",
   metaPixelId: "",
@@ -10,8 +12,10 @@ export const SALES_CONFIG = Object.freeze({
 
 export function trackSalesEvent(eventName, details = {}) {
   const payload = { event: eventName, product: SALES_CONFIG.productName, price: SALES_CONFIG.price, ...details };
-  window.dataLayer?.push(payload);
-  if (typeof window.fbq === "function") window.fbq("trackCustom", eventName, payload);
+  if (hasAnalyticsConsent()) {
+    window.dataLayer?.push(payload);
+    if (typeof window.fbq === "function") window.fbq("trackCustom", eventName, payload);
+  }
   window.dispatchEvent(new CustomEvent("lumeo:sales-event", { detail: payload }));
 }
 
@@ -57,17 +61,19 @@ export function openModal(markup, onOpen) {
 }
 
 export function showPurchaseNotice() {
-  trackSalesEvent("lumeo_checkout_intent", { provider: SALES_CONFIG.checkoutProvider });
-  if (SALES_CONFIG.checkoutUrl) {
-    window.location.assign(SALES_CONFIG.checkoutUrl);
+  const catalog = document.body?.dataset?.salesCatalog === "hqs" ? "hqs" : "livros";
+  const checkoutUrl = SALES_CONFIG.checkoutUrls[catalog];
+  trackSalesEvent("lumeo_checkout_intent", { provider: SALES_CONFIG.checkoutProvider, catalog });
+  if (checkoutUrl) {
+    window.location.assign(checkoutUrl);
     return;
   }
   openModal(`
     <article class="sales-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="sales-checkout-title">
       <button class="sales-modal__close" type="button" data-sales-close aria-label="Fechar">×</button>
       <p class="sales-eyebrow">Lumeo</p>
-      <h2 id="sales-checkout-title">Checkout em configuração</h2>
-      <p>O acesso Lumeo custa ${money()}. Configure <code>checkoutUrl</code> em <code>js/shared.js</code> para ativar o pagamento nesta página.</p>
+      <h2 id="sales-checkout-title">Compra ainda não disponível</h2>
+      <p>O preço informado é ${money()}. O link de pagamento desta página ainda está sendo configurado; nenhum pagamento foi iniciado.</p>
       <button class="sales-button sales-button--primary" type="button" data-sales-close>Entendi</button>
     </article>`);
 }

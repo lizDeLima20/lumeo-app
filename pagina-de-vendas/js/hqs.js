@@ -1,6 +1,13 @@
 import { SALES_CONFIG, bindCommercialActions, money, mountHeader, openModal } from "./shared.js";
+import { mountMobileCtaVisibility } from "./mobile-cta.js";
+import { mountAnalyticsConsent } from "./sales-consent.js";
+import { mountHeroVideo } from "./hqs-hero-video.js";
+import { mountHqsTracking } from "./hqs-tracking.js";
 
 mountHeader(document.querySelector("[data-sales-header]"));
+document.querySelector(".sales-header__cta")?.setAttribute("data-hqs-cta-location", "header");
+mountAnalyticsConsent();
+mountHqsTracking({ checkoutUrl: SALES_CONFIG.checkoutUrls.hqs });
 bindCommercialActions();
 document.querySelector("[data-sales-year]").textContent = String(new Date().getFullYear());
 document.querySelectorAll("[data-sales-price]").forEach((node) => { node.textContent = money(SALES_CONFIG.price); });
@@ -62,9 +69,10 @@ function mountFaq() {
     ["A compra inclui HQs?", "Não. O valor é referente ao aplicativo leitor. Você usa arquivos próprios que possui autorização para utilizar."],
     ["Como adiciono meus próprios quadrinhos?", "Você pode selecionar arquivos compatíveis no dispositivo ou adicionar uma pasta autorizada do Google Drive."],
     ["Posso usar links do Google Drive?", "Sim. O aplicativo oferece importação de links autorizados do Google Drive para sua biblioteca pessoal."],
-    ["Quais formatos de HQ são compatíveis?", "Use os formatos que o aplicativo indicar como compatíveis na versão instalada. Esta página não promete formatos além dos já disponíveis no app."],
+    ["Quais formatos de HQ são compatíveis?", "A biblioteca de HQs aceita PDF, CBR e CBZ. Recursos específicos podem variar conforme o arquivo e a versão instalada do aplicativo."],
     ["Como funciona a experiência de leitura de HQs?", "O Lumeo possui uma experiência de leitura visual para HQs. Recursos específicos podem variar conforme o arquivo e a versão instalada do aplicativo."],
     ["Funciona em celular e tablet Android?", "Sim. O Lumeo foi pensado para uso em celulares e tablets Android."],
+    ["Como funciona a compra?", "O pagamento será concluído em um checkout externo quando a integração da Hotmart estiver configurada. As condições serão apresentadas antes da confirmação."],
     ["Como recebo acesso após a compra?", "Após a confirmação da compra, você recebe as orientações de acesso ao aplicativo Lumeo."],
   ];
   root.replaceChildren(...rows.map(([question, answer]) => {
@@ -86,14 +94,14 @@ function mountTutorials() {
     "hqs-drive": [
       [0, "Veja como é fácil adicionar suas HQs ao Lumeo."],
       [2, "Comece colando o link da pasta do Google Drive."],
-      [4.6, "Escolha a opção HQs e dê um nome à sua coleção."],
+      [4.6, "Selecione HQs e Mangás para classificar a pasta."],
       [10.1, "Toque em Adicionar e aguarde o carregamento."],
       [14.1, "Pronto! Explore suas capas e encontre a próxima HQ para ler."],
     ],
     "hqs-reading": [
-      [0, "Abra uma HQ e mergulhe na história."],
-      [5, "Veja como os balões de diálogo ficam ampliados."],
-      [8.8, "Mais conforto para acompanhar cada conversa."],
+      [0, "Conheça a interface do leitor de HQs."],
+      [5, "A demonstração mostra recursos que podem variar por arquivo e versão."],
+      [8.8, "A ampliação automatizada de balões não funciona em todas as páginas."],
       [13, "Personalize a aparência da sua leitura."],
       [15.6, "Escolha tema, brilho e outras preferências disponíveis."],
       [18.2, "Organize seu tempo com o Pomodoro Lumeo."],
@@ -283,3 +291,5 @@ mountLibrary();
 mountFaq();
 mountTutorials();
 controlReaderVideo();
+mountHeroVideo();
+mountMobileCtaVisibility();

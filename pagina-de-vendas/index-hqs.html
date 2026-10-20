@@ -3,25 +3,50 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Lumeo HQs: organize seus próprios quadrinhos e leia no Android." />
+    <meta name="description" content="Organize seus próprios quadrinhos e mangás em uma biblioteca visual e retome sua leitura no Android com o Lumeo." />
+    <meta property="og:title" content="Lumeo HQs — sua coleção organizada no Android" />
+    <meta property="og:description" content="Um leitor pessoal para organizar seus próprios quadrinhos e mangás e retomar a leitura no Android." />
+    <meta property="og:type" content="website" />
     <meta name="theme-color" content="#130a20" />
     <title>Lumeo HQs — Leitura e organização no Android</title>
     <link rel="icon" href="assets/logo/lumeo-logo.png" />
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/hqs.css?v=20261016-hqs" />
     <link rel="stylesheet" href="css/hqs-tutorials.css?v=20261018-hqs-tutorials" />
+    <link rel="stylesheet" href="css/hqs-conversion.css?v=20261020-bonus-hqs" />
   </head>
   <body data-sales-catalog="hqs">
     <a class="sales-skip-link" href="#conteudo">Pular para o conteúdo</a>
     <header class="sales-header" data-sales-header></header>
     <main id="conteudo">
       <section class="hqs-hero" aria-labelledby="sales-title">
-        <div class="hqs-hero__copy">
-          <p class="sales-eyebrow">LEITOR PESSOAL DE HQs PARA ANDROID</p>
-          <h1 id="sales-title">Chega de sofrer para ler os <span>balões</span> das suas HQs no celular.</h1>
-          <p class="hqs-hero__lead">Organize os seus quadrinhos em uma biblioteca digital e acompanhe cada página em uma experiência pensada para HQs no Android.</p>
-          <ul class="hqs-hero__bullets" aria-label="Benefícios principais"><li>Sua coleção pessoal em um só lugar</li><li>Leitura visual no celular e tablet Android</li><li>Progresso para retomar sua HQ</li></ul>
-          <div class="hqs-price-card"><p>ACESSO AO APLICATIVO LUMEO</p><strong data-sales-price>R$ 9,99</strong><button class="sales-button sales-button--primary" type="button" data-sales-cta>QUERO LER MINHAS HQs NO LUMEO</button><small>O valor corresponde ao aplicativo leitor. HQs não incluídas.</small></div>
+        <div class="hqs-hero__layout">
+          <div class="hqs-hero__copy">
+            <p class="sales-eyebrow">LEITOR DE HQs PARA ANDROID</p>
+            <h1 id="sales-title">Sua coleção de HQs merece uma <span>estante no Android</span>.</h1>
+            <p class="hqs-hero__lead">Organize seus próprios quadrinhos e mangás numa biblioteca visual, acompanhe o progresso e retome sua leitura no celular ou tablet Android.</p>
+            <div class="hqs-price-card">
+              <p>ACESSO AO APLICATIVO LUMEO HQS</p>
+              <div class="hqs-price-card__offer"><span>De <del>R$ 39,99</del> por</span><strong data-sales-price>R$ 9,99</strong></div>
+              <p class="hqs-price-card__deadline" role="status">Oferta de R$ 9,99 válida somente até hoje, 20/10/2026, às 23h59 (horário de Brasília).</p>
+              <div class="hqs-bonus-badge" aria-label="Bônus: acesso separado a uma coleção de HQs e mangás">
+                <span>🎁 BÔNUS EXCLUSIVO</span>
+                <strong>ACESSO À COLEÇÃO DE HQs E MANGÁS</strong>
+                <small>O link do Google Drive é entregue separadamente após a compra.</small>
+              </div>
+              <button class="sales-button sales-button--primary" type="button" data-sales-cta data-hqs-hero-cta data-hqs-cta-location="hero">QUERO ORGANIZAR MINHAS HQs</button>
+              <small>Use também seus próprios arquivos. A coleção bônus não fica pré-instalada no aplicativo.</small>
+            </div>
+          </div>
+          <div class="hqs-hero__visual">
+            <div class="hqs-hero__phone" aria-hidden="true">
+              <video autoplay muted loop playsinline preload="metadata" poster="assets/tutorials/hqs/lumeo-hqs-baloes-hero-poster.webp" aria-hidden="true" tabindex="-1" data-hqs-hero-video>
+                <source data-src="assets/tutorials/hqs/lumeo-hqs-baloes-hero.mp4" type="video/mp4">
+              </video>
+            </div>
+            <ul class="hqs-hero__bullets" aria-label="Benefícios principais"><li>Reúna arquivos compatíveis numa biblioteca pessoal</li><li>Adicione arquivos locais ou pastas autorizadas do Google Drive</li><li>Acompanhe o progresso e retome a leitura</li></ul>
+            <p class="hqs-hero__note">HQs e mangás não acompanham o aplicativo.</p>
+          </div>
         </div>
       </section>
       <div class="hqs-proof-strip" aria-label="Resumo do produto"><span>✓ Feito para Android</span><span>✓ Coleção pessoal</span><span>✓ Seus próprios arquivos</span></div>
@@ -47,23 +72,24 @@
             </div>
           </article>
           <article class="hqs-tutorial-card">
-            <h3 class="hqs-tutorial-card__title">Veja os balões em ação</h3>
+            <h3 class="hqs-tutorial-card__title">Conheça a interface de leitura</h3>
             <div class="hqs-tutorial-card__body">
               <div class="hqs-tutorial-card__media">
-                <video autoplay muted loop preload="none" playsinline poster="assets/tutorials/hqs/lumeo-hqs-baloes-leitura-pomodoro-poster.webp" data-hqs-tutorial data-tutorial-key="hqs-reading" aria-describedby="hqs-tutorial-reading-caption" aria-label="Demonstração dos recursos de leitura, balões e Pomodoro">
+                <video autoplay muted loop preload="none" playsinline poster="assets/tutorials/hqs/lumeo-hqs-baloes-leitura-pomodoro-poster.webp" data-hqs-tutorial data-tutorial-key="hqs-reading" aria-describedby="hqs-tutorial-reading-caption" aria-label="Demonstração visual da interface de leitura de HQs">
                   <source data-src="assets/tutorials/hqs/lumeo-hqs-baloes-leitura-pomodoro.mp4" type="video/mp4">
                   Seu navegador não oferece suporte a vídeos HTML5.
                 </video>
               </div>
               <div class="hqs-tutorial-card__captions" id="hqs-tutorial-reading-caption" data-tutorial-captions aria-live="polite" aria-atomic="true"></div>
             </div>
+            <p class="hqs-tutorial-card__note">Demonstração visual. Recursos de ampliação de balões podem variar conforme o arquivo, a página e a versão instalada.</p>
           </article>
         </div>
       </section>
 
       <section class="hqs-reading hqs-section" aria-labelledby="reading-title">
-        <div class="hqs-reading__copy"><p class="sales-eyebrow">EXPERIÊNCIA DE LEITURA</p><h2 id="reading-title">Cada quadro importa. Cada balão também.</h2><p>O Lumeo traz sua coleção pessoal para uma leitura mais focada no Android. A animação abaixo é uma demonstração visual do leitor de HQs existente.</p><p class="hqs-reading__note">Os recursos disponíveis dependem do arquivo e da versão instalada do aplicativo.</p></div>
-        <figure class="hqs-reading__media"><video muted playsinline autoplay loop preload="metadata" data-hqs-reader-demo aria-label="Demonstração visual do leitor de HQs"><source src="assets/animacoes/lumeo-hqs-virada.mp4" type="video/mp4" /></video><figcaption>Demonstração visual do leitor Lumeo.</figcaption></figure>
+        <div class="hqs-reading__copy"><p class="sales-eyebrow">EXPERIÊNCIA DE LEITURA</p><h2 id="reading-title">Sua coleção, organizada para continuar a história.</h2><p>Explore seus próprios arquivos em uma biblioteca visual e acompanhe o progresso. A ampliação automatizada de balões é experimental e pode não reconhecer todos os elementos em todas as páginas.</p></div>
+        <figure class="hqs-reading__media"><video muted playsinline autoplay loop preload="metadata" data-hqs-reader-demo aria-label="Demonstração visual do leitor de HQs"><source src="assets/animacoes/lumeo-hqs-virada.mp4" type="video/mp4" /></video><figcaption class="hqs-reading__note">Demonstração visual. Os recursos podem variar conforme o arquivo e a versão do app.</figcaption></figure>
       </section>
 
       <section class="hqs-library" aria-labelledby="library-title">
@@ -71,19 +97,21 @@
         <div class="hqs-library__rails" data-hqs-library></div>
       </section>
 
-      <section class="hqs-social hqs-section" aria-labelledby="social-title"><p class="sales-eyebrow">RELATOS DE LEITORES</p><h2 id="social-title">Espaço reservado para histórias reais.</h2><p>Esta área receberá depoimentos autênticos e autorizados de leitores de HQs. Não exibimos avaliações inventadas.</p></section>
+      <!-- TODO: reativar quando houver depoimentos reais e autorizados -->
+      <section class="hqs-social hqs-section" aria-labelledby="social-title" hidden><p class="sales-eyebrow">RELATOS DE LEITORES</p><h2 id="social-title">Espaço reservado para histórias reais.</h2><p>Esta área receberá depoimentos autênticos e autorizados de leitores de HQs. Não exibimos avaliações inventadas.</p></section>
 
       <section class="hqs-benefits hqs-section" aria-labelledby="benefits-title">
         <header class="hqs-heading"><p class="sales-eyebrow">MAIS HQ. MENOS PASTAS.</p><h2 id="benefits-title">Uma biblioteca que acompanha sua coleção.</h2></header>
-        <div class="hqs-benefits__grid"><article><span>01</span><h3>Sua coleção, do seu jeito</h3><p>Reúna os arquivos que você já possui em uma biblioteca pessoal.</p></article><article><span>02</span><h3>Leitura feita para quadros</h3><p>Uma experiência visual pensada para páginas, artes e diálogos de HQs.</p></article><article><span>03</span><h3>Continue de onde parou</h3><p>Retome sua leitura usando o progresso salvo no aplicativo.</p></article><article><span>04</span><h3>Seu Android, sua estante</h3><p>Leia no celular ou tablet Android que você já tem.</p></article></div>
+        <div class="hqs-benefits__grid"><article><span>01</span><h3>Sua coleção, do seu jeito</h3><p>Reúna os arquivos que você já possui em uma biblioteca pessoal.</p></article><article><span>02</span><h3>Capas e organização visual</h3><p>Explore sua biblioteca por títulos e coleções pessoais.</p></article><article><span>03</span><h3>Continue de onde parou</h3><p>Retome a leitura pelo progresso salvo no aplicativo.</p></article><article><span>04</span><h3>Seu Android, sua estante</h3><p>Use no celular ou tablet Android que você já tem.</p></article></div>
       </section>
 
-      <section class="hqs-offer hqs-section" aria-labelledby="offer-title"><div><p class="sales-eyebrow">ACESSO AO LUMEO</p><h2 id="offer-title">Sua próxima HQ não precisa ficar esquecida em uma pasta.</h2><p>Organize os seus próprios quadrinhos e volte para a história no seu ritmo.</p></div><aside><p>Por apenas</p><strong data-sales-price>R$ 9,99</strong><button class="sales-button sales-button--primary" type="button" data-sales-cta>QUERO MINHA BIBLIOTECA DE HQs ORGANIZADA</button><small>Aplicativo leitor para Android. HQs não incluídas.</small></aside></section>
+      <section class="hqs-offer hqs-section" aria-labelledby="offer-title"><div><p class="sales-eyebrow">ACESSO AO APLICATIVO</p><h2 id="offer-title">Uma biblioteca pessoal para as HQs que você já tem.</h2><p>Organize seus arquivos e continue a leitura no seu ritmo, no celular ou tablet Android.</p></div><aside><p>PREÇO DO APLICATIVO</p><div class="hqs-offer-price"><span>De <del>R$ 39,99</del> por</span><strong data-sales-price>R$ 9,99</strong></div><p class="hqs-offer__bonus">🎁 Bônus: acesso separado à coleção de HQs e mangás pelo Google Drive após a compra.</p><button class="sales-button sales-button--primary" type="button" data-sales-cta data-hqs-offer-cta data-hqs-cta-location="offer">QUERO ORGANIZAR MINHAS HQs</button><small>A coleção bônus é entregue por link separado e não fica pré-instalada no aplicativo. As condições de pagamento serão exibidas no checkout antes da confirmação.</small></aside></section>
       <section class="hqs-faq hqs-section" aria-labelledby="faq-title"><p class="sales-eyebrow">DÚVIDAS FREQUENTES</p><h2 id="faq-title">Tudo para começar sua próxima leitura.</h2><div data-hqs-faq></div></section>
     </main>
-    <footer class="hqs-footer"><img src="assets/logo/lumeo-logo.png" alt="" /><p>© <span data-sales-year></span> Lumeo. Uma experiência de leitura digital.</p></footer>
+    <footer class="hqs-footer"><img src="assets/logo/lumeo-logo.png" alt="" /><p>© <span data-sales-year></span> Lumeo. Leitor pessoal para Android.</p><nav class="sales-footer__links" aria-label="Links legais"><a href="privacidade.html">Privacidade</a><a href="termos.html">Termos</a><button type="button" data-sales-open-consent>Preferências de privacidade</button></nav></footer>
     <div class="sales-modal" data-sales-modal hidden aria-hidden="true"></div>
-    <button class="sales-mobile-cta sales-button sales-button--primary" type="button" data-sales-cta>QUERO MEU LUMEO</button>
+    <button class="sales-mobile-cta sales-button sales-button--primary" type="button" data-sales-cta data-hqs-cta-location="sticky">QUERO MEU LUMEO</button>
+    <aside class="sales-consent" data-sales-consent role="dialog" aria-labelledby="sales-consent-title" hidden><div><h2 id="sales-consent-title">Sua privacidade importa</h2><p>O Meta Pixel só será carregado se estiver configurado e você autorizar a medição de visitas e intenções de compra. <a href="privacidade.html">Leia a política de privacidade</a>.</p></div><div class="sales-consent__actions"><button type="button" data-consent-reject>Continuar sem medição</button><button type="button" data-consent-accept>Aceitar medição</button></div></aside>
     <script type="module" src="js/hqs.js"></script>
   </body>
 </html>

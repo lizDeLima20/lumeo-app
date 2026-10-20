@@ -1,4 +1,5 @@
 import { META_PIXEL_ID } from "./hqs-tracking-config.js";
+import { hasAnalyticsConsent, SALES_CONSENT_EVENT } from "./sales-consent.js";
 
 export const HQS_EVENT_PAYLOAD = Object.freeze({
   content_name: "Lumeo HQs",
@@ -114,10 +115,27 @@ export function mountHqsTracking({
   documentRef = globalThis.document,
   Observer = globalThis.IntersectionObserver,
   sessionStorageRef = globalThis.sessionStorage,
+  hasConsent = () => hasAnalyticsConsent(),
 } = {}) {
   if (!windowRef || !documentRef) return () => {};
-  const tracker = createMetaPixel({ pixelId, windowRef, documentRef });
-  if (tracker.enabled) tracker.track("PageView");
+  let consented = Boolean(hasConsent());
+  let pixel = consented ? createMetaPixel({ pixelId, windowRef, documentRef }) : null;
+  let pageViewTracked = false;
+  const tracker = {
+    enabled: Boolean(consented && pixel?.enabled),
+    track: (eventName, details) => consented && pixel?.enabled ? pixel.track(eventName, details) : false,
+  };
+  const sendPageView = () => {
+    if (!pageViewTracked && tracker.enabled) { tracker.track("PageView"); pageViewTracked = true; }
+  };
+  sendPageView();
+  const onConsentChange = (event) => {
+    consented = event?.detail?.choice === "accepted";
+    if (consented && !pixel) pixel = createMetaPixel({ pixelId, windowRef, documentRef });
+    tracker.enabled = Boolean(consented && pixel?.enabled);
+    sendPageView();
+  };
+  windowRef.addEventListener?.(SALES_CONSENT_EVENT, onConsentChange);
   let checkoutTrackedInMemory = false;
 
   const trackViewContent = createViewContentController({ tracker });
@@ -147,7 +165,7 @@ export function mountHqsTracking({
     event.preventDefault?.();
     event.stopImmediatePropagation?.();
     if (!checkoutTrackedInMemory && !wasCheckoutTracked(sessionStorageRef)) {
-      if (tracker.enabled) tracker.track("InitiateCheckout", { cta_location: ctaLocation });
+      if (consented && tracker.enabled) tracker.track("InitiateCheckout", { cta_location: ctaLocation });
       checkoutTrackedInMemory = true;
       markCheckoutTracked(sessionStorageRef);
     }
@@ -158,6 +176,7 @@ export function mountHqsTracking({
   return () => {
     observer?.disconnect?.();
     windowRef.removeEventListener?.("scroll", onScroll);
+    windowRef.removeEventListener?.(SALES_CONSENT_EVENT, onConsentChange);
     documentRef.removeEventListener?.("click", onCheckoutClick, true);
   };
 }

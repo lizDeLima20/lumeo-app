@@ -1,0 +1,279 @@
+body[data-sales-catalog="hqs"] .hqs-hero {
+  padding-block: clamp(2rem, 6vw, 4rem);
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__layout {
+  display: grid;
+  width: min(100%, 73.75rem);
+  margin-inline: auto;
+  gap: 2rem;
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__copy {
+  max-width: 45rem;
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero h1 {
+  max-width: 43rem;
+  font-size: clamp(2.15rem, 9.2vw, 4.75rem);
+  line-height: 0.98;
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__lead {
+  max-width: 42rem;
+  margin-block: 1rem;
+  font-size: clamp(0.98rem, 3.3vw, 1.22rem);
+  line-height: 1.42;
+}
+
+body[data-sales-catalog="hqs"] .hqs-price-card {
+  gap: 0.5rem;
+  max-width: 31rem;
+  padding: 0.9rem 1rem;
+}
+
+body[data-sales-catalog="hqs"] .hqs-price-card strong {
+  font-size: clamp(2.35rem, 10vw, 4rem);
+}
+
+body[data-sales-catalog="hqs"] .hqs-price-card__offer,
+body[data-sales-catalog="hqs"] .hqs-offer-price {
+  display: grid;
+  gap: 0.08rem;
+}
+
+body[data-sales-catalog="hqs"] .hqs-price-card__offer > span,
+body[data-sales-catalog="hqs"] .hqs-offer-price > span {
+  color: #d8cced;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.03em;
+}
+
+body[data-sales-catalog="hqs"] .hqs-price-card__offer del,
+body[data-sales-catalog="hqs"] .hqs-offer-price del {
+  text-decoration-color: #efc573;
+  text-decoration-thickness: 0.14em;
+}
+
+body[data-sales-catalog="hqs"] .hqs-price-card__deadline {
+  margin: 0.1rem 0 0.2rem;
+  color: #ffd773;
+  font-size: 0.67rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+
+body[data-sales-catalog="hqs"] .hqs-bonus-badge {
+  display: grid;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 0.16rem;
+  margin: 0.2rem 0 0.72rem;
+  border: 1px solid rgba(255, 238, 196, 0.82);
+  border-radius: 0.82rem;
+  padding: 0.52rem 0.7rem;
+  color: #2a1240;
+  background: linear-gradient(135deg, #ffe3a0, #e2ae4f 55%, #f6cf7c);
+  box-shadow: 0 0.35rem 1.1rem rgba(226, 174, 79, 0.28);
+  line-height: 1.2;
+  text-align: center;
+}
+
+body[data-sales-catalog="hqs"] .hqs-bonus-badge span { color: #401568; font-size: 0.58rem; font-weight: 950; letter-spacing: 0.1em; }
+body[data-sales-catalog="hqs"] .hqs-bonus-badge strong { color: #3b0a70; font-size: clamp(0.73rem, 3.3vw, 0.92rem); font-weight: 950; letter-spacing: 0.01em; line-height: 1.15; }
+body[data-sales-catalog="hqs"] .hqs-bonus-badge small { color: #40235d; font-size: 0.58rem; font-weight: 800; line-height: 1.3; }
+
+body[data-sales-catalog="hqs"] .hqs-offer__bonus {
+  color: #523178;
+  font-size: 0.74rem;
+  font-weight: 850;
+  line-height: 1.42;
+}
+
+body[data-sales-catalog="hqs"] .hqs-offer-price > span {
+  color: #716477;
+}
+
+body[data-sales-catalog="hqs"] .hqs-offer-price del {
+  text-decoration-color: #c28e3d;
+}
+
+body[data-sales-catalog="hqs"] .hqs-offer-price strong {
+  color: #523178;
+  font-size: clamp(2.7rem, 12vw, 4.5rem);
+  letter-spacing: -0.08em;
+  line-height: 0.9;
+}
+
+body[data-sales-catalog="hqs"] .hqs-price-card .sales-button {
+  min-height: 3rem;
+  padding-block: 0.72rem;
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__note,
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__note {
+  margin: 0;
+  color: #e6dceb;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__note {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 0.65rem;
+}
+
+body[data-sales-catalog="hqs"] .hqs-guarantee {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: #f6d892;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+body[data-sales-catalog="hqs"] .hqs-guarantee svg {
+  width: 1.08rem;
+  height: 1.08rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__visual {
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+  gap: 1.25rem;
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__phone {
+  position: relative;
+  width: min(46vw, 12.5rem);
+  aspect-ratio: 432 / 984;
+  overflow: hidden;
+  border: 0.28rem solid rgba(247, 218, 154, 0.72);
+  border-radius: 1.55rem;
+  background: #100d13 url("../assets/tutorials/hqs/lumeo-hqs-baloes-hero-poster.webp") center / cover no-repeat;
+  box-shadow: 0 1.3rem 3rem rgba(0, 0, 0, 0.38), 0 0 0 0.12rem rgba(255, 255, 255, 0.12);
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__phone::before {
+  position: absolute;
+  z-index: 2;
+  top: 0.38rem;
+  left: 50%;
+  width: 31%;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: rgba(10, 8, 12, 0.86);
+  content: "";
+  transform: translateX(-50%);
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__phone video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #100d13;
+  object-fit: contain;
+  transition: opacity 0.18s ease;
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__phone video[data-poster-only="true"] {
+  opacity: 0;
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__bullets {
+  width: min(100%, 31rem);
+  margin: 0;
+}
+
+body[data-sales-catalog="hqs"] .hqs-social[hidden] {
+  display: none;
+}
+
+body[data-sales-catalog="hqs"] .hqs-reading__note {
+  margin: 0;
+  color: #efe6f4;
+  font-size: 0.7rem;
+  font-style: normal;
+  line-height: 1.45;
+  text-align: center;
+}
+
+body[data-sales-catalog="hqs"] .hqs-benefits__grid article {
+  min-height: 0;
+  padding: 0.9rem 1rem;
+}
+
+body[data-sales-catalog="hqs"] .hqs-steps li {
+  padding: 0.9rem 1rem;
+}
+
+body[data-sales-catalog="hqs"] .hqs-guarantee--offer {
+  color: #523178;
+}
+
+body[data-sales-catalog="hqs"] .hqs-footer {
+  padding-bottom: calc(5.8rem + env(safe-area-inset-bottom));
+}
+
+body[data-sales-catalog="hqs"] .sales-mobile-cta {
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+}
+
+body[data-sales-catalog="hqs"] .sales-mobile-cta[data-mobile-cta-ready="true"] {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.65rem);
+}
+
+body[data-sales-catalog="hqs"] .sales-mobile-cta[data-mobile-cta-ready="true"].is-visible {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+@media (min-width: 56.25rem) {
+  body[data-sales-catalog="hqs"] .hqs-hero__layout {
+    grid-template-columns: minmax(0, 1.22fr) minmax(15rem, 0.78fr);
+    align-items: center;
+    gap: clamp(2rem, 6vw, 5rem);
+  }
+
+  body[data-sales-catalog="hqs"] .hqs-hero__phone {
+    width: min(18vw, 14rem);
+  }
+
+  body[data-sales-catalog="hqs"] .hqs-hero__visual {
+    align-content: center;
+  }
+}
+
+@media (min-width: 42rem) {
+  body[data-sales-catalog="hqs"] .hqs-footer {
+    padding-bottom: 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-sales-catalog="hqs"] .hqs-hero__phone {
+    background: #100d13 url("../assets/tutorials/hqs/lumeo-hqs-baloes-hero-poster.webp") center / cover no-repeat;
+  }
+
+  body[data-sales-catalog="hqs"] .hqs-hero__phone video {
+    display: none;
+  }
+
+  body[data-sales-catalog="hqs"] .sales-mobile-cta {
+    transition: none;
+  }
+}

@@ -35,6 +35,21 @@ img { max-width: 100%; }
 .sales-modal__dialog p { color: var(--sales-muted); line-height: 1.65; }
 .sales-modal__close { position: absolute; top: 1rem; right: 1rem; width: 2.3rem; height: 2.3rem; border: 1px solid var(--sales-line); border-radius: 50%; color: var(--sales-ink); background: #fff; font-size: 1.5rem; line-height: 1; }
 
+.sales-footer { flex-wrap: wrap; }
+.sales-footer__links { display: flex; flex-wrap: wrap; justify-content: center; gap: .45rem 1rem; width: 100%; }
+.sales-footer__links a, .sales-footer__links button { border: 0; padding: .2rem; color: #665775; background: transparent; font-size: .72rem; text-decoration: underline; text-underline-offset: .18em; }
+.sales-footer__links button { cursor: pointer; }
+.sales-consent { position: fixed; z-index: 80; right: max(.8rem, env(safe-area-inset-right)); bottom: max(.8rem, env(safe-area-inset-bottom)); left: max(.8rem, env(safe-area-inset-left)); display: grid; gap: .8rem; width: min(52rem, calc(100% - 1.6rem)); margin-inline: auto; border: 1px solid rgba(226, 183, 111, .7); border-radius: 1rem; padding: 1rem; color: #fffaf3; background: #21142ded; box-shadow: 0 1rem 3rem #12091e44; backdrop-filter: blur(12px); }
+.sales-consent[hidden] { display: none; }
+.sales-consent h2 { margin: 0 0 .25rem; font-size: 1rem; }
+.sales-consent p { margin: 0; color: #eee7f4; font-size: .8rem; line-height: 1.45; }
+.sales-consent a { color: #f5d28e; }
+.sales-consent__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+.sales-consent__actions button { min-height: 2.6rem; border: 1px solid #cbb7df; border-radius: 999px; padding: .55rem .9rem; color: #fff; background: transparent; font-size: .78rem; font-weight: 800; }
+.sales-consent__actions [data-consent-accept] { border-color: #efc573; color: #29183a; background: #efc573; }
+body.sales-consent-open .sales-mobile-cta { visibility: hidden !important; pointer-events: none !important; }
+@media (min-width: 42rem) { .sales-consent { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 1rem 1.2rem; } }
+
 /* Compatibilidade visual da página isolada de HQs criada na etapa anterior. */
 .sales-shell { width: min(1120px, calc(100% - 2rem)); margin-inline: auto; padding: clamp(2.5rem, 7vw, 6rem) 0; }
 .sales-preparation { max-width: 46rem; padding: clamp(1.5rem, 5vw, 3rem); border: 1px solid var(--sales-line); border-radius: var(--sales-radius); background: #fff; box-shadow: 0 .8rem 2rem rgba(42, 25, 57, .07); }

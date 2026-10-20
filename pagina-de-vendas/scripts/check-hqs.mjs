@@ -29,7 +29,7 @@ const sha256 = (relativePath) => createHash("sha256").update(readFileSync(resolv
 test("headline AIDA exata", () => {
   const headline = html.match(/<h1\s+id="sales-title"[^>]*>([\s\S]*?)<\/h1>/)?.[1];
   assert.ok(headline, "H1 #sales-title não encontrado");
-  assert.equal(normalizeText(headline), "Pare de dar zoom e arrastar a tela pra ler cada balão.");
+  assert.equal(normalizeText(headline), "Sua coleção de HQs merece uma estante no Android.");
 });
 
 test("hero sem altura baseada na viewport", () => {
@@ -43,9 +43,37 @@ test("depoimentos vazios ocultos e sem âncora", () => {
   assert.doesNotMatch(html, /href=["']#social-title["']/i);
 });
 
-test("garantia presente no hero, oferta e FAQ", () => {
-  assert.equal((html.match(/Garantia de 7 dias/g) || []).length, 2);
-  assert.match(hqsJs, /\["Tem garantia\?",\s*"Sim\. Você tem 7 dias de garantia/);
+test("não anuncia garantia ou condição comercial não confirmada", () => {
+  assert.doesNotMatch(`${html}\n${hqsJs}`, /Garantia de 7 dias|7 dias de garantia|Tem garantia\?/i);
+  assert.match(html, /condições de pagamento serão exibidas no checkout antes da confirmação/i);
+});
+
+test("proposta HQs é separada e descreve limitações do recurso experimental", () => {
+  assert.match(html, /Sua coleção de HQs merece uma/);
+  assert.match(html, /QUERO ORGANIZAR MINHAS HQs/);
+  assert.match(html, /coleção bônus não fica pré-instalada no aplicativo/i);
+  assert.match(html, /link do Google Drive é entregue separadamente após a compra/i);
+  assert.match(html, /ampliação automatizada de balões é experimental/i);
+  assert.doesNotMatch(html, /IA que amplia|inteligência artificial que reconhece/i);
+  assert.doesNotMatch(html, /1\.500 livros|200 audiolivros/i);
+  assert.match(hqsJs, /A biblioteca de HQs aceita PDF, CBR e CBZ/);
+});
+
+test("SEO básico, políticas e rotas Vercel estão presentes", () => {
+  for (const page of [html, readFileSync(resolve(pageRoot, "index-livros.html"), "utf8")]) {
+    assert.match(page, /<meta name="description" content="[^"]+"/);
+    assert.match(page, /<meta property="og:title" content="[^"]+"/);
+    assert.match(page, /href="privacidade\.html"/);
+    assert.match(page, /href="termos\.html"/);
+  }
+  const vercel = JSON.parse(readFileSync(resolve(pageRoot, "vercel.json"), "utf8"));
+  for (const [route, destination] of [["/", "/index-livros.html"], ["/livros", "/index-livros.html"], ["/hqs", "/index-hqs.html"], ["/privacidade", "/privacidade.html"], ["/termos", "/termos.html"]]) {
+    assert.ok(vercel.rewrites.some((rewrite) => rewrite.source === route && rewrite.destination === destination), `Rota ausente: ${route}`);
+    assert.equal(existsSync(resolve(pageRoot, destination.slice(1))), true, `Destino ausente: ${destination}`);
+  }
+  assert.match(read("privacidade.html"), /Google API Services User Data Policy[\s\S]*Limited Use/);
+  assert.match(read("termos.html"), /responsabilidade possuir os direitos/);
+  assert.match(read("termos.html"), /PDF, CBR e CBZ/);
 });
 
 test("sem promessa de pagamento único", () => {
@@ -128,11 +156,9 @@ test("lógica do CTA fixo", async () => {
   assert.equal(FakeObserver.instance.disconnected, true);
 });
 
-test("página de Livros preservada", () => {
+test("estilos base da página de Livros preservados", () => {
   const expected = {
-    "index-livros.html": "251e7d428216ff5c31ef393d93251f66f0858e3de274c4fc5d023eeb2fe1e0ae",
-    "css/livros.css": "c2cc07900b7fe673c46b758618398d67896be24faa795f9cc32af6acf6769424",
-    "js/livros.js": "3ccd8df4d66a1d33443993946bee86ed8842fe7192f05ad10284edb65144b699",
+    "css/livros.css": "3ce6ccb14e9e487410620017d9bf241f85f620e95458dc5014fac612f0f916dc",
   };
   Object.entries(expected).forEach(([file, hash]) => assert.equal(sha256(file), hash, `${file} foi alterado`));
 });
@@ -147,7 +173,7 @@ const {
 } = trackingModule;
 const { mountHeroVideo } = heroVideoModule;
 
-function createTrackingEnvironment({ pixelId = "TEST-PIXEL", checkoutUrl = "", storageMap = new Map() } = {}) {
+function createTrackingEnvironment({ pixelId = "TEST-PIXEL", checkoutUrl = "", storageMap = new Map(), hasConsent = () => true } = {}) {
   const scripts = [];
   const documentListeners = new Map();
   const windowListeners = new Map();
@@ -190,6 +216,7 @@ function createTrackingEnvironment({ pixelId = "TEST-PIXEL", checkoutUrl = "", s
     documentRef,
     Observer: FakeObserver,
     sessionStorageRef,
+    hasConsent,
   });
   const calls = () => (windowRef.fbq?.queue || []).map((args) => [...args]);
   return {
@@ -252,6 +279,19 @@ test("Pixel de teste injeta script assíncrono e envia PageView uma vez", () => 
     value: 9.99,
     currency: "BRL",
   });
+  environment.cleanup();
+});
+
+test("Pixel fica bloqueado até consentimento explícito", () => {
+  const environment = createTrackingEnvironment({ hasConsent: () => false });
+  assert.equal(environment.scripts.length, 0);
+  assert.equal(environment.windowRef.fbq, undefined);
+  environment.windowListeners.get("lumeo:sales-analytics-consent-change")({ detail: { choice: "accepted" } });
+  assert.equal(environment.scripts.length, 1);
+  assert.equal(environment.calls().filter((call) => call[0] === "track" && call[1] === "PageView").length, 1);
+  environment.windowListeners.get("lumeo:sales-analytics-consent-change")({ detail: { choice: "rejected" } });
+  environment.FakeObserver.instances[0].callback([{ target: environment.offer, isIntersecting: true, intersectionRatio: 1 }]);
+  assert.equal(environment.calls().filter((call) => call[0] === "track" && call[1] === "ViewContent").length, 0);
   environment.cleanup();
 });
 

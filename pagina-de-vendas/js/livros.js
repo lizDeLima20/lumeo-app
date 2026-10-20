@@ -3,10 +3,12 @@ import { loadCatalog } from "./catalogo.js";
 import { mountBooksHeroVideo } from "./livros-hero-video.js";
 import { mountLivrosTracking } from "./livros-tracking.js";
 import { mountMobileCtaVisibility } from "./mobile-cta.js";
+import { mountAnalyticsConsent } from "./sales-consent.js";
 
 mountHeader(document.querySelector("[data-sales-header]"));
 document.querySelector(".sales-header__cta")?.setAttribute("data-sales-cta-location", "header");
-mountLivrosTracking({ checkoutUrl: SALES_CONFIG.checkoutUrl });
+mountAnalyticsConsent();
+mountLivrosTracking({ checkoutUrl: SALES_CONFIG.checkoutUrls.livros });
 bindCommercialActions();
 document.querySelector("[data-sales-year]").textContent = String(new Date().getFullYear());
 document.querySelectorAll("[data-sales-price]").forEach((node) => { node.textContent = money(SALES_CONFIG.price); });
@@ -84,19 +86,17 @@ function mountFaq() {
     ["Como acesso o Lumeo?", "Após a confirmação da compra, você recebe as orientações de acesso ao aplicativo Lumeo."],
     ["O Lumeo funciona no celular?", "Sim. O Lumeo foi pensado para celulares Android e possui interface adaptada para telas móveis."],
     ["Posso usar no tablet?", "Sim. Em tablets Android, você aproveita mais espaço para a biblioteca e para as páginas."],
-    ["Os livros já vêm inclusos?", "Não. O Lumeo é um leitor pessoal. Você adiciona arquivos próprios que possui autorização para utilizar."],
+    ["Os livros já vêm inclusos?", "O aplicativo é um leitor pessoal. Após a compra, esta oferta entrega por link separado do Google Drive acesso à coleção anunciada de 1.500 livros digitais; os arquivos não ficam pré-instalados no app."],
     ["Posso adicionar meus próprios arquivos?", "Sim. Você pode selecionar arquivos compatíveis no aparelho ou adicionar uma pasta autorizada do Google Drive."],
-    ["Quais formatos posso adicionar?", "Esta oferta apresenta suporte a PDF, EPUB, CBR e CBZ."],
-    ["Quais são os bônus?", "A área Lumeo Audiolivros liberada no app, uma lista com 200 audiolivros clássicos e uma coleção de músicas para leitura, como chuva, meditação e músicas relaxantes."],
-    ["O que é o bônus Lumeo Audiolivros?", "É a área de audiolivros do app, liberada junto com o leitor. Você adiciona pastas de áudio do Google Drive e ouve por capítulos, com controle de velocidade e de avanço."],
-    ["Que audiolivros vêm na lista de bônus?", "Obras clássicas em domínio público, narradas em áudio, prontas para adicionar no Lumeo."],
+    ["Quais formatos posso adicionar?", "Esta página trata da leitura de PDF e EPUB. A compatibilidade pode variar conforme o arquivo e a versão instalada."],
+    ["O Lumeo vem com livros ou áudios?", "Após a compra, a oferta entrega por link separado do Google Drive os bônus anunciados de 1.500 livros digitais e 200 audiolivros. Eles não ficam instalados automaticamente no aplicativo."],
+    ["Como funcionam os audiolivros?", "Após a compra, o bônus de 200 audiolivros é entregue por link separado do Google Drive. No Lumeo, o player reproduz os arquivos MP3 adicionados por você, com download por faixa quando você solicita a reprodução."],
     ["Posso ouvir enquanto leio?", "Sim. O áudio continua tocando no mini player enquanto você lê outro livro no Lumeo."],
     ["Posso adicionar meus próprios áudios?", "Sim. Você adiciona pastas de áudio do Google Drive, como audiolivros, cursos ou playlists."],
     ["Quais formatos de áudio funcionam?", "Arquivos MP3."],
-    ["Como recebo os bônus?", "Junto com o acesso ao Lumeo, depois da confirmação da compra."],
     ["O Lumeo ajuda a organizar minha leitura?", "Sim. Biblioteca visual, pesquisa, gêneros, progresso e leitura offline ajudam você a encontrar e retomar seus arquivos."],
     ["Como funcionam lembretes e Pomodoro?", "Você pode organizar sessões por tempo ou páginas, programar pausas e criar lembretes de leitura no Android."],
-    ["Tem garantia?", "Sim. Você tem 7 dias de garantia a partir da compra. Se o Lumeo não for para você, é só pedir o reembolso dentro desse prazo."],
+    ["Como funciona a compra?", "O pagamento será concluído em um checkout externo quando a integração da Hotmart estiver configurada. As condições serão apresentadas antes da confirmação."],
   ];
   root.replaceChildren(...rows.map(([question, answer]) => { const details = document.createElement("details"); const summary = document.createElement("summary"), text = document.createElement("p"); summary.textContent = question; text.textContent = answer; details.append(summary, text); return details; }));
 }
@@ -194,6 +194,6 @@ function mountTutorials() {
   videos.forEach((video) => observer.observe(video));
 }
 
-mountFaq(); mountStories(); mountTutorials(); mountBooksHeroVideo(); mountMobileCtaVisibility({ extraCtaSelectors: ["[data-livros-bonus-cta]"] });
+mountFaq(); mountStories(); mountTutorials(); mountBooksHeroVideo(); mountMobileCtaVisibility({ extraCtaSelectors: ["[data-livros-audiobooks-cta]"] });
 try { mountLibrary((await loadCatalog("livros")).items || []); }
 catch (error) { const root = document.querySelector("[data-sales-library]"); if (root) root.textContent = "Não foi possível carregar a demonstração da biblioteca."; console.error("Lumeo demo library unavailable", error); }

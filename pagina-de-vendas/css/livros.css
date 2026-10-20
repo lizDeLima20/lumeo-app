@@ -132,7 +132,9 @@ body{overflow-x:clip;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Se
 .sales-stories__navigation{margin-top:.75rem}
 
 .sales-how--reading{padding-top:0;padding-bottom:clamp(2.5rem,6vw,4rem)}
-.sales-demo__animation{width:70%;height:clamp(14rem,58vw,18rem);aspect-ratio:auto;justify-self:center;object-fit:cover;object-position:center}
+.sales-demo__animation{width:min(52%,11.5rem);height:auto;max-height:none;aspect-ratio:1;justify-self:center;object-fit:contain;object-position:center;background:#f8f2e7}
+
+@media(min-width:42rem){.sales-demo__animation{width:min(100%,17rem)}}
 
 .sales-devices__stage{min-height:17rem}
 .sales-tablet{width:min(84%,19rem);height:15.5rem}
