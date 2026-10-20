@@ -4,6 +4,7 @@ import { mountBooksHeroVideo } from "./livros-hero-video.js";
 import { mountLivrosTracking } from "./livros-tracking.js";
 import { mountMobileCtaVisibility } from "./mobile-cta.js";
 import { mountAnalyticsConsent } from "./sales-consent.js";
+import { mountTestimonials } from "./testimonials-carousel.js";
 
 mountHeader(document.querySelector("[data-sales-header]"));
 document.querySelector(".sales-header__cta")?.setAttribute("data-sales-cta-location", "header");
@@ -65,19 +66,6 @@ function mountLibrary(items) {
     const rail = document.createElement("div"); rail.className = `sales-library__rail${index ? " sales-library__rail--reverse" : ""}`; rail.setAttribute("aria-label", `Exemplos de biblioteca, linha ${index + 1}`);
     [...row, ...row].forEach((item) => rail.append(bookCard(item))); root.append(rail);
   });
-}
-
-function mountStories() {
-  const root = document.querySelector("[data-stories-carousel]"), track = root?.querySelector("[data-stories-track]"), previous = root?.querySelector("[data-stories-previous]"), next = root?.querySelector("[data-stories-next]"), indicatorsRoot = root?.querySelector("[data-stories-indicators]");
-  if (!root || !track || !previous || !next || !indicatorsRoot) return;
-  const cards = [...track.querySelectorAll(".sales-story-card")];
-  const indicators = cards.map((card, index) => { const button = document.createElement("button"); button.type = "button"; button.setAttribute("aria-label", `Ir à mensagem ${index + 1}`); button.addEventListener("click", () => card.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" })); indicatorsRoot.append(button); return button; });
-  const current = () => cards.reduce((best, card, index) => Math.abs(card.offsetLeft - track.scrollLeft) < Math.abs(cards[best].offsetLeft - track.scrollLeft) ? index : best, 0);
-  const sync = () => indicators.forEach((button, index) => button.setAttribute("aria-current", String(index === current())));
-  const move = (step) => cards[Math.max(0, Math.min(cards.length - 1, current() + step))]?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
-  previous.addEventListener("click", () => move(-1)); next.addEventListener("click", () => move(1)); track.addEventListener("scroll", sync, { passive: true });
-  track.querySelectorAll("[data-story-image]").forEach((button) => button.addEventListener("click", () => openModal(`<article class="sales-modal__dialog sales-story-modal" role="dialog" aria-modal="true" aria-label="Mensagem ampliada"><button class="sales-modal__close" type="button" data-sales-close aria-label="Fechar">×</button><img src="${escapeHtml(button.dataset.storyImage)}" alt="${escapeHtml(button.dataset.storyAlt)}" /></article>`)));
-  sync();
 }
 
 function mountFaq() {
@@ -194,6 +182,6 @@ function mountTutorials() {
   videos.forEach((video) => observer.observe(video));
 }
 
-mountFaq(); mountStories(); mountTutorials(); mountBooksHeroVideo(); mountMobileCtaVisibility({ extraCtaSelectors: ["[data-livros-audiobooks-cta]"] });
+mountFaq(); mountTestimonials(); mountTutorials(); mountBooksHeroVideo(); mountMobileCtaVisibility({ extraCtaSelectors: ["[data-livros-audiobooks-cta]"] });
 try { mountLibrary((await loadCatalog("livros")).items || []); }
 catch (error) { const root = document.querySelector("[data-sales-library]"); if (root) root.textContent = "Não foi possível carregar a demonstração da biblioteca."; console.error("Lumeo demo library unavailable", error); }

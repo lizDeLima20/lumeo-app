@@ -38,9 +38,17 @@ test("hero sem altura baseada na viewport", () => {
   assert.equal(viewportHeight.test(css), false, ".hqs-hero ainda usa altura baseada na viewport");
 });
 
-test("depoimentos vazios ocultos e sem âncora", () => {
-  assert.match(html, /<section\s+class="hqs-social hqs-section"[^>]*\shidden(?:\s|>)/);
-  assert.doesNotMatch(html, /href=["']#social-title["']/i);
+test("relatos de HQs são reativados, separados e identificados como reconstituídos", () => {
+  assert.match(html, /class="sales-testimonials hqs-section"/);
+  assert.doesNotMatch(html, /class="sales-testimonials hqs-section"[^>]*hidden/);
+  assert.match(html, /RELATOS DE LEITORES · MENSAGENS RECONSTITUÍDAS/);
+  assert.match(html, /As imagens não são capturas originais das conversas/);
+  assert.match(html, /renato\.webp/);
+  assert.match(html, /pamela-hqs\.png/);
+  assert.match(html, /rodrigo-hqs\.png/);
+  assert.equal((html.match(/data-testimonial-avatar="whatsapp"/g) || []).length, 1);
+  assert.equal((html.match(/data-testimonial-avatar="android"/g) || []).length, 2);
+  assert.doesNotMatch(html, /rafaela\.webp|milena\.webp|jorge\.webp|antonio\.webp/);
 });
 
 test("não anuncia garantia ou condição comercial não confirmada", () => {
@@ -67,9 +75,9 @@ test("SEO básico, políticas e rotas Vercel estão presentes", () => {
     assert.match(page, /href="termos\.html"/);
   }
   const vercel = JSON.parse(readFileSync(resolve(pageRoot, "vercel.json"), "utf8"));
-  for (const [route, destination] of [["/", "/index-livros.html"], ["/livros", "/index-livros.html"], ["/hqs", "/index-hqs.html"], ["/privacidade", "/privacidade.html"], ["/termos", "/termos.html"]]) {
-    assert.ok(vercel.rewrites.some((rewrite) => rewrite.source === route && rewrite.destination === destination), `Rota ausente: ${route}`);
-    assert.equal(existsSync(resolve(pageRoot, destination.slice(1))), true, `Destino ausente: ${destination}`);
+  for (const [route, destination, file] of [["/", "/index-livros", "index-livros.html"], ["/livros", "/index-livros", "index-livros.html"], ["/hqs", "/index-hqs", "index-hqs.html"], ["/privacidade", "/privacidade", "privacidade.html"], ["/termos", "/termos", "termos.html"]]) {
+    assert.ok(vercel.rewrites.some((rewrite) => rewrite.source === route && [destination, `${destination}.html`].includes(rewrite.destination)), `Rota ausente: ${route}`);
+    assert.equal(existsSync(resolve(pageRoot, file)), true, `Destino ausente: ${file}`);
   }
   assert.match(read("privacidade.html"), /Google API Services User Data Policy[\s\S]*Limited Use/);
   assert.match(read("termos.html"), /responsabilidade possuir os direitos/);

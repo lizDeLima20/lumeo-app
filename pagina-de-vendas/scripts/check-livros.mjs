@@ -38,8 +38,17 @@ test("copy comercial não contém condições removidas nem pagamento único", (
   assert.doesNotMatch(relevantSource, /pagamento\s+único/i);
 });
 
-test("depoimentos ficam ocultos até validação de autenticidade e autorização", () => {
-  assert.match(html, /class="sales-stories sales-section"[^>]*hidden/);
+test("relatos de Livros são reativados e identificados como mensagens reconstituídas", () => {
+  assert.match(html, /class="sales-testimonials sales-section"/);
+  assert.doesNotMatch(html, /class="sales-testimonials sales-section"[^>]*hidden/);
+  assert.match(html, /RELATOS DE LEITORES · MENSAGENS RECONSTITUÍDAS/);
+  assert.match(html, /As imagens não são capturas originais das conversas/);
+  assert.match(html, /rafaela\.webp/);
+  assert.match(html, /milena\.webp/);
+  assert.match(html, /jorge\.webp/);
+  assert.match(html, /antonio\.webp/);
+  assert.equal((html.match(/data-testimonial-avatar="whatsapp"/g) || []).length, 4);
+  assert.doesNotMatch(html, /data-testimonial-image="assets\/depoimentos\/renato\.webp"/);
 });
 
 test("vídeo leve do hero está configurado e os arquivos existem", () => {
@@ -92,7 +101,7 @@ test("assets anteriores continuam referenciados e inalterados", () => {
     "assets/depoimentos/antonio.webp": "5025ec1515ec6d4d974dc2e829b9e2ecfb19ed5b3286c64629a4c2f1eab59646",
   };
   Object.entries(expected).forEach(([file, hash]) => {
-    assert.ok(html.includes(file) || file.endsWith("lumeo-logo.webp"), `Referência removida: ${file}`);
+    assert.ok(html.includes(file) || hqsHtml.includes(file) || file.endsWith("lumeo-logo.webp"), `Referência removida: ${file}`);
     assert.equal(sha256(file), hash, `${file} foi alterado`);
   });
 });
@@ -210,7 +219,8 @@ const sectionAt = (className) => {
 };
 
 test("hero destaca o aplicativo e os bônus entregues separadamente", () => {
-  const hero = html.slice(html.indexOf('<section class="sales-hero"'), html.indexOf("</section>"));
+  const heroStart = html.indexOf('<section class="sales-hero"');
+  const hero = html.slice(heroStart, html.indexOf("</section>", heroStart));
   assert.match(hero, /ACESSO AO APLICATIVO LUMEO/);
   assert.match(hero, /QUERO LER NO LUMEO/);
   assert.match(hero, /Use com seus próprios livros\. Livros não incluídos\./);

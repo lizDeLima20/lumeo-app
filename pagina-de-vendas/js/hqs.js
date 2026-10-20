@@ -3,6 +3,7 @@ import { mountMobileCtaVisibility } from "./mobile-cta.js";
 import { mountAnalyticsConsent } from "./sales-consent.js";
 import { mountHeroVideo } from "./hqs-hero-video.js";
 import { mountHqsTracking } from "./hqs-tracking.js";
+import { mountTestimonials } from "./testimonials-carousel.js";
 
 mountHeader(document.querySelector("[data-sales-header]"));
 document.querySelector(".sales-header__cta")?.setAttribute("data-hqs-cta-location", "header");
@@ -289,6 +290,7 @@ function controlReaderVideo() {
 
 mountLibrary();
 mountFaq();
+mountTestimonials();
 mountTutorials();
 controlReaderVideo();
 mountHeroVideo();
