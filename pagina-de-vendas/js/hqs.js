@@ -24,7 +24,7 @@ function openCover(item) {
     <article class="sales-modal__dialog sales-book-modal" role="dialog" aria-modal="true" aria-labelledby="hqs-cover-title">
       <button class="sales-modal__close" type="button" data-sales-close aria-label="Fechar">×</button>
       <img src="${item.cover}" alt="${item.title}" />
-      <div><p class="sales-eyebrow">DEMONSTRAÇÃO VISUAL</p><h2 id="hqs-cover-title">${item.title}</h2><p>Esta capa aparece apenas como exemplo da organização visual. Quadrinhos não acompanham o aplicativo.</p><button class="sales-button sales-button--primary" type="button" data-sales-cta>QUERO ORGANIZAR MINHAS HQs</button></div>
+      <div><p class="sales-eyebrow">DEMONSTRAÇÃO VISUAL</p><h2 id="hqs-cover-title">${item.title}</h2><p>Esta capa aparece apenas como exemplo da organização visual. Quadrinhos não acompanham o aplicativo.</p><button class="sales-button sales-button--primary" type="button" data-sales-cta data-hqs-cta-location="modal">QUERO ORGANIZAR MINHAS HQs</button></div>
     </article>`, bindCommercialActions);
 }
 
@@ -73,7 +73,7 @@ function mountFaq() {
     ["Quais formatos de HQ são compatíveis?", "A biblioteca de HQs aceita PDF, CBR e CBZ. Recursos específicos podem variar conforme o arquivo e a versão instalada do aplicativo."],
     ["Como funciona a experiência de leitura de HQs?", "O Lumeo possui uma experiência de leitura visual para HQs. Recursos específicos podem variar conforme o arquivo e a versão instalada do aplicativo."],
     ["Funciona em celular e tablet Android?", "Sim. O Lumeo foi pensado para uso em celulares e tablets Android."],
-    ["Como funciona a compra?", "O pagamento será concluído em um checkout externo quando a integração da Hotmart estiver configurada. As condições serão apresentadas antes da confirmação."],
+    ["Como funciona a compra?", "Ao tocar em um botão de compra, você será direcionado ao checkout seguro da Hotmart, onde verá as condições antes da confirmação do pagamento."],
     ["Como recebo acesso após a compra?", "Após a confirmação da compra, você recebe as orientações de acesso ao aplicativo Lumeo."],
   ];
   root.replaceChildren(...rows.map(([question, answer]) => {

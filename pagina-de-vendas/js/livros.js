@@ -84,7 +84,7 @@ function mountFaq() {
     ["Quais formatos de áudio funcionam?", "Arquivos MP3."],
     ["O Lumeo ajuda a organizar minha leitura?", "Sim. Biblioteca visual, pesquisa, gêneros, progresso e leitura offline ajudam você a encontrar e retomar seus arquivos."],
     ["Como funcionam lembretes e Pomodoro?", "Você pode organizar sessões por tempo ou páginas, programar pausas e criar lembretes de leitura no Android."],
-    ["Como funciona a compra?", "O pagamento será concluído em um checkout externo quando a integração da Hotmart estiver configurada. As condições serão apresentadas antes da confirmação."],
+    ["Como funciona a compra?", "Ao tocar em um botão de compra, você será direcionado ao checkout seguro da Hotmart, onde verá as condições antes da confirmação do pagamento."],
   ];
   root.replaceChildren(...rows.map(([question, answer]) => { const details = document.createElement("details"); const summary = document.createElement("summary"), text = document.createElement("p"); summary.textContent = question; text.textContent = answer; details.append(summary, text); return details; }));
 }

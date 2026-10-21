@@ -15,6 +15,7 @@ const mobileCtaJs = read("js/mobile-cta.js");
 const trackingJs = read("js/hqs-tracking.js");
 const trackingConfigJs = read("js/hqs-tracking-config.js");
 const heroVideoJs = read("js/hqs-hero-video.js");
+const sharedJs = read("js/shared.js");
 const relevantSource = [html, hqsCss, conversionCss, hqsJs, mobileCtaJs, trackingJs, trackingConfigJs, heroVideoJs].join("\n");
 
 const tests = [];
@@ -65,6 +66,24 @@ test("proposta HQs é separada e descreve limitações do recurso experimental",
   assert.doesNotMatch(html, /IA que amplia|inteligência artificial que reconhece/i);
   assert.doesNotMatch(html, /1\.500 livros|200 audiolivros/i);
   assert.match(hqsJs, /A biblioteca de HQs aceita PDF, CBR e CBZ/);
+});
+
+test("todos os CTAs de HQs usam o checkout real da Hotmart", () => {
+  const checkoutUrl = "https://pay.hotmart.com/U108112778D?off=okhw2htf&checkoutMode=10";
+  assert.ok(sharedJs.includes(`hqs: "${checkoutUrl}"`));
+  assert.match(sharedJs, /checkoutProviders: Object\.freeze\(\{ livros: "hotmart", hqs: "hotmart" \}\)/);
+  const buttons = [...html.matchAll(/<button[^>]*data-sales-cta[^>]*>/g)].map((match) => match[0]);
+  assert.equal(buttons.length, 4);
+  buttons.forEach((button) => assert.match(button, /data-hqs-cta-location="(?:hero|testimonials|offer|sticky)"/));
+  assert.match(hqsJs, /data-hqs-cta-location="modal"/);
+  assert.match(hqsJs, /mountHqsTracking\(\{ checkoutUrl: SALES_CONFIG\.checkoutUrls\.hqs \}\)/);
+  assert.match(hqsJs, /\["Como funciona a compra\?", "Ao tocar em um botão de compra, você será direcionado ao checkout seguro da Hotmart/);
+});
+
+test("botão flutuante de WhatsApp está disponível em HQs", () => {
+  assert.match(html, /class="sales-whatsapp"[^>]*data-sales-whatsapp[^>]*hidden/);
+  assert.match(html, /css\/sales-whatsapp\.css/);
+  assert.match(sharedJs, /whatsappNumber: "5511911082804"/);
 });
 
 test("SEO básico, políticas e rotas Vercel estão presentes", () => {

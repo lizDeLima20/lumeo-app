@@ -1,12 +1,22 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    { "source": "/HQs", "destination": "/hqs", "permanent": true },
+    { "source": "/HQS", "destination": "/hqs", "permanent": true },
+    { "source": "/Hqs", "destination": "/hqs", "permanent": true },
+    { "source": "/hq", "destination": "/hqs", "permanent": true },
+    { "source": "/quadrinhos", "destination": "/hqs", "permanent": true },
+    { "source": "/Livros", "destination": "/livros", "permanent": true },
+    { "source": "/LIVROS", "destination": "/livros", "permanent": true },
+    { "source": "/livro", "destination": "/livros", "permanent": true }
+  ],
   "rewrites": [
-    { "source": "/", "destination": "/index-livros.html" },
-    { "source": "/livros", "destination": "/index-livros.html" },
-    { "source": "/hqs", "destination": "/index-hqs.html" },
-    { "source": "/privacidade", "destination": "/privacidade.html" },
-    { "source": "/termos", "destination": "/termos.html" }
+    { "source": "/", "destination": "/index-livros" },
+    { "source": "/livros", "destination": "/index-livros" },
+    { "source": "/hqs", "destination": "/index-hqs" },
+    { "source": "/privacidade", "destination": "/privacidade" },
+    { "source": "/termos", "destination": "/termos" }
   ],
   "headers": [
     { "source": "/(.*)", "headers": [

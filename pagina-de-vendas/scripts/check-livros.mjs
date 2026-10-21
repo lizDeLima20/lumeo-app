@@ -12,6 +12,7 @@ const html = read("index-livros.html");
 const hqsHtml = read("index-hqs.html");
 const css = `${read("css/livros.css")}\n${read("css/livros-conversion.css")}`;
 const js = read("js/livros.js");
+const sharedJs = read("js/shared.js");
 const relevantSource = `${html}\n${css}\n${js}`;
 const tests = [];
 const test = (name, callback) => tests.push([name, callback]);
@@ -278,7 +279,24 @@ test("FAQ responde formatos, áudio e compra sem prometer garantia", () => {
     assert.ok(js.includes(`["${question}"`), `Pergunta ausente: ${question}`);
   }
   assert.doesNotMatch(js, /Tem garantia\?/);
-  assert.match(js, /\["Como funciona a compra\?", "O pagamento será concluído em um checkout externo quando a integração da Hotmart estiver configurada/);
+  assert.match(js, /\["Como funciona a compra\?", "Ao tocar em um botão de compra, você será direcionado ao checkout seguro da Hotmart/);
+});
+
+test("todos os CTAs de Livros usam o checkout real da Hotmart", () => {
+  const checkoutUrl = "https://pay.hotmart.com/U108112778D?off=fxd7x748&checkoutMode=10&utm_source=chatgpt.com&bid=1792550316944";
+  assert.ok(sharedJs.includes(`livros: "${checkoutUrl}"`));
+  assert.match(sharedJs, /checkoutProviders: Object\.freeze\(\{ livros: "hotmart", hqs: "hotmart" \}\)/);
+  const buttons = [...html.matchAll(/<button[^>]*data-sales-cta[^>]*>/g)].map((match) => match[0]);
+  assert.equal(buttons.length, 5);
+  buttons.forEach((button) => assert.match(button, /data-sales-cta-location="(?:hero|testimonials|audiobooks|offer|sticky)"/));
+  assert.match(js, /mountLivrosTracking\(\{ checkoutUrl: SALES_CONFIG\.checkoutUrls\.livros \}\)/);
+});
+
+test("botão flutuante de WhatsApp usa o número autorizado", () => {
+  assert.match(html, /class="sales-whatsapp"[^>]*data-sales-whatsapp[^>]*hidden/);
+  assert.match(html, /css\/sales-whatsapp\.css/);
+  assert.match(sharedJs, /whatsappNumber: "5511911082804"/);
+  assert.match(sharedJs, /https:\/\/wa\.me\/\$\{whatsappNumber\}/);
 });
 
 test("microcopies diferenciam o app da entrega separada dos bônus", () => {

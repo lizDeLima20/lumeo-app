@@ -4,9 +4,12 @@ export const SALES_CONFIG = Object.freeze({
   productName: "Lumeo",
   price: 9.99,
   currency: "BRL",
-  checkoutUrls: Object.freeze({ livros: "", hqs: "" }),
-  whatsappNumber: "",
-  checkoutProvider: "pending",
+  checkoutUrls: Object.freeze({
+    livros: "https://pay.hotmart.com/U108112778D?off=fxd7x748&checkoutMode=10&utm_source=chatgpt.com&bid=1792550316944",
+    hqs: "https://pay.hotmart.com/U108112778D?off=okhw2htf&checkoutMode=10",
+  }),
+  whatsappNumber: "5511911082804",
+  checkoutProviders: Object.freeze({ livros: "hotmart", hqs: "hotmart" }),
   metaPixelId: "",
 });
 
@@ -63,7 +66,7 @@ export function openModal(markup, onOpen) {
 export function showPurchaseNotice() {
   const catalog = document.body?.dataset?.salesCatalog === "hqs" ? "hqs" : "livros";
   const checkoutUrl = SALES_CONFIG.checkoutUrls[catalog];
-  trackSalesEvent("lumeo_checkout_intent", { provider: SALES_CONFIG.checkoutProvider, catalog });
+  trackSalesEvent("lumeo_checkout_intent", { provider: SALES_CONFIG.checkoutProviders[catalog], catalog });
   if (checkoutUrl) {
     window.location.assign(checkoutUrl);
     return;
