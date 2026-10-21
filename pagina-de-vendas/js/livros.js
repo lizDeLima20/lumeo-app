@@ -77,7 +77,7 @@ function mountFaq() {
     ["Os livros já vêm inclusos?", "O aplicativo é um leitor pessoal. Após a compra, esta oferta entrega por link separado do Google Drive acesso à coleção anunciada de 1.500 livros digitais; os arquivos não ficam pré-instalados no app."],
     ["Posso adicionar meus próprios arquivos?", "Sim. Você pode selecionar arquivos compatíveis no aparelho ou adicionar uma pasta autorizada do Google Drive."],
     ["Quais formatos posso adicionar?", "Esta página trata da leitura de PDF e EPUB. A compatibilidade pode variar conforme o arquivo e a versão instalada."],
-    ["O Lumeo vem com livros ou áudios?", "Após a compra, a oferta entrega por link separado do Google Drive os bônus anunciados de 1.500 livros digitais e 200 audiolivros. Eles não ficam instalados automaticamente no aplicativo."],
+    ["O Lumeo vem com livros ou áudios?", "Após a compra, a oferta entrega por link separado do Google Drive os bônus anunciados de 1.500 livros digitais, 200 audiolivros e uma coleção de HQs e mangás. Eles não ficam instalados automaticamente no aplicativo."],
     ["Como funcionam os audiolivros?", "Após a compra, o bônus de 200 audiolivros é entregue por link separado do Google Drive. No Lumeo, o player reproduz os arquivos MP3 adicionados por você, com download por faixa quando você solicita a reprodução."],
     ["Posso ouvir enquanto leio?", "Sim. O áudio continua tocando no mini player enquanto você lê outro livro no Lumeo."],
     ["Posso adicionar meus próprios áudios?", "Sim. Você adiciona pastas de áudio do Google Drive, como audiolivros, cursos ou playlists."],

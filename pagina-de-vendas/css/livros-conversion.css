@@ -596,7 +596,7 @@ body[data-sales-catalog="livros"] .livros-receive__bonus {
   }
 
   .livros-bonus__phone { width: min(22vw, 15.5rem); }
-  .livros-bonus__cards { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 0.4rem; }
+  .livros-bonus__cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); margin-top: 0.4rem; }
   .livros-bonus__card { grid-template-columns: 1fr; }
   .livros-bonus__icon { grid-row: auto; margin-bottom: 0.7rem; }
   .livros-bonus__details { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 2rem; }

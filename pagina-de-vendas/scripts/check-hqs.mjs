@@ -60,11 +60,12 @@ test("não anuncia garantia ou condição comercial não confirmada", () => {
 test("proposta HQs é separada e descreve limitações do recurso experimental", () => {
   assert.match(html, /Sua coleção de HQs merece uma/);
   assert.match(html, /QUERO ORGANIZAR MINHAS HQs/);
-  assert.match(html, /coleção bônus não fica pré-instalada no aplicativo/i);
-  assert.match(html, /link do Google Drive é entregue separadamente após a compra/i);
+  // Os mesmos 3 bônus da página de Livros (decisão do proprietário), entregues à parte.
+  assert.match(html, /bônus não ficam pré-instalados no aplicativo/i);
+  assert.match(html, /links do Google Drive são entregues separadamente após a compra/i);
   assert.match(html, /ampliação automatizada de balões é experimental/i);
   assert.doesNotMatch(html, /IA que amplia|inteligência artificial que reconhece/i);
-  assert.doesNotMatch(html, /1\.500 livros|200 audiolivros/i);
+  for (const bonus of [/coleção de HQs e mangás/i, /1\.500 livros digitais/i, /200 audiolivros/i]) assert.match(html, bonus);
   assert.match(hqsJs, /A biblioteca de HQs aceita PDF, CBR e CBZ/);
 });
 

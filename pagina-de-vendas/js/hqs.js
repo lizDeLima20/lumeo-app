@@ -67,7 +67,7 @@ function mountFaq() {
   if (!root) return;
   const rows = [
     ["O que é o Lumeo?", "O Lumeo é um aplicativo leitor e organizador para a sua biblioteca pessoal no Android."],
-    ["A compra inclui HQs?", "Não. O valor é referente ao aplicativo leitor. Você usa arquivos próprios que possui autorização para utilizar."],
+    ["A compra inclui HQs?", "O valor é referente ao aplicativo leitor. Como bônus, após a compra você recebe por link separado do Google Drive uma coleção de HQs e mangás, 1.500 livros digitais e 200 audiolivros. Eles não ficam pré-instalados no aplicativo, e você também pode usar seus próprios arquivos."],
     ["Como adiciono meus próprios quadrinhos?", "Você pode selecionar arquivos compatíveis no dispositivo ou adicionar uma pasta autorizada do Google Drive."],
     ["Posso usar links do Google Drive?", "Sim. O aplicativo oferece importação de links autorizados do Google Drive para sua biblioteca pessoal."],
     ["Quais formatos de HQ são compatíveis?", "A biblioteca de HQs aceita PDF, CBR e CBZ. Recursos específicos podem variar conforme o arquivo e a versão instalada do aplicativo."],

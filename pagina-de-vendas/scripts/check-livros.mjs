@@ -204,12 +204,14 @@ test("vídeo otimizado respeita codec, tamanho, duração e ausência de áudio"
   assert.equal(metadata.streams.some((stream) => stream.codec_type === "audio"), false);
 });
 
-test("a página de HQs mantém proposta própria e descreve o bônus separado", () => {
+// As duas páginas oferecem agora os mesmos 3 bônus (decisão do proprietário): coleção de HQs e
+// mangás, 1.500 livros digitais e 200 audiolivros, entregues por link separado do Google Drive.
+test("a página de HQs mantém proposta própria e descreve os 3 bônus separados", () => {
   assert.match(hqsHtml, /data-sales-catalog="hqs"/);
   assert.match(hqsHtml, /quadrinhos e mangás/i);
-  assert.doesNotMatch(hqsHtml, /200 audiolivros|lista de 1\.500 livros/i);
-  assert.match(hqsHtml, /coleção bônus não fica pré-instalada no aplicativo/i);
-  assert.match(hqsHtml, /link do Google Drive é entregue separadamente após a compra/i);
+  for (const bonus of [/coleção de HQs e mangás/i, /1\.500 livros digitais/i, /200 audiolivros/i]) assert.match(hqsHtml, bonus);
+  assert.match(hqsHtml, /bônus não ficam pré-instalados no aplicativo/i);
+  assert.match(hqsHtml, /links do Google Drive são entregues separadamente após a compra/i);
   assert.match(hqsHtml, /ampliação automatizada de balões é experimental/i);
   assert.doesNotMatch(hqsHtml, /inteligência artificial|IA que amplia/i);
 });
@@ -225,8 +227,8 @@ test("hero destaca o aplicativo e os bônus entregues separadamente", () => {
   assert.match(hero, /ACESSO AO APLICATIVO LUMEO/);
   assert.match(hero, /QUERO LER NO LUMEO/);
   assert.match(hero, /Use com seus próprios livros\. Livros não incluídos\./);
-  assert.match(hero, /🎁 BÔNUS EXCLUSIVO/);
-  assert.match(hero, /1\.500 LIVROS DIGITAIS E 200 AUDIOLIVROS/);
+  assert.match(hero, /🎁 3 BÔNUS EXCLUSIVOS/);
+  assert.match(hero, /1\.500 LIVROS DIGITAIS, 200 AUDIOLIVROS E COLEÇÃO DE HQs E MANGÁS/);
   assert.match(hero, /Coleção disponibilizada separadamente por link do Google Drive/);
 });
 
@@ -254,10 +256,10 @@ test("descrição esclarece que os bônus não ficam pré-instalados", () => {
   for (const text of ["1.500 livros digitais", "200 audiolivros", "não ficam pré-instalados no aplicativo", "QUERO CONHECER O LUMEO"]) assert.ok(audio.includes(text), `Texto ausente: ${text}`);
 });
 
-test("a seção tem os dois bônus anunciados e o recurso de reprodução", () => {
+test("a seção tem os três bônus anunciados e o recurso de reprodução", () => {
   const cards = [...sectionAt("livros-bonus").matchAll(/<li class="livros-bonus__card">([\s\S]*?)<\/li>/g)].map((match) => match[1]);
-  assert.equal(cards.length, 3);
-  assert.deepEqual(cards.map((card) => normalizeText(card.match(/<h3>([\s\S]*?)<\/h3>/)?.[1] || "")), ["1.500 livros digitais", "200 audiolivros", "Ouça por capítulos"]);
+  assert.equal(cards.length, 4);
+  assert.deepEqual(cards.map((card) => normalizeText(card.match(/<h3>([\s\S]*?)<\/h3>/)?.[1] || "")), ["1.500 livros digitais", "200 audiolivros", "Coleção de HQs e mangás", "Ouça por capítulos"]);
   cards.forEach((card) => assert.match(card, /class="livros-bonus__icon"/));
 });
 
