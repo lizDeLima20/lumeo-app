@@ -45,12 +45,39 @@ body[data-sales-catalog="livros"] .editorial-final h2 { color:#fffaf3; }
 body[data-sales-catalog="livros"] .editorial-mini-demo { max-width:700px; margin:0 auto 32px; }
 body[data-sales-catalog="livros"] .editorial-mini-demo .sales-hero__visual { display:flex; align-items:center; justify-content:center; gap:24px; }
 body[data-sales-catalog="livros"]:has(.sales-consent:not([hidden]),.sales-modal:not([hidden])) .sales-mobile-cta { visibility:hidden; pointer-events:none; }
+
+/* Botões mais quadrados (sem formato de cápsula); elementos circulares (ícones, avatares, indicadores) ficam de fora de propósito. */
+body[data-sales-catalog="livros"] .sales-button,
+body[data-sales-catalog="livros"] .sales-header__cta,
+body[data-sales-catalog="livros"] .sales-whatsapp,
+body[data-sales-catalog="livros"] .sales-consent__actions button,
+body[data-sales-catalog="livros"] .tutorial-navigation button { border-radius:4px; }
+
+/* CTA do header: fundo era transparente (só borda), ficava ilegível sobre o conteúdo atrás. Agora sólido, com estado :active perceptível. */
+body[data-sales-catalog="livros"] .sales-header { background:rgba(20,11,32,.98); }
+body[data-sales-catalog="livros"] .sales-header__cta { background:#f2cc76; color:#241531; border:1px solid #f2cc76; }
+body[data-sales-catalog="livros"] .sales-header__cta:hover { background:#e9bd5a; border-color:#e9bd5a; }
+body[data-sales-catalog="livros"] .sales-header__cta:active { background:#d9ac4e; border-color:#d9ac4e; }
+body[data-sales-catalog="livros"] .sales-button--primary:active { background:#d9ac4e; border-color:#d9ac4e; }
+
+/* Cards/blocos retangulares com arredondamento exagerado, exceto bônus, depoimentos e molduras de aparelho (celular/tablet). */
+body[data-sales-catalog="livros"] .sales-modal__dialog,
+body[data-sales-catalog="livros"] .sales-tutorial-card,
+body[data-sales-catalog="livros"] .sales-tutorial-card__media,
+body[data-sales-catalog="livros"] .sales-benefits__grid article,
+body[data-sales-catalog="livros"] .sales-faq details,
+body[data-sales-catalog="livros"] .sales-price-card,
+body[data-sales-catalog="livros"] .sales-demo,
+body[data-sales-catalog="livros"] .sales-devices__stage,
+body[data-sales-catalog="livros"] .editorial-product,
+body[data-sales-catalog="livros"] .editorial-product img { border-radius:8px; }
+
 @media(max-width:767px){
 body[data-sales-catalog="livros"] .sales-hero { padding:24px 20px 40px; }
 body[data-sales-catalog="livros"] .sales-hero__copy { display:flex; flex-direction:column; gap:0; }
 body[data-sales-catalog="livros"] .sales-hero h1 { font-size:32px; margin:8px 0 12px; }
 body[data-sales-catalog="livros"] .sales-hero__lead { font-size:16px; margin:0 0 16px; }
-body[data-sales-catalog="livros"] .editorial-product { width:100%; display:flex; align-items:center; justify-content:center; gap:20px; padding:12px; border-radius:16px; }
+body[data-sales-catalog="livros"] .editorial-product { width:100%; display:flex; align-items:center; justify-content:center; gap:20px; padding:12px; border-radius:8px; }
 body[data-sales-catalog="livros"] .editorial-product img { width:76px; height:135px; border-radius:6px; }
 body[data-sales-catalog="livros"] .editorial-product figcaption { max-width:150px; text-align:left; margin:0; }
 body[data-sales-catalog="livros"] .sales-hero__offer { display:flex; flex-direction:column; width:100%; }
@@ -73,6 +100,6 @@ body[data-sales-catalog="livros"] .editorial-mini-demo .sales-hero__bullets { wi
  body[data-sales-catalog="livros"] .sales-tutorial-card__media { min-width:0; width:100%; }
  body[data-sales-catalog="livros"] .sales-tutorial-card video { max-width:100%; }
  body[data-sales-catalog="livros"] .tutorial-navigation { display:flex; gap:12px; margin-top:16px; }
- body[data-sales-catalog="livros"] .tutorial-navigation button { flex:1; min-height:48px; border:1px solid #f2cc76; border-radius:12px; padding:10px; color:#f2cc76; background:#241531; font:inherit; cursor:pointer; }
+ body[data-sales-catalog="livros"] .tutorial-navigation button { flex:1; min-height:48px; border:1px solid #f2cc76; border-radius:4px; padding:10px; color:#f2cc76; background:#241531; font:inherit; cursor:pointer; }
  body[data-sales-catalog="livros"] .tutorial-navigation button[aria-pressed="true"] { background:#f2cc76; color:#241531; }
 }

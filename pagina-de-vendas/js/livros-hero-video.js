@@ -10,7 +10,7 @@ export function mountBooksHeroVideo({
   if (!video || !windowRef) return () => {};
   const reducedMotion = windowRef.matchMedia?.("(prefers-reduced-motion: reduce)") || { matches: false, addEventListener() {} };
   const connection = navigatorRef?.connection || navigatorRef?.mozConnection || navigatorRef?.webkitConnection;
-  let isVisible = true;
+  let isVisible = !Observer;
 
   const sync = () => {
     const posterOnly = shouldUsePosterOnly({ connection, reducedMotion: reducedMotion.matches });
