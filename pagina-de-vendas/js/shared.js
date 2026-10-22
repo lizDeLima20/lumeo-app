@@ -3,6 +3,7 @@ import { hasAnalyticsConsent } from "./sales-consent.js";
 export const SALES_CONFIG = Object.freeze({
   productName: "Lumeo",
   price: 9.99,
+  livrosPrice: 9.99,
   currency: "BRL",
   checkoutUrls: Object.freeze({
     livros: "https://pay.hotmart.com/U108112778D?off=fxd7x748&checkoutMode=10&utm_source=chatgpt.com&bid=1792550316944",
@@ -14,7 +15,7 @@ export const SALES_CONFIG = Object.freeze({
 });
 
 export function trackSalesEvent(eventName, details = {}) {
-  const payload = { event: eventName, product: SALES_CONFIG.productName, price: SALES_CONFIG.price, ...details };
+  const payload = { event: eventName, product: SALES_CONFIG.productName, price: globalThis.document?.body?.dataset?.salesCatalog === "livros" ? SALES_CONFIG.livrosPrice : SALES_CONFIG.price, ...details };
   if (hasAnalyticsConsent()) {
     window.dataLayer?.push(payload);
     if (typeof window.fbq === "function") window.fbq("trackCustom", eventName, payload);
@@ -42,17 +43,32 @@ export function mountHeader(root) {
   root.replaceChildren(wrapper);
 }
 
+// Foco preso, Escape e retorno de foco são exclusivos da página de Livros
+// (data-sales-catalog="livros"); a página de HQs mantém o comportamento anterior.
+let modalTriggerElement = null;
+let modalKeydownHandler = null;
+
+function focusableModalElements(modal) {
+  return [...modal.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])')]
+    .filter((element) => element.offsetParent !== null);
+}
+
 export function closeModal() {
   const modal = document.querySelector("[data-sales-modal]");
   if (!modal) return;
   modal.hidden = true;
   modal.setAttribute("aria-hidden", "true");
   modal.replaceChildren();
+  if (modalKeydownHandler) { document.removeEventListener("keydown", modalKeydownHandler); modalKeydownHandler = null; }
+  if (document.body?.dataset?.salesCatalog === "livros" && modalTriggerElement) modalTriggerElement.focus({ preventScroll: true });
+  modalTriggerElement = null;
 }
 
 export function openModal(markup, onOpen) {
   const modal = document.querySelector("[data-sales-modal]");
   if (!modal) return;
+  const isLivros = document.body?.dataset?.salesCatalog === "livros";
+  if (isLivros) modalTriggerElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   modal.hidden = false;
   modal.setAttribute("aria-hidden", "false");
   modal.innerHTML = markup;
@@ -60,6 +76,23 @@ export function openModal(markup, onOpen) {
   modal.addEventListener("click", (event) => {
     if (event.target === modal) closeModal();
   }, { once: true });
+
+  if (isLivros) {
+    const items = focusableModalElements(modal);
+    if (items.length) items[0].focus({ preventScroll: true });
+    else { modal.setAttribute("tabindex", "-1"); modal.focus({ preventScroll: true }); }
+    modalKeydownHandler = (event) => {
+      if (event.key === "Escape") { event.preventDefault(); closeModal(); return; }
+      if (event.key !== "Tab") return;
+      const current = focusableModalElements(modal);
+      if (!current.length) return;
+      const first = current[0], last = current[current.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", modalKeydownHandler);
+  }
+
   onOpen?.(modal);
 }
 

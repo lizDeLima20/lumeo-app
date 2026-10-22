@@ -602,3 +602,14 @@ body[data-sales-catalog="livros"] .livros-receive__bonus {
   .livros-bonus__details { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 2rem; }
   .livros-bonus__cta { width: auto; padding-inline: 1.6rem; }
 }
+
+/* Ajustes exclusivos de conversão: Livros. */
+body[data-sales-catalog="livros"] .sales-hero__price strong, body[data-sales-catalog="livros"] .sales-offer-price strong { font-size: clamp(2.4rem, 6vw, 3.5rem); }
+body[data-sales-catalog="livros"] .sales-hero__complement { color: #ddd1e7; line-height: 1.6; }
+body[data-sales-catalog="livros"] .sales-hero__copy, body[data-sales-catalog="livros"] .sales-tutorial-card { min-width: 0; }
+body[data-sales-catalog="livros"] .sales-button { white-space: normal; min-height: 48px; }
+body[data-sales-catalog="livros"] .sales-how__steps { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+@media(max-width: 600px) {
+ body[data-sales-catalog="livros"] .sales-library__rail { animation: none; overflow-x: auto; max-width: 100%; scroll-snap-type: x proximity; }
+ body[data-sales-catalog="livros"] .sales-demo-book { scroll-snap-align: start; }
+}

@@ -12,7 +12,7 @@ mountAnalyticsConsent();
 mountLivrosTracking({ checkoutUrl: SALES_CONFIG.checkoutUrls.livros });
 bindCommercialActions();
 document.querySelector("[data-sales-year]").textContent = String(new Date().getFullYear());
-document.querySelectorAll("[data-sales-price]").forEach((node) => { node.textContent = money(SALES_CONFIG.price); });
+document.querySelectorAll("[data-sales-price]").forEach((node) => { node.textContent = money(SALES_CONFIG.livrosPrice); });
 
 const downloaded = new Set();
 const escapeHtml = (value = "") => String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
@@ -113,6 +113,11 @@ function mountTutorials() {
       [21.3, "Crie lembretes para manter sua rotina de leitura."],
     ],
   };
+  const hydrate = (video) => {
+    if (video.dataset.hydrated) return;
+    video.querySelectorAll("source[data-src]").forEach(source => { source.src = source.dataset.src; });
+    video.dataset.hydrated = "true"; video.load();
+  };
   const activeVideos = new Set();
   let typingTimer;
   const pauseOthers = (current) => videos.forEach((candidate) => {
@@ -144,6 +149,7 @@ function mountTutorials() {
     const captions = video.closest(".sales-tutorial-card")?.querySelector("[data-tutorial-captions]");
     const timeline = timelines[video.dataset.tutorialKey] || [];
     let captionIndex = -1;
+    video.addEventListener("pointerdown", () => hydrate(video), { once: true });
     video.muted = true;
     video.loop = true;
     const syncCaption = () => {
@@ -159,7 +165,7 @@ function mountTutorials() {
     video.addEventListener("ended", () => { captionIndex = -1; });
   });
   if (!("IntersectionObserver" in window)) {
-    videos.forEach((video) => video.play().catch(() => {}));
+    videos.forEach(hydrate);
     return;
   }
   const visibility = new Map();
@@ -173,7 +179,8 @@ function mountTutorials() {
     if (nextVideo) {
       focusedVideo = nextVideo;
       pauseOthers(nextVideo);
-      nextVideo.play().catch(() => {});
+      hydrate(nextVideo);
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && !navigator.connection?.saveData) nextVideo.play().catch(() => {});
     } else {
       focusedVideo = null;
       videos.forEach((video) => video.pause());

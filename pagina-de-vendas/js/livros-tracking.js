@@ -1,3 +1,4 @@
+import { SALES_CONFIG } from "./shared.js";
 import { META_PIXEL_ID } from "./hqs-tracking-config.js";
 import { createMetaPixel, createViewContentController, mergeCheckoutAttribution } from "./hqs-tracking.js";
 import { hasAnalyticsConsent, SALES_CONSENT_EVENT } from "./sales-consent.js";
@@ -5,7 +6,7 @@ import { hasAnalyticsConsent, SALES_CONSENT_EVENT } from "./sales-consent.js";
 export const LIVROS_EVENT_PAYLOAD = Object.freeze({
   content_name: "Lumeo Livros",
   content_category: "Aplicativo",
-  value: 9.99,
+  value: SALES_CONFIG.livrosPrice,
   currency: "BRL",
 });
 
