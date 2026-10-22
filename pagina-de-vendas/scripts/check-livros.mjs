@@ -21,7 +21,7 @@ const normalizeText = (markup) => markup.replace(/<[^>]+>/g, " ").replace(/\s+/g
 test("headline AIDA e destaque estão exatos", () => {
   const headline = html.match(/<h1\s+id="sales-title"[^>]*>([\s\S]*?)<\/h1>/)?.[1];
   assert.ok(headline);
-  assert.equal(normalizeText(headline), "SEUS LIVROS ESTÃO ESPALHADOS EM VÁRIAS PASTAS?");
+  assert.equal(normalizeText(headline), "Seus livros organizados. Sua leitura do seu jeito.");
 });
 
 test("hero não usa altura baseada na viewport", () => {
@@ -247,8 +247,8 @@ test("todos os CTAs de Livros usam o checkout real da Hotmart", () => {
   assert.ok(sharedJs.includes(`livros: "${checkoutUrl}"`));
   assert.match(sharedJs, /checkoutProviders: Object\.freeze\(\{ livros: "hotmart", hqs: "hotmart" \}\)/);
   const buttons = [...html.matchAll(/<button[^>]*data-sales-cta[^>]*>/g)].map((match) => match[0]);
-  assert.equal(buttons.length, 5);
-  buttons.forEach((button) => assert.match(button, /data-sales-cta-location="(?:hero|testimonials|audiobooks|offer|sticky)"/));
+  assert.equal(buttons.length, 6);
+  buttons.forEach((button) => assert.match(button, /data-sales-cta-location="(?:hero|testimonials|audiobooks|offer|sticky|final)"/));
   assert.match(js, /mountLivrosTracking\(\{ checkoutUrl: SALES_CONFIG\.checkoutUrls\.livros \}\)/);
 });
 
@@ -327,7 +327,7 @@ test("oferta isolada de HQs e bônus preservados conforme orientação", async (
   const { SALES_CONFIG } = await import(pathToFileURL(resolve(pageRoot, "js/shared.js")).href);
   assert.equal(SALES_CONFIG.livrosPrice, 9.99);
   assert.equal(SALES_CONFIG.price, 9.99);
-  assert.match(html, /QUERO MINHA BIBLIOTECA DIGITAL/);
+  assert.match(html, /QUERO ACESSAR O LUMEO/);
   assert.match(html, /R\$ 9,99/);
   assert.doesNotMatch(html + js, /R\$ (?:29,90|39,99)|somente até hoje|<del>/i);
   assert.match(html, /1\.500 livros digitais/);
@@ -341,11 +341,11 @@ test("hero destaca o aplicativo e os bônus entregues separadamente", () => {
   const heroStart = html.indexOf('<section class="sales-hero"');
   const hero = html.slice(heroStart, html.indexOf("</section>", heroStart));
   assert.match(hero, /ACESSO AO LUMEO/);
-  assert.match(hero, /QUERO MINHA BIBLIOTECA DIGITAL/);
-  assert.match(hero, /Use com seus próprios livros\. Livros não incluídos\./);
-  assert.match(hero, /🎁 3 BÔNUS EXCLUSIVOS/);
-  assert.match(hero, /1\.500 LIVROS DIGITAIS, 200 AUDIOLIVROS E COLEÇÃO DE HQs E MANGÁS/);
-  assert.match(hero, /Coleção disponibilizada separadamente por link do Google Drive/);
+  assert.match(hero, /QUERO ACESSAR O LUMEO/);
+  assert.match(hero, /Os arquivos não vêm pré-instalados/);
+  assert.match(hero, /3 bônus da oferta/);
+  assert.match(html, /1\.500 livros digitais/);
+  assert.match(hero, /entregues separadamente pelo Google Drive/);
 });
 
 test("seção de bônus explica a entrega externa pelo Google Drive", () => {
@@ -391,7 +391,7 @@ test("a oferta discrimina o aplicativo e os bônus entregues separadamente", () 
 });
 
 test("microcopies diferenciam o app da entrega separada dos bônus", () => {
-  assert.match(html, /<small class="sales-hero__legal">Use com seus próprios livros\. Livros não incluídos\.<\/small>/);
+  assert.match(html, /Aplicativo leitor \+ bônus por link após a compra/);
   assert.match(html, /bônus são entregues separadamente por link do Google Drive/i);
 });
 

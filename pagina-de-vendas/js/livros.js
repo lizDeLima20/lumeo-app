@@ -64,7 +64,13 @@ function mountLibrary(items) {
   const middle = Math.ceil(selected.length / 2);
   [selected.slice(0, middle), selected.slice(middle)].forEach((row, index) => {
     const rail = document.createElement("div"); rail.className = `sales-library__rail${index ? " sales-library__rail--reverse" : ""}`; rail.setAttribute("aria-label", `Exemplos de biblioteca, linha ${index + 1}`);
-    [...row, ...row].forEach((item) => rail.append(bookCard(item))); root.append(rail);
+    rail.tabIndex = 0;
+    rail.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      rail.scrollBy({ left: event.key === "ArrowRight" ? 180 : -180, behavior: "auto" });
+    });
+    row.forEach((item) => rail.append(bookCard(item))); root.append(rail);
   });
 }
 
@@ -150,6 +156,7 @@ function mountTutorials() {
     const timeline = timelines[video.dataset.tutorialKey] || [];
     let captionIndex = -1;
     video.addEventListener("pointerdown", () => hydrate(video), { once: true });
+    video.addEventListener("focus", () => hydrate(video), { once: true });
     video.muted = true;
     video.loop = true;
     const syncCaption = () => {
@@ -171,7 +178,10 @@ function mountTutorials() {
   const visibility = new Map();
   let focusedVideo = null;
   const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => visibility.set(entry.target, entry.isIntersecting ? entry.intersectionRatio : 0));
+    entries.forEach((entry) => {
+      visibility.set(entry.target, entry.isIntersecting ? entry.intersectionRatio : 0);
+      if (entry.isIntersecting) hydrate(entry.target);
+    });
     if (focusedVideo && (visibility.get(focusedVideo) || 0) >= .2 && !focusedVideo.paused) return;
     const nextVideo = [...visibility.entries()]
       .filter(([, ratio]) => ratio >= .4)
@@ -189,6 +199,31 @@ function mountTutorials() {
   videos.forEach((video) => observer.observe(video));
 }
 
-mountFaq(); mountTestimonials(); mountTutorials(); mountBooksHeroVideo(); mountMobileCtaVisibility({ extraCtaSelectors: ["[data-livros-audiobooks-cta]"] });
+function mountTutorialCarousel() {
+  const track = document.querySelector("[data-sales-tutorials]");
+  if (!track) return;
+  const cards = [...track.querySelectorAll(".sales-tutorial-card")];
+  const navigation = document.createElement("nav");
+  navigation.className = "tutorial-navigation";
+  navigation.setAttribute("aria-label", "Escolher tutorial");
+  track.id = "tutoriais-livros";
+  const buttons = cards.map((card, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = index === 0 ? "1. Adicionar livros" : "2. Como ler";
+    button.setAttribute("aria-controls", track.id);
+    button.setAttribute("aria-pressed", String(index === 0));
+    button.addEventListener("click", () => track.scrollTo({ left: index * (track.clientWidth + 16), behavior: "auto" }));
+    navigation.append(button);
+    return button;
+  });
+  track.addEventListener("scroll", () => {
+    const active = Math.round(track.scrollLeft / (track.clientWidth + 16));
+    buttons.forEach((button, index) => button.setAttribute("aria-pressed", String(index === active)));
+  }, { passive: true });
+  track.after(navigation);
+}
+
+mountFaq(); mountTestimonials(); mountTutorials(); mountTutorialCarousel(); mountBooksHeroVideo(); mountMobileCtaVisibility({ extraCtaSelectors: ["[data-livros-audiobooks-cta]"] });
 try { mountLibrary((await loadCatalog("livros")).items || []); }
 catch (error) { const root = document.querySelector("[data-sales-library]"); if (root) root.textContent = "Não foi possível carregar a demonstração da biblioteca."; console.error("Lumeo demo library unavailable", error); }

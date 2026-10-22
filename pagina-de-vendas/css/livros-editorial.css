@@ -1,0 +1,78 @@
+/* Editorial redesign scoped by this stylesheet, loaded only by Livros. */
+body[data-sales-catalog="livros"] { --editorial-ink:#241531; background:#190e26; font-size:16px; line-height:1.6; }
+body[data-sales-catalog="livros"] main { overflow:clip; }
+body[data-sales-catalog="livros"] .sales-hero { display:block; padding:48px 24px 64px; background:radial-gradient(ellipse at 80% 20%,#523064 0,transparent 60%); }
+body[data-sales-catalog="livros"] .sales-hero__layout { display:block; width:100%; max-width:1120px; margin:auto; }
+body[data-sales-catalog="livros"] .sales-hero__copy { display:grid; width:100%; max-width:none; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); column-gap:64px; align-items:start; }
+body[data-sales-catalog="livros"] .sales-hero__copy>.sales-eyebrow,body[data-sales-catalog="livros"] .sales-hero__copy>h1,body[data-sales-catalog="livros"] .sales-hero__lead,body[data-sales-catalog="livros"] .sales-hero__offer { grid-column:1; }
+body[data-sales-catalog="livros"] .sales-hero h1 { font-size:clamp(2rem,4.4vw,4.6rem); line-height:1.08; letter-spacing:-.045em; max-width:700px; margin:12px 0 20px; text-transform:none; }
+body[data-sales-catalog="livros"] .sales-hero h1 span { color:#f2cc76; }
+body[data-sales-catalog="livros"] .sales-hero__lead { font-size:18px; font-weight:400; max-width:540px; }
+body[data-sales-catalog="livros"] .editorial-product { grid-column:2; grid-row:1 / span 5; margin:0; padding:24px; text-align:center; background:#efe7da; border-radius:160px 160px 24px 24px; color:#241531; }
+body[data-sales-catalog="livros"] .editorial-product img { width:220px; height:390px; object-fit:contain; border-radius:16px; box-shadow:0 16px 40px #24153140; }
+body[data-sales-catalog="livros"] .editorial-product figcaption { margin-top:18px; font-size:16px; }
+body[data-sales-catalog="livros"] .sales-hero__offer { background:none; border:0; padding:16px 0 0; text-align:left; box-shadow:none; }
+body[data-sales-catalog="livros"] .sales-hero__price strong,body[data-sales-catalog="livros"] .sales-offer-price strong { font-size:clamp(2.4rem,6vw,3.5rem); }
+body[data-sales-catalog="livros"] .sales-hero__offer .hero-bonus-summary,body[data-sales-catalog="livros"] .sales-hero__legal { font-size:16px; max-width:440px; }
+body[data-sales-catalog="livros"] .sales-button--primary { background:#f2cc76; color:#241531; border:1px solid #f2cc76; box-shadow:none; min-height:48px; font-size:16px; }
+body[data-sales-catalog="livros"] :focus-visible { outline:3px solid #b987ed; outline-offset:4px; }
+body[data-sales-catalog="livros"] .sales-section,body[data-sales-catalog="livros"] .livros-bonus { width:100%; padding:72px max(24px,calc((100% - 1120px)/2)); margin:0; max-width:none; }
+body[data-sales-catalog="livros"] .sales-how .sales-heading h2 { color:#fff8ed; }
+body[data-sales-catalog="livros"] .sales-how .sales-heading>p { color:#dfcce9; }
+body[data-sales-catalog="livros"] .sales-devices { background:#f6f0e6; }
+body[data-sales-catalog="livros"] .sales-header__cta { min-height:48px; }
+body[data-sales-catalog="livros"] .livros-bonus__card p { font-size:16px; }
+body[data-sales-catalog="livros"] :is(section,summary,button) { scroll-margin-block:80px 140px; }
+body[data-sales-catalog="livros"]:has(main :focus-visible) .sales-mobile-cta { visibility:hidden; pointer-events:none; }
+body[data-sales-catalog="livros"] .sales-library .sales-heading h2 { color:#241531; }
+body[data-sales-catalog="livros"] .sales-section p,body[data-sales-catalog="livros"] .sales-story-card p,body[data-sales-catalog="livros"] .sales-hero__bullets li,body[data-sales-catalog="livros"] .sales-library__notice,body[data-sales-catalog="livros"] .sales-devices__features li { font-size:16px; }
+body[data-sales-catalog="livros"] .sales-section h2,body[data-sales-catalog="livros"] .livros-bonus h2,body[data-sales-catalog="livros"] .editorial-final h2 { font-size:clamp(1.75rem,3vw,2.8rem); line-height:1.2; letter-spacing:-.025em; text-transform:none; }
+body[data-sales-catalog="livros"] .sales-benefits,body[data-sales-catalog="livros"] .sales-library,body[data-sales-catalog="livros"] .sales-faq { background:#f6f0e6; color:#241531; }
+body[data-sales-catalog="livros"] .sales-benefits p,body[data-sales-catalog="livros"] .sales-library p,body[data-sales-catalog="livros"] .sales-faq p,body[data-sales-catalog="livros"] .sales-benefits h3,body[data-sales-catalog="livros"] .sales-library h3,body[data-sales-catalog="livros"] .sales-faq summary { color:#42324e; }
+body[data-sales-catalog="livros"] .sales-benefits .sales-eyebrow,body[data-sales-catalog="livros"] .sales-library .sales-eyebrow,body[data-sales-catalog="livros"] .sales-faq .sales-eyebrow { color:#725083; }
+body[data-sales-catalog="livros"] .sales-benefits__grid article { background:#fffaf2; border:1px solid #ded1e3; color:#241531; box-shadow:none; border-radius:16px; padding:24px; }
+body[data-sales-catalog="livros"] .sales-how__steps { gap:16px; }
+body[data-sales-catalog="livros"] .sales-tutorial-card { border-radius:20px; overflow:hidden; }
+body[data-sales-catalog="livros"] .tutorial-navigation { display:none; }
+body[data-sales-catalog="livros"] .sales-testimonial { border-radius:16px; }
+body[data-sales-catalog="livros"] .sales-library__rail { animation:none!important; display:flex; overflow-x:auto; width:100%; max-width:100%; scroll-snap-type:x mandatory; padding-bottom:16px; }
+body[data-sales-catalog="livros"] .sales-demo-book { flex:0 0 156px; scroll-snap-align:start; }
+body[data-sales-catalog="livros"] .sales-demo-book__cover img { object-fit:contain; }
+body[data-sales-catalog="livros"] .sales-faq details { background:#fffaf2; border:1px solid #ded1e3; border-radius:12px; padding:18px; }
+body[data-sales-catalog="livros"] .sales-faq summary { font-size:18px; }
+body[data-sales-catalog="livros"] .editorial-final { padding:72px 24px 110px; text-align:center; background:#30203e; }
+body[data-sales-catalog="livros"] .editorial-final h2 { color:#fffaf3; }
+body[data-sales-catalog="livros"] .editorial-mini-demo { max-width:700px; margin:0 auto 32px; }
+body[data-sales-catalog="livros"] .editorial-mini-demo .sales-hero__visual { display:flex; align-items:center; justify-content:center; gap:24px; }
+body[data-sales-catalog="livros"]:has(.sales-consent:not([hidden]),.sales-modal:not([hidden])) .sales-mobile-cta { visibility:hidden; pointer-events:none; }
+@media(max-width:767px){
+body[data-sales-catalog="livros"] .sales-hero { padding:24px 20px 40px; }
+body[data-sales-catalog="livros"] .sales-hero__copy { display:flex; flex-direction:column; gap:0; }
+body[data-sales-catalog="livros"] .sales-hero h1 { font-size:32px; margin:8px 0 12px; }
+body[data-sales-catalog="livros"] .sales-hero__lead { font-size:16px; margin:0 0 16px; }
+body[data-sales-catalog="livros"] .editorial-product { width:100%; display:flex; align-items:center; justify-content:center; gap:20px; padding:12px; border-radius:16px; }
+body[data-sales-catalog="livros"] .editorial-product img { width:76px; height:135px; border-radius:6px; }
+body[data-sales-catalog="livros"] .editorial-product figcaption { max-width:150px; text-align:left; margin:0; }
+body[data-sales-catalog="livros"] .sales-hero__offer { display:flex; flex-direction:column; width:100%; }
+body[data-sales-catalog="livros"] .sales-hero__price-label { margin:0; }
+body[data-sales-catalog="livros"] .sales-hero__price { margin:0 0 8px; }
+body[data-sales-catalog="livros"] .sales-hero__offer>.sales-button { order:1; width:100%; }
+body[data-sales-catalog="livros"] .hero-bonus-summary { order:2; margin:12px 0 0; }
+body[data-sales-catalog="livros"] .sales-hero__legal { order:3; font-size:16px; }
+body[data-sales-catalog="livros"] .sales-section,body[data-sales-catalog="livros"] .livros-bonus { padding:44px 20px; }
+body[data-sales-catalog="livros"] .sales-benefits__grid,body[data-sales-catalog="livros"] .sales-tutorials,body[data-sales-catalog="livros"] .sales-devices,body[data-sales-catalog="livros"] .sales-offer { display:grid; grid-template-columns:1fr; gap:24px; }
+body[data-sales-catalog="livros"] .sales-how__steps { grid-template-columns:1fr; }
+body[data-sales-catalog="livros"] .sales-mobile-cta { bottom:12px; max-width:calc(100% - 32px); }
+body[data-sales-catalog="livros"] .sales-footer { padding-bottom:110px; }
+body[data-sales-catalog="livros"] .editorial-mini-demo .sales-hero__visual { flex-direction:column; gap:20px; }
+body[data-sales-catalog="livros"] .editorial-mini-demo .sales-hero__phone { width:min(60vw,240px); flex:none; }
+body[data-sales-catalog="livros"] .editorial-mini-demo .sales-hero__bullets { width:100%; max-width:320px; }
+ body[data-sales-catalog="livros"] .sales-tutorials { display:flex; width:100%; margin:24px 0 0; padding:0; gap:16px; overflow-x:auto; scroll-snap-type:x mandatory; scroll-padding:0; overscroll-behavior-x:contain; }
+ body[data-sales-catalog="livros"] .sales-tutorial-card { flex:0 0 100%; width:100%; min-width:0; box-sizing:border-box; scroll-snap-align:start; scroll-snap-stop:always; }
+ body[data-sales-catalog="livros"] .sales-tutorial-card__body { display:grid; grid-template-columns:minmax(0,1fr); min-width:0; }
+ body[data-sales-catalog="livros"] .sales-tutorial-card__media { min-width:0; width:100%; }
+ body[data-sales-catalog="livros"] .sales-tutorial-card video { max-width:100%; }
+ body[data-sales-catalog="livros"] .tutorial-navigation { display:flex; gap:12px; margin-top:16px; }
+ body[data-sales-catalog="livros"] .tutorial-navigation button { flex:1; min-height:48px; border:1px solid #f2cc76; border-radius:12px; padding:10px; color:#f2cc76; background:#241531; font:inherit; cursor:pointer; }
+ body[data-sales-catalog="livros"] .tutorial-navigation button[aria-pressed="true"] { background:#f2cc76; color:#241531; }
+}
