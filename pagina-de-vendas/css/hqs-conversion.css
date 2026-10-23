@@ -277,3 +277,111 @@ body[data-sales-catalog="hqs"] .sales-mobile-cta[data-mobile-cta-ready="true"].i
     transition: none;
   }
 }
+
+/* Botão do WhatsApp só com o ícone (sem o texto "Tire suas dúvidas"), vira um botão compacto quadrado. */
+body[data-sales-catalog="hqs"] .sales-whatsapp {
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  justify-content: center;
+}
+
+body[data-sales-catalog="hqs"] .sales-whatsapp span {
+  display: none;
+}
+
+/* "Dúvidas" ao lado esquerdo do ícone + seta animada em cima do ícone; aparece só quando o botão do WhatsApp está visível (mesma condição do JS: whatsappNumber configurado). */
+body[data-sales-catalog="hqs"] .hqs-whatsapp-nudge {
+  display: none;
+  position: fixed;
+  z-index: 24;
+  right: 1rem;
+  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  height: 3rem;
+  align-items: center;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+
+body[data-sales-catalog="hqs"] .sales-whatsapp:not([hidden]) + .hqs-whatsapp-nudge {
+  display: flex;
+}
+
+@media (min-width: 42rem) {
+  body[data-sales-catalog="hqs"] .hqs-whatsapp-nudge {
+    bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
+}
+
+body[data-sales-catalog="hqs"] .hqs-whatsapp-nudge__label {
+  color: #15100f;
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+  text-shadow: 0 0 0.3rem #fff, 0 0 0.3rem #fff, 0 0.1rem 0.3rem rgba(255, 255, 255, 0.9);
+}
+
+/* Espaço do tamanho do ícone redondo do WhatsApp; invisível, só serve de referência de posição para a seta ficar exatamente em cima dele. */
+body[data-sales-catalog="hqs"] .hqs-whatsapp-nudge__spot {
+  position: relative;
+  width: 3rem;
+  height: 3rem;
+}
+
+body[data-sales-catalog="hqs"] .hqs-whatsapp-nudge__arrow {
+  position: absolute;
+  bottom: calc(100% + 0.3rem);
+  left: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #5fe3a0;
+  filter: drop-shadow(0 0.1rem 0.3rem rgba(0, 0, 0, 0.5));
+  animation: hqs-whatsapp-bounce 1.1s ease-in-out infinite;
+}
+
+@keyframes hqs-whatsapp-bounce {
+  0%, 100% { opacity: 0.55; transform: translateX(-50%) translateY(0); }
+  50% { opacity: 1; transform: translateX(-50%) translateY(5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-sales-catalog="hqs"] .hqs-whatsapp-nudge__arrow {
+    animation: none;
+  }
+}
+
+/* Botões mais quadrados (sem formato de cápsula); elementos circulares (ícones, indicadores) e o bônus/depoimentos ficam de fora de propósito. */
+body[data-sales-catalog="hqs"] .sales-button,
+body[data-sales-catalog="hqs"] .sales-header__cta,
+body[data-sales-catalog="hqs"] .sales-consent__actions button {
+  border-radius: 4px;
+}
+
+/* Botão do WhatsApp fica redondo (ícone centralizado), diferente dos demais botões da página. */
+body[data-sales-catalog="hqs"] .sales-whatsapp {
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+/* CTA do header já tinha fundo sólido nesta página; aqui só garantimos o estado :active perceptível, igual à página de Livros. */
+body[data-sales-catalog="hqs"] .sales-header__cta:active,
+body[data-sales-catalog="hqs"] .sales-button--primary:active {
+  filter: brightness(0.85);
+}
+
+/* Cards/blocos retangulares com arredondamento exagerado, exceto bônus, depoimentos e a moldura do celular (hardware). */
+body[data-sales-catalog="hqs"] .sales-modal__dialog,
+body[data-sales-catalog="hqs"] .hqs-price-card,
+body[data-sales-catalog="hqs"] .hqs-steps li,
+body[data-sales-catalog="hqs"] .hqs-tutorial-card,
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__placeholder,
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__media,
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__captions,
+body[data-sales-catalog="hqs"] .hqs-tutorial-card video,
+body[data-sales-catalog="hqs"] .hqs-reading__media,
+body[data-sales-catalog="hqs"] .hqs-reading__media video,
+body[data-sales-catalog="hqs"] .hqs-benefits__grid article,
+body[data-sales-catalog="hqs"] .hqs-offer aside {
+  border-radius: 8px;
+}

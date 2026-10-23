@@ -65,7 +65,7 @@ test("proposta HQs é separada e descreve limitações do recurso experimental",
   assert.match(html, /links do Google Drive são entregues separadamente após a compra/i);
   assert.match(html, /ampliação automatizada de balões é experimental/i);
   assert.doesNotMatch(html, /IA que amplia|inteligência artificial que reconhece/i);
-  for (const bonus of [/coleção de HQs e mangás/i, /1\.500 livros digitais/i, /200 audiolivros/i]) assert.match(html, bonus);
+  for (const bonus of [/coleção de HQs da Turma da Mônica/i, /1\.500 livros digitais/i, /200 audiolivros/i]) assert.match(html, bonus);
   assert.match(hqsJs, /A biblioteca de HQs aceita PDF, CBR e CBZ/);
 });
 

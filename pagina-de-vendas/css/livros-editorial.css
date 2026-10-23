@@ -49,9 +49,22 @@ body[data-sales-catalog="livros"]:has(.sales-consent:not([hidden]),.sales-modal:
 /* Botões mais quadrados (sem formato de cápsula); elementos circulares (ícones, avatares, indicadores) ficam de fora de propósito. */
 body[data-sales-catalog="livros"] .sales-button,
 body[data-sales-catalog="livros"] .sales-header__cta,
-body[data-sales-catalog="livros"] .sales-whatsapp,
 body[data-sales-catalog="livros"] .sales-consent__actions button,
 body[data-sales-catalog="livros"] .tutorial-navigation button { border-radius:4px; }
+
+/* Botão do WhatsApp só com o ícone (sem texto), redondo e centralizado. */
+body[data-sales-catalog="livros"] .sales-whatsapp { width:3rem; height:3rem; padding:0; border-radius:50%; display:grid; place-items:center; }
+body[data-sales-catalog="livros"] .sales-whatsapp span { display:none; }
+
+/* "Dúvidas" ao lado esquerdo do ícone + seta animada em cima do ícone; aparece só quando o botão do WhatsApp está visível. */
+body[data-sales-catalog="livros"] .hqs-whatsapp-nudge { display:none; position:fixed; z-index:24; right:1rem; bottom:calc(4.75rem + env(safe-area-inset-bottom)); height:3rem; align-items:center; gap:.6rem; pointer-events:none; }
+body[data-sales-catalog="livros"] .sales-whatsapp:not([hidden]) + .hqs-whatsapp-nudge { display:flex; }
+@media(min-width:42rem){ body[data-sales-catalog="livros"] .hqs-whatsapp-nudge { bottom:calc(1.25rem + env(safe-area-inset-bottom)); } }
+body[data-sales-catalog="livros"] .hqs-whatsapp-nudge__label { color:#15100f; font-size:.8rem; font-weight:800; white-space:nowrap; text-shadow:0 0 .3rem #fff,0 0 .3rem #fff,0 .1rem .3rem rgba(255,255,255,.9); }
+body[data-sales-catalog="livros"] .hqs-whatsapp-nudge__spot { position:relative; width:3rem; height:3rem; }
+body[data-sales-catalog="livros"] .hqs-whatsapp-nudge__arrow { position:absolute; bottom:calc(100% + .3rem); left:50%; width:1.5rem; height:1.5rem; color:#5fe3a0; filter:drop-shadow(0 .1rem .3rem rgba(0,0,0,.5)); animation:hqs-whatsapp-bounce 1.1s ease-in-out infinite; }
+@keyframes hqs-whatsapp-bounce { 0%,100% { opacity:.55; transform:translateX(-50%) translateY(0); } 50% { opacity:1; transform:translateX(-50%) translateY(5px); } }
+@media(prefers-reduced-motion:reduce){ body[data-sales-catalog="livros"] .hqs-whatsapp-nudge__arrow { animation:none; } }
 
 /* CTA do header: fundo era transparente (só borda), ficava ilegível sobre o conteúdo atrás. Agora sólido, com estado :active perceptível. */
 body[data-sales-catalog="livros"] .sales-header { background:rgba(20,11,32,.98); }
