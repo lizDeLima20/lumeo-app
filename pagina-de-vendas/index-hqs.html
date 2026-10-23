@@ -11,13 +11,13 @@
     <title>Lumeo HQs — Leitura e organização no Android</title>
     <link rel="icon" type="image/webp" href="assets/optimized/lumeo-logo.webp" />
     <link rel="preload" as="image" href="assets/optimized/lumeo-hqs-futuristic-background-v2.webp" type="image/webp" />
-    <link rel="preload" as="image" href="assets/optimized/lumeo-hqs-tablet-static-v1.webp" type="image/webp" />
-    <link rel="preload" as="image" href="assets/optimized/lumeo-hqs-phone-static-v1.webp" type="image/webp" />
+    <link rel="preload" as="image" href="assets/tutorials/hqs/lumeo-hqs-tablet-two-pages-poster.webp" type="image/webp" />
+    <link rel="preload" as="image" href="assets/tutorials/hqs/lumeo-hqs-phone-poster.webp" type="image/webp" />
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/hqs.css?v=20261016-hqs" />
     <link rel="stylesheet" href="css/hqs-tutorials.css?v=20261018-hqs-tutorials" />
     <link rel="stylesheet" href="css/hqs-conversion.css?v=20261020-bonus-hqs" />
-    <link rel="stylesheet" href="css/hqs-premium-hero.css?v=20261023" />
+    <link rel="stylesheet" href="css/hqs-premium-hero-v2.css?v=20261023-reference" />
     <link rel="stylesheet" href="css/sales-testimonials.css?v=20261020" />
     <link rel="stylesheet" href="css/sales-whatsapp.css?v=20261021" />
   </head>
@@ -28,7 +28,10 @@
       <section class="hqs-hero" aria-labelledby="sales-title">
         <div class="hqs-hero__layout">
           <header class="hqs-reference-top">
-            <a class="hqs-reference-brand" href="#conteudo" aria-label="Lumeo HQs, início da página"><img src="assets/optimized/lumeo-logo.webp" alt="Lumeo" width="160" height="160" /></a>
+            <a class="hqs-reference-brand" href="#conteudo" aria-label="Lumeo HQs, início da página">
+              <img src="assets/optimized/lumeo-logo.webp" alt="" width="160" height="160" />
+              <span class="hqs-reference-brand__copy"><strong>Lumeo</strong><small>LEIA · EVOLUA · TRANSFORME</small></span>
+            </a>
             <p class="hqs-reference-seal hqs-reference-price"><span>De <del>R$ 39,99</del><br />por</span><strong data-sales-price>R$ 9,99</strong></p>
           </header>
           <div class="hqs-hero__copy">
@@ -38,14 +41,18 @@
           </div>
           <figure class="hqs-hero__visual" aria-label="Tablet deitado e celular em pé mostrando o Lumeo HQs">
             <div class="hqs-hero__tablet-frame">
-              <video autoplay muted loop playsinline preload="metadata" poster="assets/tutorials/hqs/lumeo-hqs-tablet-loop-3s-final-poster.webp" aria-label="Demonstração de leitura de HQ no Lumeo">
-                <source src="assets/tutorials/hqs/lumeo-hqs-tablet-loop-3s-final.mp4" type="video/mp4" />
+              <video autoplay muted loop playsinline preload="metadata" poster="assets/tutorials/hqs/lumeo-hqs-tablet-two-pages-poster.webp" aria-label="Demonstração de uma HQ aberta em duas páginas no Lumeo">
+                <source src="assets/tutorials/hqs/lumeo-hqs-tablet-two-pages-loop-3s.mp4" type="video/mp4" />
               </video>
             </div>
-            <img class="hqs-hero__phone" src="assets/optimized/lumeo-hqs-phone-static-v1.webp" width="640" height="960" alt="Celular exibindo uma biblioteca visual do Lumeo HQs" fetchpriority="high" />
+            <div class="hqs-hero__phone-frame">
+              <video autoplay muted loop playsinline preload="metadata" poster="assets/tutorials/hqs/lumeo-hqs-phone-poster.webp" aria-label="Demonstração da biblioteca visual do Lumeo no celular">
+                <source src="assets/tutorials/hqs/lumeo-hqs-phone-loop-7s.mp4" type="video/mp4" />
+              </video>
+            </div>
           </figure>
           <div class="hqs-reference-action">
-            <button class="sales-button sales-button--primary hqs-reference-action__button" type="button" data-sales-cta data-hqs-hero-cta data-hqs-cta-location="hero">EU QUERO O MELHOR <span aria-hidden="true">›</span></button>
+            <button class="sales-button sales-button--primary hqs-reference-action__button" type="button" data-sales-cta data-hqs-hero-cta data-hqs-cta-location="hero"><span class="hqs-reference-action__rocket" aria-hidden="true">🚀</span><strong>EU QUERO O MELHOR</strong><span class="hqs-reference-action__arrow" aria-hidden="true">›</span></button>
             <ul class="hqs-reference-features" aria-label="Recursos do Lumeo HQs">
               <li><span aria-hidden="true">▧</span><strong>PDF</strong><small>Seus arquivos</small></li>
               <li><span aria-hidden="true">▦</span><strong>CBR / CBZ</strong><small>Biblioteca visual</small></li>

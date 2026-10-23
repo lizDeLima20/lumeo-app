@@ -9,7 +9,7 @@ const read = (relativePath) => readFileSync(resolve(pageRoot, relativePath), "ut
 const html = read("index-hqs.html");
 const hqsCss = read("css/hqs.css");
 const conversionCss = read("css/hqs-conversion.css");
-const premiumHeroCss = read("css/hqs-premium-hero.css");
+const premiumHeroCss = read("css/hqs-premium-hero-v2.css");
 const hqsJs = read("js/hqs.js");
 const mobileCtaJs = read("js/mobile-cta.js");
 const trackingJs = read("js/hqs-tracking.js");
@@ -109,14 +109,16 @@ test("sem promessa de pagamento único", () => {
   assert.doesNotMatch(relevantSource, /pagamento\s+único/i);
 });
 
-test("hero usa vídeo real no tablet e celular estático", () => {
-  const videoTag = html.match(/<video[^>]*poster="assets\/tutorials\/hqs\/lumeo-hqs-tablet-loop-3s-final-poster\.webp"[^>]*>/i)?.[0];
-  assert.ok(videoTag, "Vídeo do tablet não encontrado");
-  for (const attribute of ["autoplay", "muted", "loop", "playsinline"]) assert.match(videoTag, new RegExp(`\\b${attribute}\\b`, "i"));
-  assert.match(html, /lumeo-hqs-tablet-loop-3s-final\.mp4/);
-  assert.match(html, /lumeo-hqs-phone-static-v1\.webp/);
+test("hero usa os vídeos reais no tablet e no celular", () => {
+  const videoTags = [...html.matchAll(/<video[^>]*poster="assets\/tutorials\/hqs\/lumeo-hqs-(?:tablet-two-pages|phone)-poster\.webp"[^>]*>/gi)].map((match) => match[0]);
+  assert.equal(videoTags.length, 2, "Vídeos do tablet e do celular não encontrados");
+  videoTags.forEach((videoTag) => {
+    for (const attribute of ["autoplay", "muted", "loop", "playsinline"]) assert.match(videoTag, new RegExp(`\\b${attribute}\\b`, "i"));
+  });
+  assert.match(html, /lumeo-hqs-tablet-two-pages-loop-3s\.mp4/);
+  assert.match(html, /lumeo-hqs-phone-loop-7s\.mp4/);
   assert.match(html, /class="hqs-hero__tablet-frame"/);
-  assert.match(html, /class="hqs-hero__phone"/);
+  assert.match(html, /class="hqs-hero__phone-frame"/);
   assert.match(premiumHeroCss, /lumeo-hqs-futuristic-background-v2\.webp/);
   const features = html.match(/<ul class="hqs-reference-features"[\s\S]*?<\/ul>/)?.[0] || "";
   assert.equal((features.match(/<li>/g) || []).length, 4);
@@ -388,9 +390,10 @@ test("UTMs e fbclid são mesclados no checkout sem duplicação", () => {
 
 test("assets otimizados do hero existem e respeitam a meta", () => {
   const assets = [
-    "assets/tutorials/hqs/lumeo-hqs-tablet-loop-3s-final.mp4",
-    "assets/tutorials/hqs/lumeo-hqs-tablet-loop-3s-final-poster.webp",
-    "assets/optimized/lumeo-hqs-phone-static-v1.webp",
+    "assets/tutorials/hqs/lumeo-hqs-tablet-two-pages-loop-3s.mp4",
+    "assets/tutorials/hqs/lumeo-hqs-tablet-two-pages-poster.webp",
+    "assets/tutorials/hqs/lumeo-hqs-phone-loop-7s.mp4",
+    "assets/tutorials/hqs/lumeo-hqs-phone-poster.webp",
     "assets/optimized/lumeo-hqs-futuristic-background-v2.webp",
     "assets/optimized/lumeo-hqs-original-gold-underline.webp",
   ];
@@ -398,8 +401,8 @@ test("assets otimizados do hero existem e respeitam a meta", () => {
     assert.equal(existsSync(resolve(pageRoot, asset)), true, `Asset ausente: ${asset}`);
     assert.ok(statSync(resolve(pageRoot, asset)).size < 500_000, `Asset acima da meta: ${asset}`);
   });
-  assert.match(html, /lumeo-hqs-tablet-loop-3s-final\.mp4/);
-  assert.match(html, /lumeo-hqs-phone-static-v1\.webp/);
+  assert.match(html, /lumeo-hqs-tablet-two-pages-loop-3s\.mp4/);
+  assert.match(html, /lumeo-hqs-phone-loop-7s\.mp4/);
 });
 
 test("assets anteriores usados pela página permanecem inalterados", () => {
