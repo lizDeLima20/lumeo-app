@@ -1,10 +1,11 @@
+import { I18nManager } from "../i18n/I18nManager";
 export type NavigationReason = "initial" | "next" | "previous" | "direct";
 export type PageChangeHandler = (page: number, reason: NavigationReason) => void | Promise<void>;
 
 export class ReaderNavigationController {
   private current = 1;
   public constructor(private readonly total: number, private readonly onChange: PageChangeHandler) {
-    if (!Number.isInteger(total) || total < 1) throw new Error("O PDF não possui páginas válidas.");
+    if (!Number.isInteger(total) || total < 1) throw new Error(I18nManager.shared.t("error.pdf.noValidPages"));
   }
   public get currentPage(): number { return this.current; }
   public get totalPages(): number { return this.total; }

@@ -1,6 +1,7 @@
 import type { ComicStencil, ComicVisualContainer } from "./ComicContainerDetector";
 import type { ComicPageAsset, ComicTextRegion } from "./ComicInteractionTypes";
 import { comicCreateCutouts } from "./ComicObjectCutout";
+import { I18nManager } from "../../../i18n/I18nManager";
 
 /** Original archive art, not the fitted display bitmap. Peak target canvas is bounded.
  * PDF assets already match their analysis render and take the unchanged fast path. */
@@ -12,7 +13,7 @@ export async function comicCreateOriginalCutouts(canvas:HTMLCanvasElement, regio
   const bitmap=await createImageBitmap(new Blob([new Uint8Array(encoded.data)],{type:encoded.mimeType}),{resizeWidth:width,resizeHeight:height,resizeQuality:"high"});
   const original=document.createElement("canvas");original.width=width;original.height=height;
   try{
-    const context=original.getContext("2d",{alpha:false,willReadFrequently:true});if(!context)throw new Error("Canvas indisponível para recorte original.");
+    const context=original.getContext("2d",{alpha:false,willReadFrequently:true});if(!context)throw new Error(I18nManager.shared.t("error.canvas.unavailableOriginalCutout"));
     context.fillStyle="#ffffff";context.fillRect(0,0,width,height);context.drawImage(bitmap,0,0,width,height);
     const sx=width/canvas.width,sy=height/canvas.height;
     const box=(b:{x0:number;y0:number;x1:number;y1:number})=>({x0:b.x0*sx,y0:b.y0*sy,x1:b.x1*sx,y1:b.y1*sy});

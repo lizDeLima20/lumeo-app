@@ -4,6 +4,7 @@ import { LocalFileImporter } from "./LocalFileImporter";
 import type { AuthenticatedDriveDownloader } from "./UrlImporter";
 import { GoogleDriveAuthorizationProvider } from "../services/GoogleDriveAuthorizationProvider";
 import { GoogleIdentityServices } from "../services/GoogleIdentityServices";
+import { I18nManager } from "../i18n/I18nManager";
 
 export interface GoogleDriveConfig { clientId: string; apiKey: string; appId: string; }
 export interface DriveSelection { id: string; name: string; mimeType: string; size?: number; }
@@ -24,7 +25,7 @@ export class GoogleDriveImporter implements CloudImportProvider, AuthenticatedDr
   }
   public async downloadFile(fileId: string, onProgress?: (percent: number | null) => void): Promise<File> { this.assertConfigured(); return this.gateway.downloadFile(fileId, onProgress); }
   public get configured(): boolean { return Boolean(this.config.clientId && this.config.apiKey && this.config.appId); }
-  private assertConfigured(): void { if (!this.configured) throw new Error("Configure as credenciais públicas do Google Drive para usar esta opção."); }
+  private assertConfigured(): void { if (!this.configured) throw new Error(I18nManager.shared.t("error.drive.credentialsNotConfigured")); }
 }
 
 class BrowserGoogleDriveGateway implements GoogleDriveGateway {

@@ -2,6 +2,7 @@ import { BookVolumeFormatter } from "./BookVolumeFormatter";
 import type { Book3DModel } from "./Book3DModel";
 import { bindCoverBackdrop } from "./CoverBackdrop";
 import { CoverRatioCache, SHELF_RATIO_DEFAULT, coverNeedsBand, shelfCoverRatio } from "./CoverRatio";
+import { I18nManager } from "../i18n/I18nManager";
 
 export abstract class Book3DFace {
   /** The face keeps the width the shelf gives it at this screen size and takes its height from
@@ -56,11 +57,11 @@ export class BookFrontFace extends Book3DFace {
 
 /** A local, text-safe cover while an imported book has no artwork yet. */
 export function createLumeoCoverPlaceholder(title: string): HTMLElement {
-  const cover = document.createElement("span"); cover.className = "lumeo-cover-placeholder"; cover.setAttribute("aria-label", `Capa genérica de ${title || "livro"}`);
+  const cover = document.createElement("span"); cover.className = "lumeo-cover-placeholder"; cover.setAttribute("aria-label", I18nManager.shared.t("ui.book.genericCover", { title: title || I18nManager.shared.t("ui.book.generic") }));
   const mark = document.createElementNS("http://www.w3.org/2000/svg", "svg"); mark.setAttribute("class", "lumeo-cover-placeholder__mark"); mark.setAttribute("viewBox", "0 0 64 64"); mark.setAttribute("aria-hidden", "true");
   for (const d of ["M7 14c9-4 17-2 25 5v31c-8-7-16-9-25-5z", "M57 14c-9-4-17-2-25 5v31c8-7 16-9 25-5z", "M32 20v30"]) { const path = document.createElementNS("http://www.w3.org/2000/svg", "path"); path.setAttribute("d", d); mark.append(path); }
   const wordmark = document.createElement("span"); wordmark.className = "lumeo-cover-placeholder__wordmark"; wordmark.textContent = "LUMEO";
-  const label = document.createElement("strong"); label.className = "lumeo-cover-placeholder__title"; label.textContent = title.trim() || "Sem título";
+  const label = document.createElement("strong"); label.className = "lumeo-cover-placeholder__title"; label.textContent = title.trim() || I18nManager.shared.t("ui.book.untitled");
   cover.append(mark, wordmark, label); return cover;
 }
 

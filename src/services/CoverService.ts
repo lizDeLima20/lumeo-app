@@ -1,11 +1,12 @@
 import { strFromU8, unzipSync } from "fflate";
 import { ComicArchiveSource } from "../reader/comic/ComicArchiveSource";
 import type { BookFileType } from "../models/Book";
+import { I18nManager } from "../i18n/I18nManager";
 
 export class CoverService {
   public async fromImage(file: File | null): Promise<string> {
     if (!file) return "";
-    if (!file.type.startsWith("image/")) throw new Error("Escolha uma imagem válida para a capa.");
+    if (!file.type.startsWith("image/")) throw new Error(I18nManager.shared.t("error.cover.invalidImage"));
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
@@ -28,7 +29,7 @@ export class CoverService {
   }
 
   public async fromBlob(blob: Blob): Promise<string> {
-    if (!blob.type.startsWith("image/")) throw new Error("A capa extraída não é uma imagem válida.");
+    if (!blob.type.startsWith("image/")) throw new Error(I18nManager.shared.t("error.cover.extractedInvalid"));
     return this.readAsDataUrl(await this.thumbnail(blob));
   }
 
@@ -41,11 +42,11 @@ export class CoverService {
   private async fromEpub(file: File): Promise<string> {
     const files = unzipSync(new Uint8Array(await file.arrayBuffer())); const container = files["META-INF/container.xml"];
     if (!container) throw new Error("EPUB sem container."); const containerXml = strFromU8(container); const opfPath = this.attribute(containerXml.match(/<rootfile\b[^>]*>/i)?.[0] ?? "", "full-path");
-    if (!opfPath || !files[opfPath]) throw new Error("Pacote EPUB inválido."); const opf = strFromU8(files[opfPath]!); const coverId = this.attribute(opf.match(/<meta\b[^>]*name=["']cover["'][^>]*>/i)?.[0] ?? "", "content");
+    if (!opfPath || !files[opfPath]) throw new Error(I18nManager.shared.t("error.epub.invalidPackage")); const opf = strFromU8(files[opfPath]!); const coverId = this.attribute(opf.match(/<meta\b[^>]*name=["']cover["'][^>]*>/i)?.[0] ?? "", "content");
     const items = opf.match(/<item\b[^>]*>/gi) ?? []; const coverItem = items.find((tag) => this.attribute(tag, "properties").split(/\s+/).includes("cover-image"))
       ?? items.find((tag) => coverId && this.attribute(tag, "id") === coverId);
     if (!coverItem) throw new Error("EPUB sem capa declarada."); const href = this.attribute(coverItem, "href"); const mime = this.attribute(coverItem, "media-type");
-    const coverPath = this.resolveArchivePath(opfPath, href); const bytes = files[coverPath]; if (!bytes || !mime.startsWith("image/")) throw new Error("Capa do EPUB inválida.");
+    const coverPath = this.resolveArchivePath(opfPath, href); const bytes = files[coverPath]; if (!bytes || !mime.startsWith("image/")) throw new Error(I18nManager.shared.t("error.epub.invalidCover"));
     return this.fromBlob(new Blob([new Uint8Array(bytes).buffer], { type: mime }));
   }
   private attribute(tag: string, name: string): string { const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); return tag.match(new RegExp(`${escaped}=["']([^"']+)["']`, "i"))?.[1] ?? ""; }

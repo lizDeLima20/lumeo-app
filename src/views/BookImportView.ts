@@ -12,11 +12,13 @@ import { CoverService } from "../services/CoverService";
 import { DuplicateBookImportError, ImportManager } from "../services/ImportManager";
 import type { AppState } from "../core/AppState";
 import { BaseView } from "./BaseView";
-import { I18nManager } from "../i18n/I18nManager";
+import { I18nManager, type TranslationKey } from "../i18n/I18nManager";
 import { ExternalLibrariesPanel } from "./ExternalLibrariesPanel";
 import type { OneDriveConnections } from "../external/OneDriveConnections";
 import type { OneDriveImportCoordinator } from "../external/OneDriveImportCoordinator";
 import { OneDriveError } from "../external/OneDriveError";
+
+const tr = (key: TranslationKey, parameters?: Readonly<Record<string, string | number>>): string => I18nManager.shared.t(key, parameters);
 
 export class BookImportView extends BaseView {
   private externalPanel: ExternalLibrariesPanel | null = null;
@@ -46,47 +48,47 @@ export class BookImportView extends BaseView {
   public render(): HTMLElement {
     const section = this.createElement("section", "page-shell import-page");
     const form = this.createElement("form", "import-card");
-    form.append(this.createElement("span", "eyebrow", "Sua biblioteca"), this.createElement("h1", "page-title", "Adicionar livro"),
-      this.createElement("p", "page-subtitle", "Escolha de onde deseja importar. O arquivo será salvo somente neste dispositivo."));
+    form.append(this.createElement("span", "eyebrow", tr("import.eyebrow")), this.createElement("h1", "page-title", tr("import.title")),
+      this.createElement("p", "page-subtitle", tr("import.help")));
     const sourceChoices = this.createElement("div", "import-sources");
     const device = this.sourceButton("▣", I18nManager.shared.t("google.device"), I18nManager.shared.t("google.deviceHelp"));
-    const comic = this.sourceButton("▧", "HQ local", "Importar uma HQ CBR ou CBZ deste dispositivo");
+    const comic = this.sourceButton("▧", tr("import.localComic"), tr("import.localComicHelp"));
     // Android personal libraries add Drive folders from the dedicated "+ Adicionar link"
     // flow. Keep this upload screen focused on files that already live on the device.
     sourceChoices.append(device, comic);
-    const file = this.input("Arquivo PDF, EPUB, CBR ou CBZ", "file"); file.wrapper.classList.add("import-source-panel", "is-hidden"); file.input.required = false; file.input.accept = ".pdf,.epub,.cbr,.cbz,application/pdf,application/epub+zip,application/x-cbr,application/x-cbz";
+    const file = this.input(tr("import.fileAny"), "file"); file.wrapper.classList.add("import-source-panel", "is-hidden"); file.input.required = false; file.input.accept = ".pdf,.epub,.cbr,.cbz,application/pdf,application/epub+zip,application/x-cbr,application/x-cbz";
     const download = this.createElement("p", "download-status"); download.setAttribute("role", "status");
     const metadataNote = this.createElement("p", "metadata-note"); metadataNote.setAttribute("role", "status"); this.metadataNote = metadataNote;
-    const title = this.input("Título", "text"); const author = this.input("Autor", "text"); this.authorInput = author.input;
-    const genreLabel = this.createElement("label", "field"); genreLabel.append(this.createElement("span", "field__label", "Gênero"));
+    const title = this.input(tr("ui.edit.bookTitle"), "text"); const author = this.input(tr("ui.edit.author"), "text"); this.authorInput = author.input;
+    const genreLabel = this.createElement("label", "field"); genreLabel.append(this.createElement("span", "field__label", tr("ui.edit.genre")));
     const genre = this.createElement("select", "input") as HTMLSelectElement; genre.required = true; this.genreSelect = genre; this.fillGenres(genre); genreLabel.append(genre);
     const genreSuggestion = this.createElement("div", "metadata-suggestion is-hidden"); this.genreSuggestion = genreSuggestion;
     const newGenreRow = this.createElement("div", "inline-form");
-    const newGenre = this.createElement("input", "input") as HTMLInputElement; newGenre.placeholder = "Novo gênero"; newGenre.maxLength = 40;
-    const createGenre = this.createElement("button", "button button--secondary", "+ Criar gênero"); createGenre.type = "button";
+    const newGenre = this.createElement("input", "input") as HTMLInputElement; newGenre.placeholder = tr("ui.edit.newGenre"); newGenre.maxLength = 40;
+    const createGenre = this.createElement("button", "button button--secondary", tr("ui.edit.createGenre")); createGenre.type = "button";
     createGenre.addEventListener("click", () => void this.createGenre(newGenre, genre)); newGenreRow.append(newGenre, createGenre);
-    const collectionLabel = this.createElement("label", "field"); collectionLabel.append(this.createElement("span", "field__label", "Coleção (opcional)"));
-    const collection = this.createElement("select", "input") as HTMLSelectElement; collection.append(new Option("Sem coleção", "")); this.collectionSelect = collection; collectionLabel.append(collection); void this.fillCollections(collection);
+    const collectionLabel = this.createElement("label", "field"); collectionLabel.append(this.createElement("span", "field__label", tr("import.collectionOptional")));
+    const collection = this.createElement("select", "input") as HTMLSelectElement; collection.append(new Option(tr("import.noCollection"), "")); this.collectionSelect = collection; collectionLabel.append(collection); void this.fillCollections(collection);
     const collectionSuggestion = this.createElement("div", "metadata-suggestion is-hidden"); this.collectionSuggestion = collectionSuggestion;
-    const statusLabel = this.createElement("label", "field"); statusLabel.append(this.createElement("span", "field__label", "Status inicial"));
+    const statusLabel = this.createElement("label", "field"); statusLabel.append(this.createElement("span", "field__label", tr("import.initialStatus")));
     const status = this.createElement("select", "input") as HTMLSelectElement;
-    status.append(new Option("Não iniciado", "unread"), new Option("Lendo", "reading"), new Option("Concluído", "finished")); statusLabel.append(status);
-    const coverPreview = this.createElement("div", "cover-preview is-hidden"); const coverImage = this.createElement("img", "") as HTMLImageElement; coverImage.alt = "Capa extraída do livro";
-    const coverNote = this.createElement("span", "", "A capa será extraída automaticamente do arquivo."); coverPreview.append(coverImage, coverNote);
+    status.append(new Option(tr("ui.book.unread"), "unread"), new Option(tr("ui.book.reading"), "reading"), new Option(tr("ui.book.finished"), "finished")); statusLabel.append(status);
+    const coverPreview = this.createElement("div", "cover-preview is-hidden"); const coverImage = this.createElement("img", "") as HTMLImageElement; coverImage.alt = tr("import.coverAlt");
+    const coverNote = this.createElement("span", "", tr("import.coverNote")); coverPreview.append(coverImage, coverNote);
     const error = this.createElement("p", "form-error"); error.setAttribute("role", "alert");
     const actions = this.createElement("div", "form-actions");
-    const save = this.createElement("button", "button button--primary", "Adicionar à biblioteca"); save.type = "submit";
-    const cancel = this.createElement("button", "button button--secondary", "Cancelar"); cancel.type = "button";
+    const save = this.createElement("button", "button button--primary", tr("import.addToLibrary")); save.type = "submit";
+    const cancel = this.createElement("button", "button button--secondary", tr("ui.common.cancel")); cancel.type = "button";
     cancel.addEventListener("click", () => { this.oneDrive?.coordinator.cancel(); this.onCancel(); }); actions.append(save, cancel);
     file.input.addEventListener("change", () => void this.selectFile(file.input, title.input, error, download, coverPreview, coverImage));
     device.addEventListener("click", () => {
       file.input.accept = ".pdf,.epub,.cbr,.cbz,application/pdf,application/epub+zip,application/x-cbr,application/x-cbz";
-      file.wrapper.querySelector(".field__label")!.textContent = "Arquivo PDF, EPUB, CBR ou CBZ";
+      file.wrapper.querySelector(".field__label")!.textContent = tr("import.fileAny");
       file.wrapper.classList.remove("is-hidden"); file.input.click();
     });
     comic.addEventListener("click", () => {
       file.input.accept = ".cbr,.cbz,application/x-cbr,application/x-cbz";
-      file.wrapper.querySelector(".field__label")!.textContent = "Arquivo CBR ou CBZ";
+      file.wrapper.querySelector(".field__label")!.textContent = tr("import.fileComic");
       file.wrapper.classList.remove("is-hidden"); file.input.click();
     });
     form.append(sourceChoices, file.wrapper);
@@ -140,22 +142,22 @@ export class BookImportView extends BaseView {
   }
   private async applyImported(imported: ImportedFile, title: HTMLInputElement, status: HTMLElement, preview: HTMLElement, image: HTMLImageElement): Promise<void> {
     this.remotePreview = false; await this.oneDrive?.coordinator.discard(); if (this.fileSummary) this.fileSummary.textContent = "";
-    this.imported = imported; if (!title.value) title.value = imported.suggestedTitle; status.textContent = "Preparando capa…";
+    this.imported = imported; if (!title.value) title.value = imported.suggestedTitle; status.textContent = tr("import.preparingCover");
     this.automaticCover = await this.covers.fromBookFile(imported.file, imported.fileType, imported.suggestedTitle);
     image.src = this.automaticCover; preview.classList.remove("is-hidden");
-    status.textContent = "Identificando título, autor e organização…"; if (imported.fileType === "pdf" || imported.fileType === "epub") await this.analyzeMetadata(imported, title);
+    status.textContent = tr("import.identifying"); if (imported.fileType === "pdf" || imported.fileType === "epub") await this.analyzeMetadata(imported, title);
   }
   private async selectFile(input: HTMLInputElement, title: HTMLInputElement, error: HTMLElement, status: HTMLElement, preview: HTMLElement, image: HTMLImageElement): Promise<void> {
     if (this.remoteBusy) return;
     const file = input.files?.[0]; if (!file) return;
-    try { await this.applyImported(await this.manager.select(file), title, status, preview, image); status.textContent = "Livro e capa preparados. Personalize os dados abaixo."; error.textContent = ""; }
-    catch (caught) { this.imported = null; input.value = ""; error.textContent = caught instanceof Error ? caught.message : "Arquivo inválido."; }
+    try { await this.applyImported(await this.manager.select(file), title, status, preview, image); status.textContent = tr("import.prepared"); error.textContent = ""; }
+    catch (caught) { this.imported = null; input.value = ""; error.textContent = caught instanceof Error ? caught.message : tr("import.invalidFile"); }
   }
   private async submit(event: SubmitEvent, fields: { title: HTMLInputElement; author: HTMLInputElement; genre: HTMLSelectElement;
     collection: HTMLSelectElement; status: HTMLSelectElement; error: HTMLElement; save: HTMLButtonElement;progress:HTMLElement }): Promise<void> {
     event.preventDefault();
     if (this.remoteBusy) return;
-    if (!this.imported) { fields.error.textContent = "Selecione um arquivo PDF ou EPUB."; return; }
+    if (!this.imported) { fields.error.textContent = tr("import.selectFile"); return; }
     fields.save.disabled = true;
     try {
       const metadata = { title: fields.title.value.trim(), author: fields.author.value.trim(),
@@ -172,17 +174,18 @@ export class BookImportView extends BaseView {
         this.onSaved(book); return;
       }
       if(options.replaceBookId) await this.onReplaceExisting?.(options.replaceBookId);
-      fields.progress.textContent="Preparando seu livro… Lendo conteúdo";this.onSaved(await this.manager.save(this.imported, metadata,step=>{const labels={reading:"Lendo conteúdo",organizing:"Organizando páginas",chapters:"Preparando capítulos",finalizing:"Finalizando"};fields.progress.textContent=`Preparando seu livro… ${labels[step.stage]} (${step.percent}%)`;},options));
-    } catch (caught) { fields.error.textContent = caught instanceof ApiError || caught instanceof Error ? caught.message : "Não foi possível salvar o livro."; }
+      fields.progress.textContent=tr("import.preparing", { stage: tr("import.stageReading") });this.onSaved(await this.manager.save(this.imported, metadata,step=>{const labels={reading:tr("import.stageReading"),organizing:tr("import.stageOrganizing"),chapters:tr("import.stageChapters"),finalizing:tr("import.stageFinalizing")};fields.progress.textContent=tr("import.preparingPercent", { stage: labels[step.stage], percent: step.percent });},options));
+    } catch (caught) { fields.error.textContent = caught instanceof ApiError || caught instanceof Error ? caught.message : tr("import.saveFailed"); }
     finally { this.remoteBusy = false; this.remoteCancel?.classList.add("is-hidden"); fields.save.disabled = false; }
   }
   private async resolveVersionConflict(imported:ImportedFile,metadata:{title:string;author:string}):Promise<{allowPossibleVersion?:boolean;replaceBookId?:string;cancelled?:boolean}>{
     const decision=await this.manager.inspect(imported,metadata);
     if(decision.kind==="duplicate")throw new DuplicateBookImportError(decision);
     if(decision.kind!=="possible-version")return{};
-    const answer=(prompt(I18nManager.shared.t("library.versionPrompt"),I18nManager.shared.t("library.versionKeep"))??I18nManager.shared.t("library.versionCancel")).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase().trim();
-    if(answer.startsWith("substitu"))return{replaceBookId:decision.book.id};
-    if(answer.startsWith("mant"))return{allowPossibleVersion:true};
+    const normalize=(value:string)=>value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase().trim();
+    const answer=normalize(prompt(I18nManager.shared.t("library.versionPrompt"),I18nManager.shared.t("library.versionKeep"))??I18nManager.shared.t("library.versionCancel"));
+    if(answer.startsWith(normalize(I18nManager.shared.t("library.versionReplace"))))return{replaceBookId:decision.book.id};
+    if(answer.startsWith(normalize(I18nManager.shared.t("library.versionKeep"))))return{allowPossibleVersion:true};
     return{cancelled:true};
   }
   private async createGenre(input: HTMLInputElement, select: HTMLSelectElement): Promise<void> {
@@ -193,37 +196,37 @@ export class BookImportView extends BaseView {
     this.fillGenres(select); select.value = genre.id; input.value = "";
   }
   private fillGenres(select: HTMLSelectElement): void {
-    const selected = select.value; select.replaceChildren(new Option("Selecione", ""));
+    const selected = select.value; select.replaceChildren(new Option(tr("import.select"), ""));
     this.state.genres.forEach((genre) => select.append(new Option(genre.name, genre.id))); select.value = selected;
   }
   private async analyzeMetadata(imported: ImportedFile, title: HTMLInputElement): Promise<void> {
     try { const detected = await this.metadataExtractor.extract(imported.file, imported.fileType); title.value = detected.title.value;
       if (detected.author && this.authorInput) this.authorInput.value = detected.author.value;
-      const notes = [`Título: ${this.confidence(detected.title.confidence)}`]; if (detected.author) notes.push(`Autor: ${this.confidence(detected.author.confidence)}`);
-      if (detected.genre) { notes.push(`Gênero: ${this.confidence(detected.genre.confidence)}`); await this.suggestGenre(detected.genre.value); }
+      const notes = [tr("import.noteTitle", { confidence: this.confidence(detected.title.confidence) })]; if (detected.author) notes.push(tr("import.noteAuthor", { confidence: this.confidence(detected.author.confidence) }));
+      if (detected.genre) { notes.push(tr("import.noteGenre", { confidence: this.confidence(detected.genre.confidence) })); await this.suggestGenre(detected.genre.value); }
       if (detected.collection) await this.suggestCollection(detected.collection.value);
-      if (this.metadataNote) this.metadataNote.textContent = `Preenchimento automático — ${notes.join(" · ")}. Você pode corrigir os campos.`;
-    } catch { if (this.metadataNote) this.metadataNote.textContent = "Não foi possível identificar todos os dados. Complete ou corrija os campos antes de adicionar."; }
+      if (this.metadataNote) this.metadataNote.textContent = tr("import.autoFilled", { notes: notes.join(" · ") });
+    } catch { if (this.metadataNote) this.metadataNote.textContent = tr("import.autoFailed"); }
   }
   private async suggestGenre(name: string): Promise<void> {
     if (!this.genreSelect || !this.genreSuggestion) return; const resolution = this.genreResolver.resolve({ value: name, confidence: "medium" }, this.state.genres);
     if (resolution.kind === "existing") { this.genreSelect.value = resolution.genre.id; this.genreSuggestion.classList.add("is-hidden"); return; }
-    this.genreSuggestion.replaceChildren(this.createElement("span", "", `Gênero sugerido: ${name}`)); const create = this.createElement("button", "button button--secondary", "Criar e usar"); create.type = "button";
+    this.genreSuggestion.replaceChildren(this.createElement("span", "", tr("import.suggestedGenre", { name }))); const create = this.createElement("button", "button button--secondary", tr("import.createAndUse")); create.type = "button";
     create.addEventListener("click", async () => { if (!this.genreSelect) return; const genre = new Genre(crypto.randomUUID(), name); await this.genres.save(genre); this.state.library.addGenre(genre); this.fillGenres(this.genreSelect); this.genreSelect.value = genre.id; this.genreSuggestion?.classList.add("is-hidden"); });
     this.genreSuggestion.append(create); this.genreSuggestion.classList.remove("is-hidden");
   }
   private async suggestCollection(name: string): Promise<void> {
     if (!this.collectionSelect || !this.collectionSuggestion) return; const existing = await this.collections.findByName(name);
     if (existing) { this.collectionSelect.value = existing.id; return; }
-    this.collectionSuggestion.replaceChildren(this.createElement("span", "", `Organizar em coleção “${name}”?`)); const create = this.createElement("button", "button button--secondary", "Criar e usar"); create.type = "button";
+    this.collectionSuggestion.replaceChildren(this.createElement("span", "", tr("import.suggestCollection", { name }))); const create = this.createElement("button", "button button--secondary", tr("import.createAndUse")); create.type = "button";
     create.addEventListener("click", async () => { if (!this.collectionSelect) return; const collection = new Collection(crypto.randomUUID(), name, "author"); await this.collections.save(collection); this.collectionSelect.append(new Option(collection.name, collection.id)); this.collectionSelect.value = collection.id; this.collectionSuggestion?.classList.add("is-hidden"); });
     this.collectionSuggestion.append(create); this.collectionSuggestion.classList.remove("is-hidden");
   }
   private async fillCollections(select: HTMLSelectElement): Promise<void> { (await this.collections.getAll()).forEach(item => select.append(new Option(item.name, item.id))); }
-  private confidence(value: Confidence): string { return value === "high" ? "alta confiança" : value === "medium" ? "média confiança" : "baixa confiança"; }
+  private confidence(value: Confidence): string { return value === "high" ? tr("import.confidenceHigh") : value === "medium" ? tr("import.confidenceMedium") : tr("import.confidenceLow"); }
   private input(labelText: string, type: string): { wrapper: HTMLLabelElement; input: HTMLInputElement } {
     const wrapper = this.createElement("label", "field"); wrapper.append(this.createElement("span", "field__label", labelText));
-    const input = this.createElement("input", "input") as HTMLInputElement; input.type = type; input.required = type !== "file" || labelText.startsWith("Arquivo"); wrapper.append(input); return { wrapper, input };
+    const input = this.createElement("input", "input") as HTMLInputElement; input.type = type; input.required = type !== "file"; wrapper.append(input); return { wrapper, input };
   }
   private sourceButton(icon: string, title: string, description: string): HTMLButtonElement {
     const button = this.createElement("button", "import-source") as HTMLButtonElement; button.type = "button";

@@ -28,7 +28,7 @@ const outlet = document.querySelector<HTMLElement>("#app");
 const header = document.querySelector<HTMLElement>("#app-header");
 const footer = document.querySelector<HTMLElement>("#app-footer");
 
-if (!outlet || !header || !footer) throw new Error("Os containers principais da aplicação não foram encontrados.");
+if (!outlet || !header || !footer) throw new Error(I18nManager.shared.t("error.app.missingContainers"));
 
 const errors = new GlobalErrorHandler(outlet);
 errors.bind();

@@ -1,6 +1,7 @@
 import type { AppState, User } from "../core/AppState";
 import { ApiClient, ApiError } from "./ApiClient";
 import { StorageService } from "./StorageService";
+import { I18nManager } from "../i18n/I18nManager";
 
 export interface AuthSession { accessToken: string; refreshToken: string; expiresAt: number | null; user: User; }
 export interface OfflineIdentity { id: string; email: string; displayName?: string; avatarUrl?: string; }
@@ -103,7 +104,7 @@ export class AuthManager {
     return true;
   }
   public async reauthenticate(password: string): Promise<void> {
-    if (!this.state.currentUser) throw new Error("Usuário ausente.");
+    if (!this.state.currentUser) throw new Error(I18nManager.shared.t("error.auth.missingUser"));
     await this.login(this.state.currentUser.email, password);
   }
   public async logout(): Promise<void> { await this.clearSession(); }

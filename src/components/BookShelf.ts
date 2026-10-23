@@ -5,6 +5,7 @@ import { BookPerspectiveLayout } from "./BookPerspectiveLayout";
 import { ShelfBoard } from "./ShelfBoard";
 import { BookFocusAnimator } from "./BookFocusAnimator";import{BookContextLabelResolver,type ShelfContext}from"./BookContextLabelResolver";import{ShelfFocusLabel}from"./ShelfFocusLabel";
 import { BookSeriesResolver } from "./BookSeriesResolver";
+import { I18nManager } from "../i18n/I18nManager";
 
 export class BookShelf {
   public static readonly trackScrolls=true;
@@ -14,7 +15,7 @@ export class BookShelf {
   private readonly selection = new BookSelectionController();
   private readonly animator=new BookFocusAnimator();
   private startX = 0; private startY = 0; private moved = false;
-  public constructor(private readonly books: readonly Book[], private readonly onActivate: (bookId: string) => void,private readonly context:ShelfContext={kind:"genre",label:"Biblioteca"},private readonly onDelete?:(bookId:string)=>void|Promise<void>) {}
+  public constructor(private readonly books: readonly Book[], private readonly onActivate: (bookId: string) => void,private readonly context:ShelfContext={kind:"genre",label:I18nManager.shared.t("ui.navigation.library")},private readonly onDelete?:(bookId:string)=>void|Promise<void>) {}
   public render(): HTMLElement {
     const stage=document.createElement("div");stage.className="shelf-stage";const viewport = document.createElement("div"); viewport.className = "book-shelf__viewport";
     const orderedBooks=new BookSeriesResolver().order(this.books);const profile = BookShelf.visualProfile(orderedBooks.length); const row = document.createElement("div"); row.className = `book-shelf${profile.frontal ? " book-shelf--frontal" : ""}`;row.dataset.visualMode=profile.mode;row.dataset.renderedShelfBookCount=String(orderedBooks.length);

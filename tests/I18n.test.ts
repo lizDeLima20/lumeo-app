@@ -74,4 +74,58 @@ describe("I18nManager", () => {
   it("keeps every base key in English and Spanish", () => {
     assert.deepEqual(keys(EN_US), keys(PT_BR)); assert.deepEqual(keys(ES), keys(PT_BR));
   });
+  /**
+   * Having a key present isn't the same as it being translated: EN_US and ES both spread
+   * `...PT_BR` as their base, so a key with no explicit override still exists but silently
+   * carries the Portuguese text. This test catches that leftover case specifically, while
+   * allowing legitimate exceptions where the EN/ES word is genuinely identical to Portuguese
+   * on its own merit: proper nouns and brand names (Google Drive, OneDrive, Lumeo, Pomodoro),
+   * and real cognates shared by the three languages (e.g. "Normal", "Original", "Capítulo",
+   * "Preparando…") rather than copy nobody translated yet.
+   */
+  it("flags Portuguese text left untranslated in English/Spanish, outside known legitimate exceptions", () => {
+    const EN_LEGITIMATE_MATCHES = new Set([
+      "google.title", "ui.catalog.sources.statusLine", "ui.book.status", "ui.import.fromGoogle", "ui.import.fromOneDrive",
+      "ui.catalog.volume", "ui.catalog.volumeLabel", "ui.study.original", "drive.linkN", "reader.weight.normal",
+      "reader.spacing.normal", "reader.paper.natural", "reader.layout", "reader.margin.normal", "reader.pomodoro.title",
+      "reader.scan.original", "reader.scan.normal", "reader.pagination.reflow", "storage.local",
+    ]);
+    const ES_LEGITIMATE_MATCHES = new Set([
+      "google.title", "externalLibrary.title", "externalLibrary.settings", "externalLibrary.cancel", "externalLibrary.open",
+      "import.remote.format", "import.remote.openExisting", "import.processing.library", "ui.comic.arc",
+      "ui.catalog.sources.catalogFound", "ui.navigation.library", "ui.navigation.settings", "ui.book.edit", "ui.book.format",
+      "ui.edit.bookTitle", "ui.edit.author", "ui.common.cancel", "ui.common.edit", "ui.common.open", "ui.common.preparing",
+      "ui.common.optional", "ui.common.confirm", "ui.import.importing", "ui.import.fromGoogle", "ui.import.fromOneDrive",
+      "ui.catalog.eyebrow", "ui.catalog.format", "ui.catalog.preparing", "ui.catalog.validating", "ui.catalog.sync",
+      "ui.catalog.syncing", "ui.settings.lightTheme", "ui.study.notes", "ui.study.bookmarks", "ui.study.sort",
+      "ui.study.groupChapter", "ui.study.review", "ui.study.editNote", "ui.study.previous", "ui.study.original",
+      "ui.study.targetLanguage", "ui.study.lookupDefinition", "ui.chapter.moveUp", "ui.device.title", "ui.device.authorize",
+      "ui.license.reconnect", "drive.all", "drive.syncing", "drive.restore", "drive.restoreNamed", "drive.factFormat",
+      "details.open", "audio.chapterCount", "audio.rewind", "audio.chapters", "audio.openChapterList", "audio.chapter",
+      "audio.badgeSyncing", "readerView.editNote", "readerView.pageN", "readerView.go", "readerView.open",
+      "import.stageOrganizing", "import.stageChapters", "import.stageFinalizing", "import.noteTitle", "import.noteAuthor",
+      "reader.previousPage", "reader.comic.preparingPercent", "reader.text", "reader.font.modern", "reader.weight.normal",
+      "reader.spacing.compact", "reader.spacing.normal", "reader.paper", "reader.paper.natural", "reader.pages",
+      "reader.margin.normal", "reader.pomodoro.title", "reader.pomodoro.break", "reader.pomodoro.pages",
+      "reader.pomodoro.pauses", "reader.pomodoro.chipBreak", "reader.pomodoro.goalType.pages", "reader.pomodoro.expand",
+      "reader.pomodoro.pagesProgress", "reader.reminder.sun", "reader.reminder.sat", "ui.study.page", "reader.theme",
+      "reader.theme.paper", "reader.theme.light", "reader.animation.slide", "reader.animation.carousel",
+      "reader.imageProfile", "reader.language", "selection.note", "selection.dictionary", "selection.context",
+      "selection.copy", "onboarding.language", "settings.language", "reader.scan.original", "reader.scan.scannedText",
+      "reader.scan.soft", "reader.scan.normal", "reader.regionHighlight.markArea", "reader.pagination.reflow",
+      "reader.pagination.original", "offline.reconnecting", "storage.used", "storage.local", "storage.persistent",
+      "diagnostics.title", "diagnostics.copy", "library.versionCancel", "catalog.findBook", "format.pageOf",
+      "reader.card.locationValue", "reader.card.definition", "reader.card.lookupDefinition", "reader.card.looking",
+      "nav.map", "nav.openTab", "nav.search", "nav.title", "selection.dictionaryLabel",
+      "study.notebook.colorBlue", "study.notebook.colorGreen", "study.notebook.colorPink",
+      "study.notebook.definitionLabel", "study.notebook.editNote", "study.notebook.filterAnnotation",
+      "study.notebook.filterBookmark", "study.notebook.groupByChapter", "study.notebook.noteLabel",
+      "study.notebook.previousEntry", "study.notebook.sortLabel", "study.notebook.typeAnnotation",
+      "study.notebook.typeBookmark", "ui.book.openLabel",
+    ]);
+    const unexpectedEn = keys(PT_BR).filter(key => EN_US[key] === PT_BR[key] && !EN_LEGITIMATE_MATCHES.has(key));
+    const unexpectedEs = keys(PT_BR).filter(key => ES[key] === PT_BR[key] && !ES_LEGITIMATE_MATCHES.has(key));
+    assert.deepEqual(unexpectedEn, [], `English keys still carrying untranslated Portuguese text: ${unexpectedEn.join(", ")}`);
+    assert.deepEqual(unexpectedEs, [], `Spanish keys still carrying untranslated Portuguese text: ${unexpectedEs.join(", ")}`);
+  });
 });

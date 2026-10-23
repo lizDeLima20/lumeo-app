@@ -12,6 +12,10 @@ import { PERSONAL_DRIVE_SYNC_VERSION, PersonalDriveLibraryService } from "../ser
 import { BaseView } from "./BaseView";
 import { DownloadProgressIcon } from "./DownloadProgressIcon";
 import { DriveItemDetails, type DriveItemDetailsInput, type DriveItemDownloadUpdate } from "./DriveItemDetails";
+import { driveDownloadFailure } from "../services/DriveDownloadMessage";
+import { I18nManager, type TranslationKey } from "../i18n/I18nManager";
+
+const tr = (key: TranslationKey, parameters?: Readonly<Record<string, string | number>>): string => I18nManager.shared.t(key, parameters);
 import { bindCoverBackdrop } from "../components/CoverBackdrop";
 
 /** Personal Drive shelf. Cached metadata is immediate; saved sources refresh automatically. */
@@ -37,32 +41,35 @@ export class PersonalDriveLibraryView extends BaseView {
 
   public render(): HTMLElement {
     const section = this.createElement("section", "catalog catalog--explore page-shell personal-drive-library");
-    const heading = this.createElement("div", "personal-drive-library__eyebrow"); heading.append(this.createElement("span", "eyebrow", "Biblioteca pessoal"));
+    const heading = this.createElement("div", "personal-drive-library__eyebrow"); heading.append(this.createElement("span", "eyebrow", tr("drive.eyebrow")));
     const welcome = this.createElement("section", "personal-drive-library__welcome");
-    welcome.append(this.createElement("h1", "personal-drive-library__welcome-title", "Bem-vindo ao Lumeo"), this.createElement("p", "personal-drive-library__welcome-copy", "Escolha sua preferência"));
+    welcome.append(this.createElement("h1", "personal-drive-library__welcome-title", tr("drive.welcome")), this.createElement("p", "personal-drive-library__welcome-copy", tr("drive.choose")));
     const choices = this.createElement("div", "personal-drive-library__choices");
     const choice = (type: "book" | "comic"): HTMLButtonElement => {
       const comic = type === "comic", button = this.createElement("button", `personal-drive-library__choice personal-drive-library__choice--${type}`) as HTMLButtonElement;
-      button.type = "button"; button.setAttribute("aria-label", comic ? "Explorar quadrinhos" : "Explorar livros");
+      button.type = "button"; button.setAttribute("aria-label", comic ? tr("drive.exploreComics") : tr("drive.exploreBooks"));
       const shelf = this.createElement("span", "personal-drive-library__choice-covers");
-      (comic ? ["HQ", "MARVEL", "DC", "MANGÁ", "MÔNICA", "DRAGON BALL"] : ["DESENVOLVIMENTO", "HISTÓRIA", "CIÊNCIA", "FICÇÃO", "PSICOLOGIA", "NEGÓCIOS"]).forEach((label, index) => {
+      const locale = I18nManager.shared.locale;
+      const comicShelf = locale === "en-US" ? ["COMICS", "MARVEL", "DC", "MANGA", "MÔNICA", "DRAGON BALL"] : locale === "es" ? ["CÓMIC", "MARVEL", "DC", "MANGA", "MÔNICA", "DRAGON BALL"] : ["HQ", "MARVEL", "DC", "MANGÁ", "MÔNICA", "DRAGON BALL"];
+      const bookShelf = locale === "en-US" ? ["DEVELOPMENT", "HISTORY", "SCIENCE", "FICTION", "PSYCHOLOGY", "BUSINESS"] : locale === "es" ? ["DESARROLLO", "HISTORIA", "CIENCIA", "FICCIÓN", "PSICOLOGÍA", "NEGOCIOS"] : ["DESENVOLVIMENTO", "HISTÓRIA", "CIÊNCIA", "FICÇÃO", "PSICOLOGIA", "NEGÓCIOS"];
+      (comic ? comicShelf : bookShelf).forEach((label, index) => {
         const cover = this.createElement("span", `personal-drive-library__choice-cover personal-drive-library__choice-cover--${index + 1}`, label); cover.setAttribute("aria-hidden", "true"); shelf.append(cover);
       });
-      const footer = this.createElement("span", "personal-drive-library__choice-footer"); footer.append(this.createElement("span", "personal-drive-library__choice-icon", comic ? "▣" : "▤"), this.createElement("strong", "", comic ? "Quadrinhos" : "Livros"), this.createElement("span", "personal-drive-library__choice-arrow", "→"));
+      const footer = this.createElement("span", "personal-drive-library__choice-footer"); footer.append(this.createElement("span", "personal-drive-library__choice-icon", comic ? "▣" : "▤"), this.createElement("strong", "", comic ? tr("drive.comics") : tr("drive.books")), this.createElement("span", "personal-drive-library__choice-arrow", "→"));
       button.append(shelf, footer); return button;
     };
     const bookChoice = choice("book"), comicChoice = choice("comic"); choices.append(bookChoice, comicChoice); welcome.append(choices);
     const status = this.createElement("p", "catalog__status personal-drive-library__status"); status.setAttribute("role", "status");
-    const retry = this.createElement("button", "button button--secondary is-hidden", "Tentar novamente"); retry.type = "button";
-    const search = this.createElement("input", "input") as HTMLInputElement; search.type = "search"; search.placeholder = "Pesquisar livros"; search.setAttribute("aria-label", "Pesquisar livros");
-    const chips = this.createElement("div", "catalog__genre-carousel"), grid = this.createElement("div", "catalog__grid"), more = this.createElement("button", "button button--secondary catalog__more is-hidden", "Mostrar mais"), controls = this.createElement("div", "catalog__controls"), backToChoice = this.createElement("button", "personal-drive-library__switch", "← Escolher biblioteca");
+    const retry = this.createElement("button", "button button--secondary is-hidden", tr("drive.retry")); retry.type = "button";
+    const search = this.createElement("input", "input") as HTMLInputElement; search.type = "search"; search.placeholder = tr("drive.searchBooks"); search.setAttribute("aria-label", tr("drive.searchBooks"));
+    const chips = this.createElement("div", "catalog__genre-carousel"), grid = this.createElement("div", "catalog__grid"), more = this.createElement("button", "button button--secondary catalog__more is-hidden", tr("drive.showMore")), controls = this.createElement("div", "catalog__controls"), backToChoice = this.createElement("button", "personal-drive-library__switch", tr("drive.chooseLibrary"));
     backToChoice.type = "button"; controls.append(backToChoice, search, chips);
     const browser = this.createElement("div", "personal-drive-library__browser"); browser.append(controls, status, retry, grid, more); section.append(heading, welcome, browser);
     let mode: "choice" | "book" | "comic" = "choice", entries: GoogleDriveLibraryEntry[] = [], selectedGenre = "", lastSource: GoogleDriveLibrarySource | null = null, visibleLimit = 60;
     // Drive tree: each source is one category; its folders are navigated below it.
     let sourcesList: GoogleDriveLibrarySource[] = [], openFolder: { sourceId: string; folderId: string } | null = null, coverObserver: IntersectionObserver | null = null, coversOnScreen = new AbortController(), comicShelf: DriveComicShelf | null = null;
     const folderNodes = new Map<string, GoogleDriveFolderNode[]>();
-    const applyMode = (next: "choice" | "book" | "comic"): void => { mode = next; selectedGenre = ""; visibleLimit = 60; welcome.hidden = mode !== "choice"; browser.hidden = mode === "choice"; if (mode !== "choice") { search.placeholder = mode === "comic" ? "Pesquisar quadrinhos" : "Pesquisar livros"; drawFilters(); drawGrid(); } };
+    const applyMode = (next: "choice" | "book" | "comic"): void => { mode = next; selectedGenre = ""; visibleLimit = 60; welcome.hidden = mode !== "choice"; browser.hidden = mode === "choice"; if (mode !== "choice") { search.placeholder = mode === "comic" ? tr("drive.searchComics") : tr("drive.searchBooks"); drawFilters(); drawGrid(); } };
     // The copy of this Drive file on the device. A copy whose version was not kept (saving the
     // reading progress or a cloud merge rewrites the book without it) is still that file when
     // it is on the device: it opens instead of being downloaded again.
@@ -95,8 +102,8 @@ export class PersonalDriveLibraryView extends BaseView {
     };
     const makeCard = (entry: GoogleDriveLibraryEntry): HTMLElement => {
       const book = local(entry), card = this.createElement("article", "catalog-card"), coverFrame = this.createElement("div", "catalog-card__cover-frame"), cover = this.createElement("button", "catalog-card__cover") as HTMLButtonElement;
-      const title = entry.title || stripExtension(entry.name); cover.type = "button"; cover.setAttribute("aria-label", `Detalhes de ${title}`);
-      const image = this.createElement("img", "") as HTMLImageElement; image.alt = `Capa de ${title}`; image.loading = "lazy"; image.decoding = "async"; bindCoverBackdrop(cover, image);
+      const title = entry.title || stripExtension(entry.name); cover.type = "button"; cover.setAttribute("aria-label", tr("drive.detailsOf", { title }));
+      const image = this.createElement("img", "") as HTMLImageElement; image.alt = tr("drive.coverOf", { title }); image.loading = "lazy"; image.decoding = "async"; bindCoverBackdrop(cover, image);
       const initial = book?.cover || this.coverResolver.peek(entry), placeholder = createLumeoCoverPlaceholder(title);
       // The generic Lumeo cover is deliberately mounted first. It is removed only
       // after the original image loads; a missing or stale URL keeps the fallback.
@@ -143,7 +150,7 @@ export class PersonalDriveLibraryView extends BaseView {
         if (coverObserver) { (card as HTMLElement & { __hydrate?: (near?: boolean) => void }).__hydrate = hydrate; coverObserver.observe(card); } else hydrate();
       }
       const info = this.createElement("div", "catalog-card__info"); info.append(this.createElement("strong", "catalog-card__title", title)); if (entry.author) info.append(this.createElement("span", "catalog-card__author", entry.author));
-      const action = this.createElement("button", "catalog-card__quick-action") as HTMLButtonElement; action.type = "button"; action.title = book ? "Abrir livro" : "Baixar livro"; action.setAttribute("aria-label", action.title);
+      const action = this.createElement("button", "catalog-card__quick-action") as HTMLButtonElement; action.type = "button"; action.title = book ? tr("drive.openBook") : tr("drive.downloadBook"); action.setAttribute("aria-label", action.title);
       const icon = new DownloadProgressIcon(action, Boolean(book));
       cards.set(entry.fileId, { action, icon }); const running = downloads.get(entry.fileId); if (running) paint({ action, icon }, running);
       const details = (): void => this.showDetails(entry, local(entry), {
@@ -191,8 +198,8 @@ export class PersonalDriveLibraryView extends BaseView {
         const nodes = folderNodes.get(activeSource.id) ?? [], rootId = driveRootOf(nodes, activeSource.id)?.folderId ?? activeSource.folderId;
         if (openFolder?.sourceId !== activeSource.id || !nodes.some(node => node.folderId === openFolder!.folderId)) openFolder = { sourceId: activeSource.id, folderId: rootId };
         const current = openFolder.folderId, trail = driveTrail(nodes, current), node = nodes.find(value => value.folderId === current);
-        const nav = this.createElement("nav", "drive-folder-nav"); nav.setAttribute("aria-label", "Pastas");
-        if (trail.length > 1) { const back = this.createElement("button", "drive-folder-nav__back", "← Voltar") as HTMLButtonElement; back.type = "button"; back.addEventListener("click", () => { openFolder = { sourceId: activeSource.id, folderId: trail[trail.length - 2]!.folderId }; visibleLimit = 60; drawGrid(); }); nav.append(back); }
+        const nav = this.createElement("nav", "drive-folder-nav"); nav.setAttribute("aria-label", tr("drive.folders"));
+        if (trail.length > 1) { const back = this.createElement("button", "drive-folder-nav__back", tr("drive.back")) as HTMLButtonElement; back.type = "button"; back.addEventListener("click", () => { openFolder = { sourceId: activeSource.id, folderId: trail[trail.length - 2]!.folderId }; visibleLimit = 60; drawGrid(); }); nav.append(back); }
         const crumbs = this.createElement("ol", "drive-folder-nav__path");
         (trail.length ? trail : [{ folderId: rootId, name: activeSource.name } as GoogleDriveFolderNode]).forEach((step, index, all) => {
           const item = this.createElement("li", "drive-folder-nav__crumb"), label = index === 0 ? activeSource.name : step.name;
@@ -203,10 +210,10 @@ export class PersonalDriveLibraryView extends BaseView {
         nav.append(crumbs); grid.append(nav);
         const subfolders = driveChildFolders(nodes, current);
         if (subfolders.length) {
-          const carousel = this.createElement("div", "drive-folder-carousel"); carousel.setAttribute("aria-label", "Subpastas");
+          const carousel = this.createElement("div", "drive-folder-carousel"); carousel.setAttribute("aria-label", tr("drive.subfolders"));
           subfolders.forEach(folder => { const chip = this.createElement("button", "drive-folder-carousel__item", folder.error ? `${folder.name} ⚠` : folder.name) as HTMLButtonElement; chip.type = "button";
-            if (folder.error) chip.title = "Sem acesso a esta pasta no Google Drive";
-            chip.addEventListener("click", () => { openFolder = { sourceId: activeSource.id, folderId: folder.folderId }; visibleLimit = 60; drawGrid(); if (!folder.listed) status.textContent = `Carregando ${folder.name}…`; });
+            if (folder.error) chip.title = tr("drive.noAccess");
+            chip.addEventListener("click", () => { openFolder = { sourceId: activeSource.id, folderId: folder.folderId }; visibleLimit = 60; drawGrid(); if (!folder.listed) status.textContent = tr("drive.loadingNamed", { name: folder.name }); });
             carousel.append(chip); });
           grid.append(carousel);
         }
@@ -214,7 +221,7 @@ export class PersonalDriveLibraryView extends BaseView {
         const shelf = this.createElement("div", "drive-folder-files");
         files.slice(0, visibleLimit).forEach(entry => shelf.append(cardFor(entry)));
         if (files.length) grid.append(shelf);
-        else grid.append(this.createElement("p", "catalog__status", node && !node.listed ? "Carregando esta pasta…" : subfolders.length ? "Escolha uma subpasta." : "Esta pasta não tem arquivos."));
+        else grid.append(this.createElement("p", "catalog__status", node && !node.listed ? tr("drive.loadingFolder") : subfolders.length ? tr("drive.chooseSubfolder") : tr("drive.emptyFolder")));
         more.classList.toggle("is-hidden", files.length <= visibleLimit);
         console.info(`[DriveRender] genre=${activeSource.name} folder=${node?.name ?? activeSource.name} depth=${node?.depth ?? 0} subfolders=${subfolders.length} booksRendered=${Math.min(files.length, visibleLimit)}`);
         return;
@@ -226,11 +233,11 @@ export class PersonalDriveLibraryView extends BaseView {
         for (const [label, group] of sections) { const collection = this.createElement("section", "drive-comic-carousel"); collection.append(this.createElement("h2", "drive-comic-carousel__title", label)); const track = this.createElement("div", "drive-comic-carousel__track"); group.forEach(entry => track.append(cardFor(entry))); collection.append(track); grid.append(collection); }
         filtered.filter(entry => !comics.includes(entry)).slice(0, visibleLimit).forEach(entry => grid.append(cardFor(entry)));
       } else filtered.slice(0, visibleLimit).forEach(entry => grid.append(cardFor(entry)));
-      if (!grid.childElementCount) grid.append(this.createElement("p", "catalog__status", entries.length ? "Nenhum livro encontrado com este filtro." : "Adicione uma pasta do Google Drive pelo menu."));
+      if (!grid.childElementCount) grid.append(this.createElement("p", "catalog__status", entries.length ? tr("drive.noMatch") : tr("drive.addFromMenu")));
       more.classList.toggle("is-hidden", filtered.length <= visibleLimit);
     };
     const drawFilters = (): void => { chips.replaceChildren(); const genres = [...new Set(entries.filter(entry => mode !== "choice" && (entry.contentType ?? "book") === mode).map(entry => entry.genre))].sort((a, b) => a.localeCompare(b, "pt-BR"));
-      [["", "Todos"], ...genres.map(name => [name, name] as const)].forEach(([value, label]) => { const chip = this.createElement("button", "catalog__genre-chip", label); chip.type = "button"; chip.setAttribute("aria-pressed", String(selectedGenre === value)); chip.addEventListener("click", () => { selectedGenre = value; openFolder = null; visibleLimit = 60; drawFilters(); drawGrid(); }); chips.append(chip); }); };
+      [["", tr("drive.all")], ...genres.map(name => [name, name] as const)].forEach(([value, label]) => { const chip = this.createElement("button", "catalog__genre-chip", label); chip.type = "button"; chip.setAttribute("aria-pressed", String(selectedGenre === value)); chip.addEventListener("click", () => { selectedGenre = value; openFolder = null; visibleLimit = 60; drawFilters(); drawGrid(); }); chips.append(chip); }); };
     const cache = async (): Promise<void> => {
       entries = await this.sources.entries(); sourcesList = await this.sources.all();
       for (const value of sourcesList) folderNodes.set(value.id, await this.sources.folders(value.id));
@@ -241,7 +248,7 @@ export class PersonalDriveLibraryView extends BaseView {
       applyMode(hasBooks && !hasComics ? "book" : hasComics && !hasBooks ? "comic" : "choice");
     };
     const sync = async (source: GoogleDriveLibrarySource): Promise<boolean> => {
-      this.controller?.abort(); const controller = this.controller = new AbortController(); lastSource = source; retry.classList.add("is-hidden"); status.textContent = "Sincronizando biblioteca…";
+      this.controller?.abort(); const controller = this.controller = new AbortController(); lastSource = source; retry.classList.add("is-hidden"); status.textContent = tr("drive.syncing");
       try { const existing = await this.sources.entries(source.id), resume = await this.sources.syncState(source.id); const listed = await this.service.listProgressively(source, existing, resume, controller.signal, async (batch, state, value, folders) => {
           if (folders.length) folderNodes.set(source.id, await this.sources.appendFolders(source.id, folders));
           if (batch.length) { const saved = await this.sources.appendEntries(source.id, batch); entries = [...entries.filter(entry => entry.sourceId !== source.id), ...saved]; }
@@ -253,7 +260,7 @@ export class PersonalDriveLibraryView extends BaseView {
             if (!open || batch.some(entry => entry.parentFolderId === open) || folders.some(node => node.folderId === open || node.parentFolderId === open)) { drawFilters(); drawGrid(true); }
           }
           await this.sources.saveSyncState(source.id, state);
-          status.textContent = state.completed ? (value.files > 0 ? `${value.files} livro(s) sincronizado(s).` : "A pasta está vazia ou não possui PDF, EPUB, CBR ou CBZ.") : `Sincronizando: ${value.files} livro(s) encontrados…`;
+          status.textContent = state.completed ? (value.files > 0 ? tr("drive.syncedCount", { count: value.files }) : tr("drive.emptySource")) : tr("drive.syncingCount", { count: value.files });
           if (state.completed) {
             const byGenre = new Map<string, number>(); entries.filter(entry => entry.sourceId === source.id).forEach(entry => byGenre.set(entry.genre, (byGenre.get(entry.genre) ?? 0) + 1));
             byGenre.forEach((count, genre) => console.info(`[DriveRender] genre=${genre} booksRendered=${count}`));
@@ -270,16 +277,21 @@ export class PersonalDriveLibraryView extends BaseView {
     const download = async (entry: GoogleDriveLibraryEntry, button: HTMLButtonElement, icon: DownloadProgressIcon): Promise<void> => {
       // One download per file, whether it was asked for on the card or on its details page.
       if (button.disabled || downloads.has(entry.fileId)) return;
-      const controller = new AbortController(); button.disabled = true; button.setAttribute("aria-busy", "true"); icon.set("downloading", 0); report(entry.fileId, { state: "downloading", percent: 0 }); status.textContent = `Baixando ${stripExtension(entry.name)}…`;
+      const controller = new AbortController(); button.disabled = true; button.setAttribute("aria-busy", "true"); icon.set("downloading", 0); report(entry.fileId, { state: "downloading", percent: 0 }); status.textContent = tr("drive.downloading", { title: bookLabel(entry) });
       try { const contentType = entry.contentType === "comic" ? "comic" : "book"; const book = await this.importer.importListedFile({ id: entry.fileId, name: entry.name, mimeType: entry.mimeType, size: entry.size, modifiedTime: entry.modifiedTime, resourceKey: entry.resourceKey }, entry.genre, controller.signal, contentType, (done, _total, _name, percent) => { if (done > 0) return; icon.progress(percent ?? null); report(entry.fileId, percent == null ? { state: "indeterminate", percent: null } : { state: "downloading", percent }); if (percent === 100) { icon.set("saving", 100); report(entry.fileId, { state: "saving", percent: 100 }); } });
-        icon.set("done", 100); finished.set(entry.fileId, book.id); await this.refreshGenres(); this.saved(book); report(entry.fileId, { state: "done", percent: 100 }); status.textContent = `${entry.name} está disponível offline.`;
+        icon.set("done", 100); finished.set(entry.fileId, book.id); await this.refreshGenres(); this.saved(book); report(entry.fileId, { state: "done", percent: 100 }); status.textContent = tr("drive.availableOffline", { title: bookLabel(entry) });
         // With its details page open, the page's button turns into Abrir instead.
         if (watchers.get(entry.fileId)?.size) return;
         await new Promise<void>(resolve => window.setTimeout(resolve, 420)); this.open(book.id);
-      } catch (error) { button.disabled = false; button.removeAttribute("aria-busy"); icon.set("error", 0); report(entry.fileId, { state: "error", percent: 0, message: message(error, true) }); status.textContent = message(error, true); }
+      } catch (error) { button.disabled = false; button.removeAttribute("aria-busy"); icon.set("error", 0);
+        // The cause decides the advice: access, network, storage, format or size.
+        const failure = driveDownloadFailure(error);
+        console.warn(JSON.stringify({ event: "PERSONAL_DRIVE_DOWNLOAD_FAILED", sourceId: entry.sourceId, kind: failure.kind, code: (error as { code?: unknown })?.code ?? null, status: (error as { status?: unknown })?.status ?? null, detail: safeErrorDetail(error) }));
+        report(entry.fileId, { state: "error", percent: 0, message: failure.message }); status.textContent = failure.message;
+      }
     };
     const openManager = (): void => {
-      const dialog = document.createElement("dialog"); dialog.className = "catalog-genre-dialog"; const panel = this.createElement("section", "catalog-genre-dialog__panel personal-drive-library__manager"); panel.append(this.createElement("h2", "", "Adicionar pasta do Google Drive"), this.createElement("p", "personal-drive-library__manager-help", "Adicione o link do Google Drive aqui"));
+      const dialog = document.createElement("dialog"); dialog.className = "catalog-genre-dialog"; const panel = this.createElement("section", "catalog-genre-dialog__panel personal-drive-library__manager"); panel.append(this.createElement("h2", "", tr("drive.addFolderTitle")), this.createElement("p", "personal-drive-library__manager-help", tr("drive.addFolderHelp")));
       const icon = (name: "link" | "folder" | "book" | "comic" | "trash"): SVGSVGElement => {
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("fill", "none"); svg.setAttribute("aria-hidden", "true");
@@ -297,39 +309,39 @@ export class PersonalDriveLibraryView extends BaseView {
       // Step 2, after the folder was read: its name (editable) and a local routing choice.
       const confirm = this.createElement("div", "personal-drive-library__confirm"); confirm.hidden = true;
       const nameInput = this.createElement("input", "input personal-drive-library__manual-name") as HTMLInputElement; nameInput.type = "text"; nameInput.maxLength = 100;
-      nameInput.placeholder = "Nome da fonte"; nameInput.setAttribute("aria-label", "Nome da fonte");
-      const typeRow = this.createElement("div", "personal-drive-library__type-choice"); typeRow.setAttribute("role", "radiogroup"); typeRow.setAttribute("aria-label", "Tipo da fonte");
-      const bookType = this.createElement("button", "personal-drive-library__type", "Livros") as HTMLButtonElement, comicType = this.createElement("button", "personal-drive-library__type", "HQs") as HTMLButtonElement, audioType = this.createElement("button", "personal-drive-library__type", "Audiolivros") as HTMLButtonElement;
-      const addButton = this.createElement("button", "button button--primary personal-drive-library__add", "Adicionar") as HTMLButtonElement; addButton.type = "button";
+      nameInput.placeholder = tr("drive.sourceName"); nameInput.setAttribute("aria-label", tr("drive.sourceName"));
+      const typeRow = this.createElement("div", "personal-drive-library__type-choice"); typeRow.setAttribute("role", "radiogroup"); typeRow.setAttribute("aria-label", tr("drive.sourceType"));
+      const bookType = this.createElement("button", "personal-drive-library__type", tr("drive.books")) as HTMLButtonElement, comicType = this.createElement("button", "personal-drive-library__type", tr("drive.typeComics")) as HTMLButtonElement, audioType = this.createElement("button", "personal-drive-library__type", tr("drive.typeAudiobooks")) as HTMLButtonElement;
+      const addButton = this.createElement("button", "button button--primary personal-drive-library__add", tr("drive.add")) as HTMLButtonElement; addButton.type = "button";
       let chosen: GoogleDriveLibrarySource["contentType"] | null = null, pending: { link: string; driveName: string } | null = null;
       const updateConfirm = (): void => { bookType.setAttribute("aria-checked", String(chosen === "book")); comicType.setAttribute("aria-checked", String(chosen === "comic")); audioType.setAttribute("aria-checked", String(chosen === "audiobook")); addButton.disabled = !chosen || !nameInput.value.trim(); };
       ([[bookType, "book"], [comicType, "comic"], [audioType, "audiobook"]] as const).forEach(([button, value]) => { button.type = "button"; button.setAttribute("role", "radio"); button.addEventListener("click", () => { chosen = value; updateConfirm(); }); typeRow.append(button); });
-      nameInput.addEventListener("input", updateConfirm); confirm.append(nameInput, typeRow, addButton); updateConfirm(); input.type = "url"; input.placeholder = "Cole o link do Google Drive aqui…"; input.setAttribute("aria-label", input.placeholder); const linkIcon = icon("link"); linkIcon.classList.add("personal-drive-library__link-icon"); linkField.append(linkIcon, input); submit.type = "submit"; form.append(linkField, submit);
-      const note = this.createElement("p", "catalog__status"), list = this.createElement("div", "personal-drive-library__source-list"), close = this.createElement("button", "personal-drive-library__close", "← Fechar"); close.type = "button"; close.addEventListener("click", () => dialog.close());
+      nameInput.addEventListener("input", updateConfirm); confirm.append(nameInput, typeRow, addButton); updateConfirm(); input.type = "url"; input.placeholder = tr("drive.pasteLink"); input.setAttribute("aria-label", input.placeholder); const linkIcon = icon("link"); linkIcon.classList.add("personal-drive-library__link-icon"); linkField.append(linkIcon, input); submit.type = "submit"; form.append(linkField, submit);
+      const note = this.createElement("p", "catalog__status"), list = this.createElement("div", "personal-drive-library__source-list"), close = this.createElement("button", "personal-drive-library__close", tr("drive.close")); close.type = "button"; close.addEventListener("click", () => dialog.close());
       const reclassify = async (source: GoogleDriveLibrarySource): Promise<void> => { if (source.contentType === "audiobook") return; const sourceEntries = await this.sources.entries(source.id), changed = await this.importer.reclassifyListedFiles(sourceEntries.map(entry => entry.fileId), source.contentType ?? "book"); changed.forEach(book => this.reclassified(book)); };
-      const renderSources = async (): Promise<void> => { const rows = await this.sources.all(); list.replaceChildren(); rows.forEach((source, index) => { const labelText = source.name || `Link ${index + 1}`, row = this.createElement("div", "personal-drive-library__source"), folder = this.createElement("span", "personal-drive-library__source-folder"), label = this.createElement("button", "personal-drive-library__source-name", labelText) as HTMLButtonElement, type = this.createElement("button", "personal-drive-library__type") as HTMLButtonElement; folder.append(icon("folder")); type.type = "button"; label.type = "button";
-        label.title = source.driveName && source.driveName !== source.name ? `Pasta no Drive: ${source.driveName}. Toque para renomear.` : "Toque para renomear";
-        label.addEventListener("click", () => void (async () => { const next = window.prompt("Nome desta fonte", source.name)?.trim(); if (!next || next === source.name) return;
+      const renderSources = async (): Promise<void> => { const rows = await this.sources.all(); list.replaceChildren(); rows.forEach((source, index) => { const labelText = source.name || tr("drive.linkN", { number: index + 1 }), row = this.createElement("div", "personal-drive-library__source"), folder = this.createElement("span", "personal-drive-library__source-folder"), label = this.createElement("button", "personal-drive-library__source-name", labelText) as HTMLButtonElement, type = this.createElement("button", "personal-drive-library__type") as HTMLButtonElement; folder.append(icon("folder")); type.type = "button"; label.type = "button";
+        label.title = source.driveName && source.driveName !== source.name ? tr("drive.renameHintDrive", { name: source.driveName }) : tr("drive.renameHint");
+        label.addEventListener("click", () => void (async () => { const next = window.prompt(tr("drive.renamePrompt"), source.name)?.trim(); if (!next || next === source.name) return;
           const renamed = await this.sources.rename(source.id, next).catch(error => { note.textContent = message(error); return null; }); if (!renamed) return; if (selectedGenre === source.name) selectedGenre = renamed.name;
-          await cache(); await renderSources(); note.textContent = `Fonte renomeada para ${renamed.name}.`; })()); const typeLabel = (value: GoogleDriveLibrarySource["contentType"]) => value === "comic" ? "HQs e Mangás" : value === "audiobook" ? "Audiolivros" : "Livros"; const updateType = async (): Promise<void> => { const types: GoogleDriveLibrarySource["contentType"][] = ["book", "comic", "audiobook"], current = source.contentType ?? "book", next = types[(types.indexOf(current) + 1) % types.length]!, updated = await this.sources.updateContentType(source.id, next); if (!updated) return; source = updated; entries = entries.map(entry => entry.sourceId === updated.id ? { ...entry, contentType: updated.contentType } : entry); await reclassify(updated); await cache(); drawFilters(); drawGrid(); note.textContent = `${updated.name} foi classificado como ${typeLabel(updated.contentType)}. Sincronizando metadados…`; updateTypeButton(); void sync(updated); }; const updateTypeButton = (): void => { const value = source.contentType ?? "book", comic = value === "comic"; type.replaceChildren(icon(comic ? "comic" : "book"), document.createTextNode(typeLabel(value))); type.setAttribute("aria-label", `Alterar ${labelText}: ${typeLabel(value)}`); }; updateTypeButton(); type.addEventListener("click", () => void updateType()); const remove = this.createElement("button", "personal-drive-library__delete"); remove.type = "button"; remove.setAttribute("aria-label", `Remover ${labelText}`); remove.title = "Remover link"; remove.append(icon("trash")); remove.addEventListener("click", () => void (async () => { if (!window.confirm(`Remover ${labelText}? Ela poderá ser restaurada depois, e os livros baixados não serão apagados.`)) return; await this.sources.remove(source.id, "lixeira"); entries = entries.filter(entry => entry.sourceId !== source.id); sourcesList = sourcesList.filter(value => value.id !== source.id); drawFilters(); drawGrid(); await renderSources(); })()); row.append(folder, label, type, remove); list.append(row); });
+          await cache(); await renderSources(); note.textContent = tr("drive.renamed", { name: renamed.name }); })()); const typeLabel = (value: GoogleDriveLibrarySource["contentType"]) => value === "comic" ? tr("drive.typeComicsLong") : value === "audiobook" ? tr("drive.typeAudiobooks") : tr("drive.books"); const updateType = async (): Promise<void> => { const types: GoogleDriveLibrarySource["contentType"][] = ["book", "comic", "audiobook"], current = source.contentType ?? "book", next = types[(types.indexOf(current) + 1) % types.length]!, updated = await this.sources.updateContentType(source.id, next); if (!updated) return; source = updated; entries = entries.map(entry => entry.sourceId === updated.id ? { ...entry, contentType: updated.contentType } : entry); await reclassify(updated); await cache(); drawFilters(); drawGrid(); note.textContent = tr("drive.reclassified", { name: updated.name, type: typeLabel(updated.contentType) }); updateTypeButton(); void sync(updated); }; const updateTypeButton = (): void => { const value = source.contentType ?? "book", comic = value === "comic"; type.replaceChildren(icon(comic ? "comic" : "book"), document.createTextNode(typeLabel(value))); type.setAttribute("aria-label", tr("drive.changeType", { name: labelText, type: typeLabel(value) })); }; updateTypeButton(); type.addEventListener("click", () => void updateType()); const remove = this.createElement("button", "personal-drive-library__delete"); remove.type = "button"; remove.setAttribute("aria-label", tr("drive.removeNamed", { name: labelText })); remove.title = tr("drive.removeLink"); remove.append(icon("trash")); remove.addEventListener("click", () => void (async () => { if (!window.confirm(tr("drive.removeConfirm", { name: labelText }))) return; await this.sources.remove(source.id, "lixeira"); entries = entries.filter(entry => entry.sourceId !== source.id); sourcesList = sourcesList.filter(value => value.id !== source.id); drawFilters(); drawGrid(); await renderSources(); })()); row.append(folder, label, type, remove); list.append(row); });
         // Removed sources keep their data and can come back as they were.
         const removedRows = await this.sources.removed().catch(() => []);
         if (removedRows.length) {
-          list.append(this.createElement("p", "personal-drive-library__removed-title", "Removidas"));
+          list.append(this.createElement("p", "personal-drive-library__removed-title", tr("drive.removed")));
           removedRows.forEach(({ source: gone }) => {
-            const row = this.createElement("div", "personal-drive-library__source personal-drive-library__source--removed"), folder = this.createElement("span", "personal-drive-library__source-folder"), name = this.createElement("span", "personal-drive-library__source-name", gone.name), restore = this.createElement("button", "personal-drive-library__type", "Restaurar") as HTMLButtonElement;
-            folder.append(icon("folder")); restore.type = "button"; restore.setAttribute("aria-label", `Restaurar ${gone.name}`);
-            restore.addEventListener("click", () => void (async () => { restore.disabled = true; const back = await this.sources.restore(gone.id, "modal").catch(error => { note.textContent = message(error); return null; }); if (!back) { restore.disabled = false; return; } await cache(); await renderSources(); note.textContent = `${back.name} foi restaurada.`; })());
+            const row = this.createElement("div", "personal-drive-library__source personal-drive-library__source--removed"), folder = this.createElement("span", "personal-drive-library__source-folder"), name = this.createElement("span", "personal-drive-library__source-name", gone.name), restore = this.createElement("button", "personal-drive-library__type", tr("drive.restore")) as HTMLButtonElement;
+            folder.append(icon("folder")); restore.type = "button"; restore.setAttribute("aria-label", tr("drive.restoreNamed", { name: gone.name }));
+            restore.addEventListener("click", () => void (async () => { restore.disabled = true; const back = await this.sources.restore(gone.id, "modal").catch(error => { note.textContent = message(error); return null; }); if (!back) { restore.disabled = false; return; } await cache(); await renderSources(); note.textContent = tr("drive.restored", { name: back.name }); })());
             // Excluir definitivamente: only from the trash, after a confirmation that says what
             // stays (the Drive folder and anything downloaded).
             const purge = this.createElement("button", "personal-drive-library__delete personal-drive-library__purge") as HTMLButtonElement; purge.type = "button";
-            purge.setAttribute("aria-label", `Excluir definitivamente ${gone.name}`); purge.title = "Excluir definitivamente"; purge.append(icon("trash"));
+            purge.setAttribute("aria-label", tr("drive.purgeNamed", { name: gone.name })); purge.title = tr("drive.purge"); purge.append(icon("trash"));
             purge.addEventListener("click", () => void (async () => {
-              if (!window.confirm(`Excluir definitivamente "${gone.name}"?\n\nA lista e os dados dela neste aparelho serão apagados e ela não poderá ser restaurada. A pasta no Google Drive e os arquivos já baixados não serão apagados. Depois você pode cadastrar o mesmo link de novo.`)) return;
+              if (!window.confirm(tr("drive.purgeConfirm", { name: gone.name }))) return;
               purge.disabled = true; restore.disabled = true;
               const done = await this.sources.purge(gone.id, "lixeira-definitiva").catch(error => { note.textContent = message(error); return false; });
               if (!done) { purge.disabled = false; restore.disabled = false; return; }
-              await renderSources(); note.textContent = `${gone.name} foi excluída definitivamente. O mesmo link pode ser cadastrado de novo.`;
+              await renderSources(); note.textContent = tr("drive.purged", { name: gone.name });
             })());
             row.append(folder, name, restore, purge); list.append(row);
           });
@@ -339,14 +351,14 @@ export class PersonalDriveLibraryView extends BaseView {
         GoogleDriveLibraryRepository.parse(input.value);
         // The real folder name is read before anything is saved; the person can then rename it
         // and must say whether the folder is Livros or HQs.
-        note.textContent = "Lendo pasta…"; chosen = null; pending = { link: input.value, driveName: "" };
+        note.textContent = tr("drive.readingFolder"); chosen = null; pending = { link: input.value, driveName: "" };
         try {
           const folderName = await this.service.folderName(input.value, new AbortController().signal);
           pending.driveName = folderName; nameInput.value = folderName;
-          note.textContent = `Pasta encontrada: ${folderName}. Escolha Livros, HQs ou Audiolivros.`;
+          note.textContent = tr("drive.folderFound", { name: folderName });
         } catch (error) {
           console.warn(JSON.stringify({ event: "PERSONAL_DRIVE_DESCRIBE_FAILED", reason: error instanceof Error ? error.message : "unknown" }));
-          nameInput.value = ""; note.textContent = "Não foi possível identificar a pasta. Digite um nome e escolha o tipo.";
+          nameInput.value = ""; note.textContent = tr("drive.folderUnknown");
         }
         confirm.hidden = false; updateConfirm(); nameInput.focus();
       } catch (error) { note.textContent = message(error); } finally { submit.disabled = false; } })());
@@ -373,14 +385,14 @@ export class PersonalDriveLibraryView extends BaseView {
   private showDetails(entry: GoogleDriveLibraryEntry, book: Book | undefined, card: { coverUrl?: string } & Pick<DriveItemDetailsInput, "downloaded" | "current" | "watch" | "download" | "open">): void {
     const comic = entry.contentType === "comic", title = cleanText(entry.title) ?? book?.title ?? stripExtension(entry.name);
     const collection = (entry.collectionPath ?? []).map(name => name.trim()).filter(Boolean).join(" › ");
-    const author = cleanText(entry.author) ?? (book?.author && book.author !== "Autor desconhecido" ? cleanText(book.author) : undefined);
+    const author = cleanText(entry.author) ?? (book?.author && book.author !== tr("drive.unknownAuthor") ? cleanText(book.author) : undefined);
     const facts: Array<readonly [string, string]> = [];
-    if (book?.publicationYear) facts.push(["Ano", String(book.publicationYear)]);
-    if (cleanText(book?.volume)) facts.push(["Edição", book!.volume!.trim()]);
-    if (cleanText(book?.series) && book!.series!.trim() !== collection) facts.push(["Série", book!.series!.trim()]);
-    facts.push(["Formato", extension(entry.name).toUpperCase() || "Arquivo"]);
+    if (book?.publicationYear) facts.push([tr("drive.factYear"), String(book.publicationYear)]);
+    if (cleanText(book?.volume)) facts.push([tr("drive.factEdition"), book!.volume!.trim()]);
+    if (cleanText(book?.series) && book!.series!.trim() !== collection) facts.push([tr("drive.factSeries"), book!.series!.trim()]);
+    facts.push([tr("drive.factFormat"), extension(entry.name).toUpperCase() || tr("drive.factFile")]);
     const bytes = Number(entry.size ?? book?.fileSize ?? 0);
-    if (bytes > 0) facts.push(["Tamanho", `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024)} MB`]);
+    if (bytes > 0) facts.push([tr("drive.factSize"), `${new Intl.NumberFormat(I18nManager.shared.locale, { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024)} MB`]);
     this.details.show({
       kind: comic ? "comic" : "book", title, author, facts,
       eyebrow: comic ? collection || cleanText(entry.genre) : cleanText(entry.genre),
@@ -394,24 +406,26 @@ export class PersonalDriveLibraryView extends BaseView {
 }
 function version(entry: GoogleDriveLibraryEntry): string { return entry.modifiedTime ?? `${entry.name}:${entry.size ?? ""}`; }
 function fold(value: string): string { return value.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR").trim(); }
+/** What the reader calls a book: its title, never a storage name such as bk_<64 hex>.epub. */
+function bookLabel(entry: GoogleDriveLibraryEntry): string { return cleanText(entry.title) ?? stripExtension(entry.name); }
 function stripExtension(value: string): string { return value.replace(/\.(pdf|epub|cbr|cbz)$/i, ""); }
 function extension(value: string): string { return value.match(/\.([a-z0-9]+)$/i)?.[1] ?? ""; }
-function message(error: unknown, download = false): string {
+function message(error: unknown): string {
   if (error instanceof GoogleDriveAccessError) return ({
-    DRIVE_ACCOUNT_NOT_AUTHORIZED: "Autorize sua conta Google para acessar esta pasta privada.",
-    DRIVE_FOLDER_FORBIDDEN: "Você não tem permissão para esta pasta.",
-    DRIVE_ITEM_NOT_FOUND: "A pasta não foi encontrada. Confira o link.",
-    DRIVE_CONNECTION_FAILED: "Falha de conexão com o Google Drive.",
-    DRIVE_PUBLIC_KEY_REJECTED: "A chave do Drive público não foi aceita neste aplicativo. Confira as restrições Android.",
-    DRIVE_RATE_LIMITED: "O Google Drive limitou temporariamente as solicitações. Tente novamente em alguns minutos.",
-    DRIVE_DOWNLOAD_REQUIRES_AUTH: "O Google Drive exige autorização para baixar este arquivo.",
+    DRIVE_ACCOUNT_NOT_AUTHORIZED: tr("drive.error.notAuthorized"),
+    DRIVE_FOLDER_FORBIDDEN: tr("drive.error.forbidden"),
+    DRIVE_ITEM_NOT_FOUND: tr("drive.error.notFound"),
+    DRIVE_CONNECTION_FAILED: tr("drive.error.connection"),
+    DRIVE_PUBLIC_KEY_REJECTED: tr("drive.error.keyRejected"),
+    DRIVE_RATE_LIMITED: tr("drive.error.rateLimited"),
+    DRIVE_DOWNLOAD_REQUIRES_AUTH: tr("drive.error.downloadAuth"),
   })[error.code];
-  if (error instanceof DOMException && error.name === "AbortError") return "Sincronização cancelada.";
-  if (error instanceof Error && error.message === "DRIVE_LINK_NOT_FOLDER") return "Cole o link de uma pasta do Google Drive.";
-  if (error instanceof Error && error.message === "DRIVE_SOURCE_NAME_TAKEN") return "Já existe uma fonte com este nome. Escolha outro nome.";
-  if (error instanceof Error && error.message === "DRIVE_SOURCE_LIST_SHRINK") return "A lista de fontes mudou enquanto era salva. Nada foi apagado; tente de novo.";
-  if (error instanceof Error && /invalidLink|link/i.test(error.message)) return "Link inválido.";
-  return download ? "Download bloqueado ou falha de conexão." : "Não foi possível sincronizar a pasta. Tente novamente.";
+  if (error instanceof DOMException && error.name === "AbortError") return tr("drive.error.cancelled");
+  if (error instanceof Error && error.message === "DRIVE_LINK_NOT_FOLDER") return tr("drive.error.notFolder");
+  if (error instanceof Error && error.message === "DRIVE_SOURCE_NAME_TAKEN") return tr("drive.error.nameTaken");
+  if (error instanceof Error && error.message === "DRIVE_SOURCE_LIST_SHRINK") return tr("drive.error.listChanged");
+  if (error instanceof Error && /invalidLink|link/i.test(error.message)) return tr("drive.error.invalidLink");
+  return tr("drive.error.syncFailed");
 }
 function safeErrorDetail(error: unknown): string | null { return error instanceof Error ? error.message.replace(/Bearer\s+[^\s]+|ya29\.[\w.-]+/g, "[redacted]").slice(0, 160) : null; }
 function cleanText(value: unknown): string | undefined { return typeof value === "string" && value.trim() && value !== "undefined" && value !== "null" && value !== "[object Object]" ? value.trim() : undefined; }

@@ -1,6 +1,7 @@
 import type { ImportedFile } from "./BookImporter";
 import { GoogleDriveUrlParser } from "./GoogleDriveUrlParser";
 import { LocalFileImporter } from "./LocalFileImporter";
+import { I18nManager } from "../i18n/I18nManager";
 
 export class FolderUrlError extends Error { public constructor(public readonly folderId: string) { super("Este link aponta para uma pasta. Escolha um arquivo dentro dela."); } }
 export class InvalidUrlError extends Error {}
@@ -14,7 +15,7 @@ export class UrlImporter {
     const parsed = this.parser.parse(url);
     if (parsed.kind === "folder") throw new FolderUrlError(parsed.folderId);
     if (parsed.kind === "file") {
-      if (!this.drive) throw new Error("Este arquivo do Google Drive requer a configuração do acesso Google.");
+      if (!this.drive) throw new Error(I18nManager.shared.t("error.drive.accessNotConfigured"));
       return this.validator.import(await this.drive.downloadFile(parsed.fileId, onProgress), "url");
     }
     if (url.protocol !== "https:" && !(import.meta.env.DEV && url.protocol === "http:")) throw new InvalidUrlError("Use um link HTTPS válido.");

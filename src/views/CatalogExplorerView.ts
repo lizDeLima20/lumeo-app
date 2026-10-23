@@ -63,9 +63,9 @@ export class CatalogExplorerView extends BaseView {
     const controls = this.createElement("div", "catalog__controls");
     const search = this.createElement("input", "input") as HTMLInputElement; search.type = "search"; search.placeholder = this.t("ui.catalog.search"); search.setAttribute("aria-label", this.t("ui.catalog.search"));
     const genreNavigation = this.createElement("div", "catalog__genre-navigation");
-    const previousGenres = this.createElement("button", "catalog__genre-arrow catalog__genre-arrow--previous", "‹"); previousGenres.type = "button"; previousGenres.setAttribute("aria-label", "Gêneros anteriores");
+    const previousGenres = this.createElement("button", "catalog__genre-arrow catalog__genre-arrow--previous", "‹"); previousGenres.type = "button"; previousGenres.setAttribute("aria-label", this.t("catalog.previousGenres"));
     const genres = this.createElement("div", "catalog__genre-carousel"); const availableGenres = new Set<string>(); const genreActions = new Map<string, () => void>();
-    const nextGenres = this.createElement("button", "catalog__genre-arrow catalog__genre-arrow--next", "›"); nextGenres.type = "button"; nextGenres.setAttribute("aria-label", "Próximos gêneros");
+    const nextGenres = this.createElement("button", "catalog__genre-arrow catalog__genre-arrow--next", "›"); nextGenres.type = "button"; nextGenres.setAttribute("aria-label", this.t("catalog.nextGenres"));
     // Selecting a genre is what the section title answers to - never the results that
     // happen to have loaded, which can still be settling from the previous one.
     const selectGenre = (id: string, label: string): void => {
@@ -191,7 +191,7 @@ export class CatalogExplorerView extends BaseView {
   }
   private refreshStatus(genreId: string): void {
     const empty = this.isSearching ? this.searchResults.length === 0 : this.loaded.size === 0;
-    this.status!.textContent = empty ? this.t("ui.catalog.empty") : genreId === "espiritualidade" && this.lastTotal !== undefined ? `${this.loaded.size} de ${this.lastTotal} livros` : "";
+    this.status!.textContent = empty ? this.t("ui.catalog.empty") : genreId === "espiritualidade" && this.lastTotal !== undefined ? this.t("catalog.loadedOfTotal", { loaded: this.loaded.size, total: this.lastTotal }) : "";
   }
   private comicCard(result: DriveCollectionSearchResult): HTMLElement {
     const { collection, entry, listing } = result;

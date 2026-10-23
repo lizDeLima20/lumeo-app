@@ -1,5 +1,6 @@
 import type { ComicVisualContainer } from "./ComicContainerDetector";
 import type { ComicPageHierarchy, ComicRegionHierarchy, ComicScene, ComicTailDirection, ComicTextRegion, ComicVisualElement, NormalizedBounds } from "./ComicInteractionTypes";
+import { I18nManager } from "../../../i18n/I18nManager";
 
 interface PixelSource { width: number; height: number; data: Uint8ClampedArray; }
 
@@ -24,7 +25,7 @@ export function comicHierarchySample(canvas: HTMLCanvasElement, longestSide = 51
   const width = Math.max(1, Math.round(canvas.width * scale)), height = Math.max(1, Math.round(canvas.height * scale));
   const sample = document.createElement("canvas"); sample.width = width; sample.height = height;
   const context = sample.getContext("2d", { willReadFrequently: true });
-  if (!context) throw new Error("Canvas indisponível para hierarquia visual.");
+  if (!context) throw new Error(I18nManager.shared.t("error.canvas.unavailableHierarchy"));
   context.drawImage(canvas, 0, 0, width, height);
   const image = context.getImageData(0, 0, width, height);
   sample.width = sample.height = 0;

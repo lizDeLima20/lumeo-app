@@ -9,6 +9,7 @@ import type { CatalogDownloadService } from "../services/CatalogDownloadService"
 import { NativeBookDownloadError, reportNativeDownloadDiagnostic } from "../services/NativeBookDownload";
 import { UnsupportedFileError } from "../importers/LocalFileImporter";
 import { BaseView } from "./BaseView";
+import { I18nManager } from "../i18n/I18nManager";
 
 export class CatalogBookView extends BaseView {
   public constructor(private readonly catalog: CatalogService, private readonly state: AppState, private readonly bookId: string,
@@ -58,7 +59,7 @@ export class CatalogBookView extends BaseView {
               progress.textContent = total && total > 0 ? `${this.t("ui.catalog.downloading")} ${Math.min(100, Math.round(current * 100 / total))}%` : this.t("ui.catalog.downloading");
             }, controller.signal);
             controller = null;
-            if (downloaded.kind !== "native-file") throw new Error("O download nativo não retornou um arquivo local.");
+            if (downloaded.kind !== "native-file") throw new Error(I18nManager.shared.t("error.catalog.nativeDownloadMissingFile"));
             importedBookId = await this.importSelectedFile(book, link, action, progress, downloaded.file);
             if (importedBookId) { action.disabled = false; action.textContent = this.t("ui.catalog.open"); }
             return;

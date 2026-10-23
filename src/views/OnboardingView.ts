@@ -10,9 +10,9 @@ export class OnboardingView extends BaseView {
   public render(): HTMLElement {
     const section = this.createElement("section", "onboarding page-shell");
     const intro = this.createElement("div", "onboarding__intro");
-    intro.append(this.createElement("span", "eyebrow", "Seu espaço, do seu jeito"),
-      this.createElement("h1", "page-title", `Olá, ${this.userName}!`),
-      this.createElement("p", "onboarding__lead", "Vamos preparar seu ambiente de leitura?"));
+    intro.append(this.createElement("span", "eyebrow", this.t("ui.onboarding.eyebrow")),
+      this.createElement("h1", "page-title", this.t("ui.greeting.hello", { name: this.userName })),
+      this.createElement("p", "onboarding__lead", this.t("ui.onboarding.prepare")));
     const panel = this.createElement("div", "setup-panel");
     const complete = this.createElement("button", "button button--primary setup-complete", this.t("ui.onboarding.finish")); complete.type = "button";
     complete.addEventListener("click", () => this.complete());

@@ -3,6 +3,7 @@ import type { PDFPageProxy } from "pdfjs-dist";
 import { comicPageCollator, isComicPageImagePath, isSafeArchivePath, sniffComicPageMime } from "../../../shared/ComicArchiveEntryFilter";
 import type { ComicPageSource } from "./ComicPageSource";
 import type { ComicStageSize } from "./ComicPageEngine";
+import { I18nManager } from "../../i18n/I18nManager";
 
 type ArchiveFile = { name: string; size: number; extract(): Promise<File> };
 type ArchiveReader = Awaited<ReturnType<typeof Archive.open>>;
@@ -29,26 +30,26 @@ export class ComicArchiveSource implements ComicPageSource {
     const header = new Uint8Array(await blob.slice(0, 8).arrayBuffer());
     const zip = header[0] === 0x50 && header[1] === 0x4b && header[2] === 3 && header[3] === 4;
     const rar = header[0] === 0x52 && header[1] === 0x61 && header[2] === 0x72 && header[3] === 0x21 && header[4] === 0x1a && header[5] === 0x07 && (header[6] === 0 || header[6] === 1);
-    if (!zip && !rar) throw new Error("Arquivo de HQ inválido: assinatura ZIP/RAR ausente.");
-    if ((this.expectedFormat === "cbr" && !rar) || (this.expectedFormat === "cbz" && !zip)) throw new Error("Arquivo de HQ não corresponde à extensão declarada.");
+    if (!zip && !rar) throw new Error(I18nManager.shared.t("error.comic.missingSignature"));
+    if ((this.expectedFormat === "cbr" && !rar) || (this.expectedFormat === "cbz" && !zip)) throw new Error(I18nManager.shared.t("error.comic.extensionMismatch"));
     Archive.init({ workerUrl: `${import.meta.env.BASE_URL}vendor/libarchive/worker-bundle.js` });
     const archive = await Archive.open(blob instanceof File ? blob : new File([blob], zip ? "comic.cbz" : "comic.cbr"));
     try {
-      if (await archive.hasEncryptedData()) throw new Error("HQ protegida por senha não é suportada.");
+      if (await archive.hasEncryptedData()) throw new Error(I18nManager.shared.t("error.comic.passwordUnsupported"));
       const listed = await archive.getFilesArray() as { path: string; file: ArchiveFile }[];
-      if (listed.length > MAX_ENTRIES) throw new Error("HQ contém arquivos demais.");
+      if (listed.length > MAX_ENTRIES) throw new Error(I18nManager.shared.t("error.comic.tooManyFiles"));
       let expanded = 0;
       const pages: Page[] = [];
       for (const item of listed) {
         const path = `${item.path}${item.file.name}`.replace(/\\/g, "/");
-        if (!isSafeArchivePath(path)) throw new Error("HQ contém caminho inseguro.");
+        if (!isSafeArchivePath(path)) throw new Error(I18nManager.shared.t("error.comic.unsafePath"));
         if (!isComicPageImagePath(path)) continue;
-        if (!Number.isFinite(item.file.size) || item.file.size <= 0 || item.file.size > MAX_PAGE_BYTES) throw new Error("Página de HQ excede o limite de tamanho.");
+        if (!Number.isFinite(item.file.size) || item.file.size <= 0 || item.file.size > MAX_PAGE_BYTES) throw new Error(I18nManager.shared.t("error.comic.pageTooLarge"));
         expanded += item.file.size;
-        if (expanded > MAX_EXPANDED_BYTES || expanded / Math.max(blob.size, 1) > 150) throw new Error("HQ excede os limites de descompactação.");
+        if (expanded > MAX_EXPANDED_BYTES || expanded / Math.max(blob.size, 1) > 150) throw new Error(I18nManager.shared.t("error.comic.decompressionLimit"));
         pages.push({ path, file: item.file });
       }
-      if (!pages.length) throw new Error("HQ sem páginas JPEG, PNG ou WebP.");
+      if (!pages.length) throw new Error(I18nManager.shared.t("error.comic.noSupportedPages"));
       pages.sort((a, b) => comicPageCollator.compare(a.path, b.path));
       this.archive = archive; this.pages = pages;
       return pages.length;
@@ -59,14 +60,14 @@ export class ComicArchiveSource implements ComicPageSource {
   public async page(_pageNumber: number): Promise<PDFPageProxy | null> { return null; }
   public async image(pageNumber: number): Promise<Blob> {
     const known = this.decoded.get(pageNumber); if (known) return known;
-    const entry = this.pages[pageNumber - 1]; if (!entry) throw new Error("Página de HQ inexistente.");
+    const entry = this.pages[pageNumber - 1]; if (!entry) throw new Error(I18nManager.shared.t("error.comic.pageMissing"));
     const file = await entry.file.extract();
-    if (file.size <= 0 || file.size > MAX_PAGE_BYTES || file.size !== entry.file.size) throw new Error("Página da HQ incompleta ou excessiva.");
+    if (file.size <= 0 || file.size > MAX_PAGE_BYTES || file.size !== entry.file.size) throw new Error(I18nManager.shared.t("error.comic.pageSizeMismatch"));
     const header = new Uint8Array(await file.slice(0, 16).arrayBuffer());
     const mime = sniffComicPageMime(header);
     const extension = entry.path.split(".").pop()?.toLowerCase();
     if (!mime || (extension === "jpg" || extension === "jpeg" ? mime !== "image/jpeg" : mime !== `image/${extension}`)) {
-      throw new Error("Imagem da HQ não corresponde ao formato declarado.");
+      throw new Error(I18nManager.shared.t("error.comic.formatMismatch"));
     }
     const image = new Blob([file], { type: mime });
     this.decoded.set(pageNumber, image);

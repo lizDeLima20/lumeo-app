@@ -6,9 +6,10 @@ import { Book, type BookContentType } from "../models/Book";
 import type { BookRepository } from "../repositories/BookRepository";
 import type { GenreRepository } from "../repositories/GenreRepository";
 import { GoogleDriveLibraryService, type GoogleLibraryFile } from "../external/GoogleDriveLibraryService";
-import type { ImportManager, ImportMetadata } from "./ImportManager";
+import { DuplicateBookImportError, type ImportManager, type ImportMetadata } from "./ImportManager";
 import type { CoverService } from "./CoverService";
 import { resolvePersonalDriveGenre } from "./PersonalDriveGenreResolver";
+import { I18nManager } from "../i18n/I18nManager";
 
 /** Imports only files the signed-in Google account can read. No cookies, server proxy or
  * catalogue is involved. Folder names are copied into local genres and never written back. */
@@ -20,7 +21,7 @@ export class PersonalDriveImporter {
     await this.drive.prepare();
     if (!this.drive.authorized) await this.drive.connect();
     const parsed = new GoogleDriveUrlParser().parse(link);
-    if (parsed.kind === "invalid") throw new Error("Informe um link válido do Google Drive.");
+    if (parsed.kind === "invalid") throw new Error(I18nManager.shared.t("error.drive.invalidLink"));
     if (parsed.kind === "file") {
       const file = await this.drive.metadata(parsed.fileId, undefined, signal);
       if (file.mimeType === GoogleDriveLibraryService.FOLDER) {
@@ -90,7 +91,13 @@ export class PersonalDriveImporter {
     const title = imported.suggestedTitle || file.name;
     const metadata: ImportMetadata = { title, author: "", genreId: existing?.genreId ?? genre.id,
       readingStatus: "unread", cover: await this.covers.fromBookFile(imported.file, imported.fileType, title), contentType: imported.fileType === "cbr" || imported.fileType === "cbz" ? "comic" : requestedContentType };
-    const book = await this.imports.save(imported, metadata, undefined, { catalogBookId: sourceId, sourceVersion, replaceBookId: existing?.id, signal });
+    // A Drive book is identified by its Drive file, not by its name: two different files with the
+    // same name ("Volume 1.pdf" of two series, two editions in two folders) are both kept. The very
+    // same bytes already in the library (the file is in another source too) are not stored twice:
+    // that book is the one this file opens.
+    let book: Book;
+    try { book = await this.imports.save(imported, metadata, undefined, { catalogBookId: sourceId, sourceVersion, replaceBookId: existing?.id, signal, allowPossibleVersion: true }); }
+    catch (error) { if (!(error instanceof DuplicateBookImportError)) throw error; book = error.decision.book; }
     progress(done + 1, total, file.name, 100); return book;
   }
   private async genre(name: string): Promise<Genre> {

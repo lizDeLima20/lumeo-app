@@ -1,5 +1,6 @@
 import type { PDFPageProxy, RenderTask } from "pdfjs-dist";
 import type { ReaderSettings } from "./ReaderSettingsManager";
+import { I18nManager } from "../i18n/I18nManager";
 
 export interface ReaderStageSize { width: number; height: number; }
 
@@ -26,7 +27,7 @@ export class PdfPageRenderer {
     this.canvas.style.width = `${Math.floor(viewport.width)}px`;
     this.canvas.style.height = `${Math.floor(viewport.height)}px`;
     const context = this.canvas.getContext("2d", { alpha: true });
-    if (!context) throw new Error("Seu navegador não conseguiu preparar a página do PDF.");
+    if (!context) throw new Error(I18nManager.shared.t("error.pdf.renderFailed"));
     const task = page.render({ canvas: this.canvas, canvasContext: context, viewport,
       transform: outputScale === 1 ? undefined : [outputScale, 0, 0, outputScale, 0, 0], background: "rgba(0,0,0,0)" });
     this.activeTask = task;

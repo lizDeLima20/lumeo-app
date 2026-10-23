@@ -13,6 +13,7 @@ import { DuplicateBookDetector, type DuplicateDecision, type IncomingBookIdentit
 import type { OperationRecoveryJournal } from "../recovery/OperationRecoveryJournal";
 import { checkCancelled } from "../external/OneDriveError";
 import { BookDownloadError, StartTelemetry } from "../diagnostics/StartTelemetry";
+import { I18nManager } from "../i18n/I18nManager";
 
 interface BookFileStorage { save(bookId:string,file:Blob):Promise<unknown>; delete(bookId:string):Promise<unknown>; get?(bookId:string):Promise<Blob|null>; saveLima?(bookId:string,file:Blob):Promise<unknown>; }
 
@@ -27,11 +28,11 @@ export class ImportManager {
     private readonly googleDrive?: GoogleDriveImporter, private readonly urlImporter?: UrlImporter,private readonly limaDocuments?:LimaDocumentRepository,private readonly desktopFolder?:DesktopLibraryFolderService,private readonly checksums?:LibraryChecksumRepository) {}
   public select(file: File): Promise<ImportedFile> { return this.importer.import(file); }
   public selectGoogleDrive(folderId?: string, onProgress?: (percent: number | null) => void): Promise<ImportedFile> {
-    if (!this.googleDrive) throw new Error("A importação do Google Drive não está configurada.");
+    if (!this.googleDrive) throw new Error(I18nManager.shared.t("error.import.googleNotConfigured"));
     return this.googleDrive.selectFile(folderId, onProgress);
   }
   public selectUrl(url: string, onProgress?: (percent: number | null) => void): Promise<ImportedFile> {
-    if (!this.urlImporter) throw new Error("A importação por link não está configurada.");
+    if (!this.urlImporter) throw new Error(I18nManager.shared.t("error.import.linkNotConfigured"));
     return this.urlImporter.importFromUrl(url, onProgress);
   }
   public async inspect(imported: ImportedFile, metadata: Pick<ImportMetadata,"title"|"author"|"volume"|"series"|"publicationYear">): Promise<DuplicateDecision> {
@@ -93,7 +94,7 @@ export class ImportManager {
     if (typeof navigator === "undefined" || !navigator.storage?.estimate) return;
     const estimate = await navigator.storage.estimate();
     if (estimate.quota !== undefined && estimate.usage !== undefined && fileSize > estimate.quota - estimate.usage) {
-      throw new Error("Não há espaço disponível suficiente para importar este livro.");
+      throw new Error(I18nManager.shared.t("error.import.insufficientSpace"));
     }
   }
   private async checksum(blob:Blob):Promise<string>{const digest=await crypto.subtle.digest("SHA-256",await blob.arrayBuffer());return[...new Uint8Array(digest)].map(value=>value.toString(16).padStart(2,"0")).join("");}

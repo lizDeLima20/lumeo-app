@@ -2,6 +2,7 @@ import { IndexedDbService, STORE_NAMES } from "./IndexedDbService";
 import { LimaDeserializer } from "../lima/LimaDeserializer";
 import { LimaSerializer } from "../lima/LimaSerializer";
 import type { LimaDocument } from "../lima/LimaDocument";
+import { I18nManager } from "../i18n/I18nManager";
 interface HandleRow { key: "desktop-folder"; handle: FileSystemDirectoryHandle; }
 type PermissionHandle = FileSystemDirectoryHandle & { queryPermission(options?: { mode: "readwrite" }): Promise<PermissionState>; requestPermission(options?: { mode: "readwrite" }): Promise<PermissionState> };
 interface DirectoryPickerWindow extends Window { showDirectoryPicker(options?: { mode?: "readwrite" }): Promise<FileSystemDirectoryHandle>; }
@@ -9,7 +10,7 @@ type IterableDirectory = FileSystemDirectoryHandle & { values(): AsyncIterableIt
 export class DesktopLibraryFolderService {
   public constructor(private readonly database: IndexedDbService) {}
   public get supported(): boolean { return typeof window !== "undefined" && "showDirectoryPicker" in window; }
-  public async choose(): Promise<FileSystemDirectoryHandle> { if (!this.supported) throw new Error("A seleção de pasta não é suportada neste navegador."); const handle = await (window as unknown as DirectoryPickerWindow).showDirectoryPicker({ mode: "readwrite" }); await this.database.request(STORE_NAMES.librarySettings, "readwrite", store => store.put({ key: "desktop-folder", handle } satisfies HandleRow)); await this.ensureStructure(handle); return handle; }
+  public async choose(): Promise<FileSystemDirectoryHandle> { if (!this.supported) throw new Error(I18nManager.shared.t("error.folder.unsupported")); const handle = await (window as unknown as DirectoryPickerWindow).showDirectoryPicker({ mode: "readwrite" }); await this.database.request(STORE_NAMES.librarySettings, "readwrite", store => store.put({ key: "desktop-folder", handle } satisfies HandleRow)); await this.ensureStructure(handle); return handle; }
   public async stored(): Promise<FileSystemDirectoryHandle | null> { const row = await this.database.request<HandleRow | undefined>(STORE_NAMES.librarySettings, "readonly", store => store.get("desktop-folder")); return row?.handle ?? null; }
   public async permission(request = false): Promise<PermissionState> { const handle = await this.stored() as PermissionHandle | null; if (!handle) return "denied"; const current = await handle.queryPermission({ mode: "readwrite" }); return current === "prompt" && request ? handle.requestPermission({ mode: "readwrite" }) : current; }
   public async save(document: LimaDocument): Promise<void> { const root = await this.stored(); if (!root || await this.permission() !== "granted") return; const books = await root.getDirectoryHandle("livros", { create: true }), file = await books.getFileHandle(`${this.safe(document.metadata.title)}-${document.metadata.id}.lima`, { create: true }), writable = await file.createWritable(), bytes = new LimaSerializer().serialize(document); await writable.write(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/x-lima-book" })); await writable.close(); }

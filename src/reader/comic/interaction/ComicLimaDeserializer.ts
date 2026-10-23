@@ -1,6 +1,7 @@
 import { strFromU8, unzipSync } from "fflate";
 import type { ComicDocument, ComicLimaManifest, ComicMetadata, ComicPage, ComicPageHierarchy, ComicTextRegion } from "./ComicInteractionTypes";
 import { ComicInteractionValidator } from "./ComicInteractionValidator";
+import { I18nManager } from "../../../i18n/I18nManager";
 
 interface InteractionFile {
   pageIndex: number;
@@ -34,7 +35,7 @@ export class ComicLimaDeserializer {
     new ComicInteractionValidator().validateDocument(document);
     for (const page of pages) for (const region of page.regions) {
       for (const path of [region.assetPath, region.maskPath]) if (path && !archive[path]?.length) {
-        throw new Error("Asset original da região ausente no pacote LIMA.");
+        throw new Error(I18nManager.shared.t("error.lima.missingRegionAsset"));
       }
     }
     return document;
@@ -50,6 +51,6 @@ export class ComicLimaDeserializer {
   }
 
   private safePath(path: string): void {
-    if (path.startsWith("/") || path.split("/").includes("..")) throw new Error("Container LIMA de HQ contém caminho inseguro.");
+    if (path.startsWith("/") || path.split("/").includes("..")) throw new Error(I18nManager.shared.t("error.lima.comicUnsafePath"));
   }
 }

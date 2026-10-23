@@ -27,7 +27,7 @@ export class ReaderSettingsPanel {
     this.backdrop.type = "button"; this.backdrop.className = "reader-settings-backdrop"; this.backdrop.setAttribute("aria-label", this.i18n.t("reader.closeSettings")); this.backdrop.addEventListener("click", () => this.close());
     const panel = document.createElement("aside"); this.panel = panel; panel.id = "reader-settings"; panel.className = "reader-settings"; panel.setAttribute("aria-hidden", "true"); panel.setAttribute("aria-label", this.i18n.t("reader.customization"));
     const header = document.createElement("header"); header.className = "reader-settings__header"; const heading=document.createElement("h2");heading.textContent=this.i18n.t("reader.reading");header.append(heading);
-    const close = this.button("×", "Fechar painel", () => this.close()); close.className = "reader-settings__close"; header.append(close); panel.append(header);
+    const close = this.button("×", this.i18n.t("reader.closeSettings"), () => this.close()); close.className = "reader-settings__close"; header.append(close); panel.append(header);
     panel.append(this.languageSection(), this.textSection(), this.paperSection(), this.layoutSection(), this.imageSection(), this.animationSection());
     if (this.pomodoro) panel.append(this.pomodoroSection(this.pomodoro));
     if (ReadingReminder.available) panel.append(this.readingReminderSection());
@@ -167,7 +167,7 @@ export class ReaderSettingsPanel {
       });
       if (visibleBooks < this.reminderBooks.length) {
         const more = document.createElement("button"); more.type = "button"; more.className = "reader-reminder-settings__more";
-        more.textContent = `Mostrar mais (${this.reminderBooks.length - visibleBooks})`;
+        more.textContent = this.i18n.t("reader.reminder.showMoreCount", { count: this.reminderBooks.length - visibleBooks });
         more.addEventListener("click", () => { visibleBooks = Math.min(this.reminderBooks.length, visibleBooks + 30); renderBooks(); }); books.append(more);
       }
       updateTargetState();

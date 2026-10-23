@@ -1,6 +1,7 @@
 import { getDocument, GlobalWorkerOptions, PasswordResponses, type PDFDocumentLoadingTask,
   type PDFDocumentProxy, type PDFPageProxy } from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { I18nManager } from "../i18n/I18nManager";
 
 GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -24,14 +25,14 @@ export class PdfReaderEngine {
     };
     try { this.document = await this.loadingTask.promise; }
     catch (error) {
-      if (this.passwordCancelled) throw new PdfPasswordCancelledError("A abertura do PDF protegido foi cancelada.");
+      if (this.passwordCancelled) throw new PdfPasswordCancelledError(I18nManager.shared.t("error.pdf.passwordCancelled"));
       throw error;
     }
   }
 
   public get totalPages(): number { return this.document?.numPages ?? 0; }
   public async getPage(pageNumber: number): Promise<PDFPageProxy> {
-    if (!this.document) throw new Error("O PDF ainda não foi carregado.");
+    if (!this.document) throw new Error(I18nManager.shared.t("error.pdf.notLoaded"));
     return this.document.getPage(pageNumber);
   }
   public async close(): Promise<void> {

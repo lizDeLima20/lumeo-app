@@ -1,5 +1,6 @@
 import type { CatalogDownloadLink } from "./CatalogService";
 import { CapacitorNativeBookDownloadBridge, isNativeAndroidBookDownloadRuntime } from "./NativeBookDownload";
+import { I18nManager } from "../i18n/I18nManager";
 
 export type CatalogDownloadProgress = (downloadedBytes: number, totalBytes: number | null) => void;
 
@@ -21,7 +22,7 @@ export class WebCatalogDownloadService implements CatalogDownloadService {
 
   public async download(link: CatalogDownloadLink, _onProgress?: CatalogDownloadProgress, signal?: AbortSignal): Promise<CatalogDownloadReceipt> {
     if (signal?.aborted) throw new DOMException("Download cancelado.", "AbortError");
-    if (typeof document === "undefined") throw new Error("O download do navegador não está disponível neste ambiente.");
+    if (typeof document === "undefined") throw new Error(I18nManager.shared.t("error.download.unavailable"));
     const anchor = document.createElement("a");
     anchor.href = link.downloadUrl;
     anchor.download = link.expectedFilename;

@@ -407,7 +407,7 @@ export class App {
   }
 
   private async prepareCatalogDownload(catalogBook: CatalogBookData, link: CatalogDownloadLink): Promise<void> {
-    if (link.format !== "pdf" && link.format !== "epub") throw new Error("O catálogo legado aceita apenas PDF ou EPUB.");
+    if (link.format !== "pdf" && link.format !== "epub") throw new Error(I18nManager.shared.t("error.catalog.legacyFormatOnly"));
     const folders = new FileSystemFolderManager(this.database);
     await folders.savePending({ bookId: catalogBook.bookId, driveFileId: link.driveFileId, title: link.title, author: link.author,
       format: link.format, expectedFilename: link.expectedFilename, coverUrl: link.coverUrl ?? null, catalogGenre: link.genreName, sha256: link.sha256 ?? null });

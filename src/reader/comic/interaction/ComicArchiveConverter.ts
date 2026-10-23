@@ -4,6 +4,7 @@ import { comicSourceKey } from "./ComicConversionIdentity";
 import { comicReadPageAnalysis } from "./ComicPageRegionReader";
 import { ComicRegionOcr } from "./ComicRegionOcr";
 import type { ComicPdfInput } from "./ComicPdfConverter";
+import { I18nManager } from "../../../i18n/I18nManager";
 
 /** Uses the same container detection, OCR, cutouts and LIMA package as PDF comics. */
 export class ComicArchiveConverter {
@@ -32,7 +33,7 @@ export class ComicArchiveConverter {
             canvas.width = Math.max(1, Math.round(bitmap.width * scale));
             canvas.height = Math.max(1, Math.round(bitmap.height * scale));
             const context = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
-            if (!context) throw new Error("Canvas indisponível para HQ.");
+            if (!context) throw new Error(I18nManager.shared.t("error.canvas.unavailableComic"));
             context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height);
             context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
             const bytes = new Uint8Array(await image.arrayBuffer());
@@ -44,7 +45,7 @@ export class ComicArchiveConverter {
           } finally { bitmap.close(); }
         },
         regionProvider: async (index, asset, signal) => {
-          if (!canvas) throw new Error("Página não renderizada.");
+          if (!canvas) throw new Error(I18nManager.shared.t("error.comic.pageNotRendered"));
           asset.interactionAssets = [];
           return comicReadPageAnalysis(canvas, index, ocr, signal, input.contentType === "manga" ? "rtl" : "ltr", asset.interactionAssets, undefined, asset);
         },
