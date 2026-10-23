@@ -276,9 +276,10 @@ function createCtaTarget(location) {
   return { closest: (selector) => selector === "[data-sales-cta]" ? button : null };
 }
 
-test("Pixel vazio não injeta script nem cria fbq", async () => {
+test("Pixel real está configurado e valor vazio continua desativando o carregamento", async () => {
   const configModule = await import(pathToFileURL(resolve(pageRoot, "js/hqs-tracking-config.js")).href);
-  assert.equal(configModule.META_PIXEL_ID, "");
+  assert.equal(configModule.META_PIXEL_ID, "1633181614853911");
+  assert.match(sharedJs, /metaPixelId: "1633181614853911"/);
   const scripts = [];
   const windowRef = {};
   const documentRef = {
