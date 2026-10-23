@@ -45,8 +45,8 @@ test("relatos de HQs são reativados, separados e identificados como reconstitu�
   assert.match(html, /RELATOS DE LEITORES · MENSAGENS RECONSTITUÍDAS/);
   assert.match(html, /As imagens não são capturas originais das conversas/);
   assert.match(html, /renato\.webp/);
-  assert.match(html, /pamela-hqs\.png/);
-  assert.match(html, /rodrigo-hqs\.png/);
+  assert.match(html, /pamela-hqs\.webp/);
+  assert.match(html, /rodrigo-hqs\.webp/);
   assert.equal((html.match(/data-testimonial-avatar="whatsapp"/g) || []).length, 1);
   assert.equal((html.match(/data-testimonial-avatar="android"/g) || []).length, 2);
   assert.doesNotMatch(html, /rafaela\.webp|milena\.webp|jorge\.webp|antonio\.webp/);

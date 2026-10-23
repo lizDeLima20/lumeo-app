@@ -274,16 +274,22 @@ function mountTutorials() {
 function controlReaderVideo() {
   const video = document.querySelector("[data-hqs-reader-demo]");
   if (!video) return;
+  const hydrate = () => {
+    if (video.dataset.hydrated) return;
+    video.querySelectorAll("source[data-src]").forEach((source) => { source.src = source.dataset.src; });
+    video.dataset.hydrated = "true";
+    video.load();
+  };
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const sync = () => {
     if (reducedMotion.matches) video.pause();
-    else video.play().catch(() => {});
+    else { hydrate(); video.play().catch(() => {}); }
   };
   reducedMotion.addEventListener("change", sync);
   if (!("IntersectionObserver" in window)) { sync(); return; }
   new IntersectionObserver(([entry]) => {
     if (reducedMotion.matches) return;
-    if (entry.isIntersecting && entry.intersectionRatio >= .35) video.play().catch(() => {});
+    if (entry.isIntersecting && entry.intersectionRatio >= .35) { hydrate(); video.play().catch(() => {}); }
     else video.pause();
   }, { threshold: [.1, .35] }).observe(video);
 }
