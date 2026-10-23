@@ -109,14 +109,18 @@ test("sem promessa de pagamento único", () => {
   assert.doesNotMatch(relevantSource, /pagamento\s+único/i);
 });
 
-test("hero usa aparelhos estáticos recortados, sem vídeos", () => {
-  assert.match(html, /lumeo-hqs-tablet-static-v1\.webp/);
+test("hero usa vídeo real no tablet e celular estático", () => {
+  const videoTag = html.match(/<video[^>]*poster="assets\/tutorials\/hqs\/lumeo-hqs-tablet-loop-3s-final-poster\.webp"[^>]*>/i)?.[0];
+  assert.ok(videoTag, "Vídeo do tablet não encontrado");
+  for (const attribute of ["autoplay", "muted", "loop", "playsinline"]) assert.match(videoTag, new RegExp(`\\b${attribute}\\b`, "i"));
+  assert.match(html, /lumeo-hqs-tablet-loop-3s-final\.mp4/);
   assert.match(html, /lumeo-hqs-phone-static-v1\.webp/);
-  assert.match(html, /class="hqs-hero__tablet"/);
+  assert.match(html, /class="hqs-hero__tablet-frame"/);
   assert.match(html, /class="hqs-hero__phone"/);
-  assert.doesNotMatch(html, /data-hqs-hero-video|data-hqs-hero-phone-video/);
-  assert.doesNotMatch(hqsJs, /mountHeroVideo/);
   assert.match(premiumHeroCss, /lumeo-hqs-futuristic-background-v2\.webp/);
+  const features = html.match(/<ul class="hqs-reference-features"[\s\S]*?<\/ul>/)?.[0] || "";
+  assert.equal((features.match(/<li>/g) || []).length, 4);
+  assert.match(features, /MP3[\s\S]*Via Google Drive/);
 });
 
 test("seção de leitura contém uma única nota", () => {
@@ -382,17 +386,19 @@ test("UTMs e fbclid são mesclados no checkout sem duplicação", () => {
   assert.equal(merged.searchParams.getAll("utm_source").length, 1);
 });
 
-test("assets estáticos do hero existem e têm tamanho otimizado", () => {
+test("assets otimizados do hero existem e respeitam a meta", () => {
   const assets = [
-    "assets/optimized/lumeo-hqs-tablet-static-v1.webp",
+    "assets/tutorials/hqs/lumeo-hqs-tablet-loop-3s-final.mp4",
+    "assets/tutorials/hqs/lumeo-hqs-tablet-loop-3s-final-poster.webp",
     "assets/optimized/lumeo-hqs-phone-static-v1.webp",
     "assets/optimized/lumeo-hqs-futuristic-background-v2.webp",
+    "assets/optimized/lumeo-hqs-original-gold-underline.webp",
   ];
   assets.forEach((asset) => {
     assert.equal(existsSync(resolve(pageRoot, asset)), true, `Asset ausente: ${asset}`);
     assert.ok(statSync(resolve(pageRoot, asset)).size < 500_000, `Asset acima da meta: ${asset}`);
   });
-  assert.match(html, /lumeo-hqs-tablet-static-v1\.webp/);
+  assert.match(html, /lumeo-hqs-tablet-loop-3s-final\.mp4/);
   assert.match(html, /lumeo-hqs-phone-static-v1\.webp/);
 });
 
