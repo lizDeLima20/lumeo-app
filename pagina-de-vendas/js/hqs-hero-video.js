@@ -18,8 +18,9 @@ export function mountHeroVideo({
   windowRef = globalThis.window,
   navigatorRef = globalThis.navigator,
   Observer = globalThis.IntersectionObserver,
+  selector = "[data-hqs-hero-video]",
 } = {}) {
-  const video = root?.querySelector?.("[data-hqs-hero-video]");
+  const video = root?.querySelector?.(selector);
   if (!video || !windowRef) return () => {};
   const reducedMotion = windowRef.matchMedia?.("(prefers-reduced-motion: reduce)") || { matches: false, addEventListener() {} };
   const connection = navigatorRef?.connection || navigatorRef?.mozConnection || navigatorRef?.webkitConnection;

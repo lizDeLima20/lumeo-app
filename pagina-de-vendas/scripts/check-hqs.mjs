@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -10,13 +9,13 @@ const read = (relativePath) => readFileSync(resolve(pageRoot, relativePath), "ut
 const html = read("index-hqs.html");
 const hqsCss = read("css/hqs.css");
 const conversionCss = read("css/hqs-conversion.css");
+const premiumHeroCss = read("css/hqs-premium-hero.css");
 const hqsJs = read("js/hqs.js");
 const mobileCtaJs = read("js/mobile-cta.js");
 const trackingJs = read("js/hqs-tracking.js");
 const trackingConfigJs = read("js/hqs-tracking-config.js");
-const heroVideoJs = read("js/hqs-hero-video.js");
 const sharedJs = read("js/shared.js");
-const relevantSource = [html, hqsCss, conversionCss, hqsJs, mobileCtaJs, trackingJs, trackingConfigJs, heroVideoJs].join("\n");
+const relevantSource = [html, hqsCss, conversionCss, premiumHeroCss, hqsJs, mobileCtaJs, trackingJs, trackingConfigJs].join("\n");
 
 const tests = [];
 const test = (name, callback) => tests.push([name, callback]);
@@ -27,10 +26,12 @@ const normalizeText = (markup) => markup
   .trim();
 const sha256 = (relativePath) => createHash("sha256").update(readFileSync(resolve(pageRoot, relativePath))).digest("hex");
 
-test("headline AIDA exata", () => {
+test("headline da hero é a copy escolhida", () => {
   const headline = html.match(/<h1\s+id="sales-title"[^>]*>([\s\S]*?)<\/h1>/)?.[1];
   assert.ok(headline, "H1 #sales-title não encontrado");
-  assert.equal(normalizeText(headline), "Sua coleção de HQs merece uma estante no Android.");
+  assert.equal(normalizeText(headline), "Depois que você vê suas HQs no Lumeo, não quer voltar atrás.");
+  assert.match(html, /Organize, visualize e leia sua coleção com uma experiência muito mais envolvente no Android\./);
+  assert.match(html, /De <del>R\$ 39,99<\/del><br \/>por<\/span><strong data-sales-price>R\$ 9,99<\/strong>/);
 });
 
 test("hero sem altura baseada na viewport", () => {
@@ -58,11 +59,11 @@ test("não anuncia garantia ou condição comercial não confirmada", () => {
 });
 
 test("proposta HQs é separada e descreve limitações do recurso experimental", () => {
-  assert.match(html, /Sua coleção de HQs merece uma/);
-  assert.match(html, /QUERO ORGANIZAR MINHAS HQs/);
+  assert.match(html, /Depois que você vê\s*<br\s*\/?>(?:\s*)suas HQs no Lumeo,/);
+  assert.match(html, /EU QUERO O MELHOR/);
   // Os mesmos 3 bônus da página de Livros (decisão do proprietário), entregues à parte.
-  assert.match(html, /bônus não ficam pré-instalados no aplicativo/i);
-  assert.match(html, /links do Google Drive são entregues separadamente após a compra/i);
+  assert.match(html, /bônus são entregues por link separado e não ficam pré-instalados no aplicativo/i);
+  assert.match(html, /Entregues por link separado do Google Drive após a compra/i);
   assert.match(html, /ampliação automatizada de balões é experimental/i);
   assert.doesNotMatch(html, /IA que amplia|inteligência artificial que reconhece/i);
   for (const bonus of [/coleção de HQs da Turma da Mônica/i, /1\.500 livros digitais/i, /200 audiolivros/i]) assert.match(html, bonus);
@@ -108,16 +109,14 @@ test("sem promessa de pagamento único", () => {
   assert.doesNotMatch(relevantSource, /pagamento\s+único/i);
 });
 
-test("vídeo decorativo do hero configurado", () => {
-  const videoTag = html.match(/<video[^>]*data-hqs-hero-video[^>]*>/i)?.[0];
-  assert.ok(videoTag, "Vídeo do hero não encontrado");
-  for (const attribute of ["autoplay", "muted", "loop", "playsinline", "poster", "aria-hidden"]) {
-    assert.match(videoTag, new RegExp(`\\b${attribute}(?:=|\\s|>)`, "i"), `Atributo ${attribute} ausente no vídeo do hero`);
-  }
-  assert.match(videoTag, /preload="metadata"/i);
-  const sourceTag = html.match(/<source[^>]*data-src="assets\/tutorials\/hqs\/lumeo-hqs-baloes-hero\.mp4"[^>]*>/i)?.[0];
-  assert.ok(sourceTag, "Source otimizado e adiado do hero não encontrado");
-  assert.doesNotMatch(sourceTag, /\ssrc=/i, "O vídeo do hero seria carregado antes da verificação de economia de dados");
+test("hero usa aparelhos estáticos recortados, sem vídeos", () => {
+  assert.match(html, /lumeo-hqs-tablet-static-v1\.webp/);
+  assert.match(html, /lumeo-hqs-phone-static-v1\.webp/);
+  assert.match(html, /class="hqs-hero__tablet"/);
+  assert.match(html, /class="hqs-hero__phone"/);
+  assert.doesNotMatch(html, /data-hqs-hero-video|data-hqs-hero-phone-video/);
+  assert.doesNotMatch(hqsJs, /mountHeroVideo/);
+  assert.match(premiumHeroCss, /lumeo-hqs-futuristic-background-v2\.webp/);
 });
 
 test("seção de leitura contém uma única nota", () => {
@@ -192,14 +191,12 @@ test("estilos base da página de Livros preservados", () => {
 });
 
 const trackingModule = await import(pathToFileURL(resolve(pageRoot, "js/hqs-tracking.js")).href);
-const heroVideoModule = await import(pathToFileURL(resolve(pageRoot, "js/hqs-hero-video.js")).href);
 const {
   CHECKOUT_SESSION_KEY,
   createMetaPixel,
   mergeCheckoutAttribution,
   mountHqsTracking,
 } = trackingModule;
-const { mountHeroVideo } = heroVideoModule;
 
 function createTrackingEnvironment({ pixelId = "TEST-PIXEL", checkoutUrl = "", storageMap = new Map(), hasConsent = () => true } = {}) {
   const scripts = [];
@@ -385,65 +382,18 @@ test("UTMs e fbclid são mesclados no checkout sem duplicação", () => {
   assert.equal(merged.searchParams.getAll("utm_source").length, 1);
 });
 
-test("saveData mantém apenas o poster e não hidrata o vídeo", () => {
-  const source = { dataset: { src: "assets/tutorials/hqs/lumeo-hqs-baloes-hero.mp4" } };
-  const video = {
-    dataset: {},
-    poster: "assets/tutorials/hqs/lumeo-hqs-baloes-hero-poster.webp",
-    querySelectorAll: () => [source],
-    load() { this.loadCalls = (this.loadCalls || 0) + 1; },
-    pause() { this.pauseCalls = (this.pauseCalls || 0) + 1; },
-    play() { this.playCalls = (this.playCalls || 0) + 1; return Promise.resolve(); },
-  };
-  const root = {
-    hidden: false,
-    querySelector: () => video,
-    addEventListener() {},
-    removeEventListener() {},
-  };
-  const windowRef = { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) };
-  mountHeroVideo({ root, windowRef, navigatorRef: { connection: { saveData: true, effectiveType: "4g" } }, Observer: null });
-  assert.equal(source.src, undefined);
-  assert.equal(video.loadCalls || 0, 0);
-  assert.equal(video.playCalls || 0, 0);
-  assert.equal(video.dataset.posterOnly, "true");
-  assert.match(video.poster, /lumeo-hqs-baloes-hero-poster\.webp$/);
-  assert.match(conversionCss, /video\[data-poster-only="true"\]\s*\{[^}]*opacity:\s*0/s);
-  assert.match(conversionCss, /\.hqs-hero__phone\s*\{[^}]*lumeo-hqs-baloes-hero-poster\.webp/s);
-});
-
-test("assets otimizados do hero existem e respeitam as metas", () => {
-  const videoPath = resolve(pageRoot, "assets/tutorials/hqs/lumeo-hqs-baloes-hero.mp4");
-  const posterPath = resolve(pageRoot, "assets/tutorials/hqs/lumeo-hqs-baloes-hero-poster.webp");
-  assert.equal(existsSync(videoPath), true);
-  assert.equal(existsSync(posterPath), true);
-  const videoSize = statSync(videoPath).size;
-  const posterSize = statSync(posterPath).size;
-  if (videoSize > 1_200_000) console.warn(`⚠ vídeo do hero acima da meta: ${videoSize} bytes`);
-  if (posterSize > 60_000) console.warn(`⚠ poster do hero acima da meta: ${posterSize} bytes`);
-  assert.match(html, /poster="assets\/tutorials\/hqs\/lumeo-hqs-baloes-hero-poster\.webp"/);
-});
-
-test("vídeo otimizado é H.264/yuv420p, curto e sem áudio", () => {
-  const probe = spawnSync("ffprobe", [
-    "-v", "error",
-    "-show_entries", "format=duration,size",
-    "-show_entries", "stream=codec_type,codec_name,width,height,pix_fmt",
-    "-of", "json",
-    resolve(pageRoot, "assets/tutorials/hqs/lumeo-hqs-baloes-hero.mp4"),
-  ], { encoding: "utf8" });
-  if (probe.error?.code === "ENOENT") {
-    console.warn("⚠ ffprobe indisponível; validação técnica do vídeo ignorada");
-    return;
-  }
-  assert.equal(probe.status, 0, probe.stderr);
-  const metadata = JSON.parse(probe.stdout);
-  const video = metadata.streams.find((stream) => stream.codec_type === "video");
-  assert.equal(video.codec_name, "h264");
-  assert.equal(video.pix_fmt, "yuv420p");
-  assert.ok(video.width <= 540);
-  assert.ok(Number(metadata.format.duration) >= 4 && Number(metadata.format.duration) <= 8);
-  assert.equal(metadata.streams.some((stream) => stream.codec_type === "audio"), false);
+test("assets estáticos do hero existem e têm tamanho otimizado", () => {
+  const assets = [
+    "assets/optimized/lumeo-hqs-tablet-static-v1.webp",
+    "assets/optimized/lumeo-hqs-phone-static-v1.webp",
+    "assets/optimized/lumeo-hqs-futuristic-background-v2.webp",
+  ];
+  assets.forEach((asset) => {
+    assert.equal(existsSync(resolve(pageRoot, asset)), true, `Asset ausente: ${asset}`);
+    assert.ok(statSync(resolve(pageRoot, asset)).size < 500_000, `Asset acima da meta: ${asset}`);
+  });
+  assert.match(html, /lumeo-hqs-tablet-static-v1\.webp/);
+  assert.match(html, /lumeo-hqs-phone-static-v1\.webp/);
 });
 
 test("assets anteriores usados pela página permanecem inalterados", () => {

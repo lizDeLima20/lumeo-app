@@ -1,7 +1,6 @@
 import { SALES_CONFIG, bindCommercialActions, money, mountHeader, openModal } from "./shared.js";
 import { mountMobileCtaVisibility } from "./mobile-cta.js";
 import { mountAnalyticsConsent } from "./sales-consent.js";
-import { mountHeroVideo } from "./hqs-hero-video.js";
 import { mountHqsTracking } from "./hqs-tracking.js";
 import { mountTestimonials } from "./testimonials-carousel.js";
 
@@ -299,5 +298,4 @@ mountFaq();
 mountTestimonials();
 mountTutorials();
 controlReaderVideo();
-mountHeroVideo();
 mountMobileCtaVisibility();
