@@ -1,17 +1,13 @@
+import { mountHqsMarquee } from "./hqs-marquee.js?v=20261024-4";
+
+// Bônus andam para a direita, no sentido contrário ao carrossel de depoimentos.
 export function mountHqsBonusCarousel(root = document) {
   const track = root.querySelector("[data-hqs-bonus-track]");
-  const cards = [...(track?.querySelectorAll("[data-hqs-bonus-card]") || [])];
-  if (!track || cards.length < 2 || track.dataset.marqueeMounted === "true") return;
-
-  track.dataset.marqueeMounted = "true";
-  cards.forEach((card) => {
-    const clone = card.cloneNode(true);
-    clone.removeAttribute("data-hqs-bonus-card");
-    clone.setAttribute("aria-hidden", "true");
-    clone.setAttribute("inert", "");
-    clone.dataset.hqsBonusClone = "true";
-    track.append(clone);
+  mountHqsMarquee({
+    viewport: track?.closest(".hqs-bonus-premium__viewport"),
+    track,
+    cardSelector: "[data-hqs-bonus-card]",
+    direction: 1,
+    speed: 26,
   });
-
-  window.requestAnimationFrame(() => track.classList.add("is-marquee-ready"));
 }

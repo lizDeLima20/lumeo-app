@@ -87,12 +87,20 @@ body[data-sales-catalog="hqs"] .hqs-bonus-premium__track {
   will-change: transform;
 }
 
-body[data-sales-catalog="hqs"] .hqs-bonus-premium__track.is-marquee-ready { animation: hqs-bonus-marquee-right 34s linear infinite; }
-
-@keyframes hqs-bonus-marquee-right {
-  from { transform: translate3d(calc(-50% - .36rem), 0, 0); }
-  to { transform: translate3d(0, 0, 0); }
+/* Carrosséis em loop (bônus e depoimentos): o movimento e o arraste vêm de js/hqs-marquee.js.
+   pan-y deixa o gesto vertical para a página; o horizontal chega ao JS como pointer events. */
+body[data-sales-catalog="hqs"] .hqs-marquee {
+  overflow: hidden;
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
+
+body[data-sales-catalog="hqs"] .hqs-marquee.is-dragging { cursor: grabbing; }
+body[data-sales-catalog="hqs"] .hqs-marquee img { -webkit-user-drag: none; }
+body[data-sales-catalog="hqs"] .hqs-marquee__track { will-change: transform; }
 
 body[data-sales-catalog="hqs"] .hqs-bonus-card {
   position: relative;
@@ -208,8 +216,6 @@ body[data-sales-catalog="hqs"] .hqs-bonus-premium__cta:active { transform: trans
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body[data-sales-catalog="hqs"] .hqs-bonus-premium__viewport { overflow-x: auto; mask-image: none; scrollbar-width: thin; }
-  body[data-sales-catalog="hqs"] .hqs-bonus-premium__track.is-marquee-ready { animation: none; }
   body[data-sales-catalog="hqs"] .hqs-bonus-card,
   body[data-sales-catalog="hqs"] .hqs-bonus-premium__cta { transition: none; }
 }

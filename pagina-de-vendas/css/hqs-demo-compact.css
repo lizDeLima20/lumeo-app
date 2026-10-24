@@ -35,20 +35,25 @@ body[data-sales-catalog="hqs"] .hqs-tutorials .hqs-heading > p:not(.sales-eyebro
 body[data-sales-catalog="hqs"] .hqs-tutorials__rail {
   display: grid;
   width: 100%;
-  grid-auto-columns: min(72vw, 15rem);
+  /* Um card inteiro por vez no celular; o snap para cada card na posição certa. */
+  grid-auto-columns: 100%;
   grid-auto-flow: column;
-  gap: .75rem;
+  gap: 1rem;
   margin: 1rem 0 0;
-  padding: .1rem max(1rem, calc((100vw - 60rem) / 2)) .75rem;
+  padding: .1rem 1rem .75rem;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scroll-padding-inline: 1rem;
   scroll-snap-type: inline mandatory;
   scrollbar-width: none;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
+  --hqs-demo-video-height: clamp(15.5rem, 42svh, 19.5rem);
 }
+
+/* Nenhum filho do carrossel pode restringir o gesto: vertical rola a página, horizontal troca o card. */
+body[data-sales-catalog="hqs"] .hqs-tutorials__rail * { touch-action: pan-x pan-y; }
 
 body[data-sales-catalog="hqs"] .hqs-tutorials__rail::-webkit-scrollbar { display: none; }
 
@@ -64,6 +69,7 @@ body[data-sales-catalog="hqs"] .hqs-tutorial-card {
   background: linear-gradient(155deg, rgba(70, 25, 92, .98), rgba(26, 7, 41, .99));
   box-shadow: 0 .8rem 1.8rem rgba(3, 0, 10, .25), inset 0 1px rgba(255, 255, 255, .06);
   scroll-snap-align: center;
+  scroll-snap-stop: always;
   box-sizing: border-box;
 }
 
@@ -82,13 +88,15 @@ body[data-sales-catalog="hqs"] .hqs-tutorial-card__body {
   gap: .58rem;
 }
 
-/* A altura vem do próprio vídeo (432×984, vertical): nada é cortado. */
+/* Vídeo menor e inteiro: a caixa tem exatamente a proporção do MP4 (432×984), centralizada. */
 body[data-sales-catalog="hqs"] .hqs-tutorial-card__media {
   position: relative;
   display: block;
-  width: 100%;
+  width: calc(var(--hqs-demo-video-height) * 432 / 984);
+  max-width: 100%;
   height: auto;
   min-height: 0;
+  margin-inline: auto;
   overflow: hidden;
   border: 1px solid rgba(255, 207, 79, .58);
   border-radius: .75rem;
@@ -180,7 +188,7 @@ body[data-sales-catalog="hqs"] .hqs-tutorial-card__note {
 @media (min-width: 48rem) {
   body[data-sales-catalog="hqs"] .hqs-tutorials__rail {
     width: min(100%, 72rem);
-    grid-template-columns: repeat(2, 16.5rem);
+    grid-template-columns: repeat(2, 18rem);
     grid-auto-columns: auto;
     grid-auto-flow: row;
     justify-content: center;
@@ -188,6 +196,7 @@ body[data-sales-catalog="hqs"] .hqs-tutorial-card__note {
     margin-inline: auto;
     padding-inline: 1rem;
     overflow: visible;
+    --hqs-demo-video-height: 20rem;
   }
 
   body[data-sales-catalog="hqs"] .hqs-tutorial-card__media { height: auto; }

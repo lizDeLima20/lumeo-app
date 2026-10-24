@@ -45,20 +45,23 @@ body[data-sales-catalog="hqs"] .sales-testimonials__disclosure {
 
 body[data-sales-catalog="hqs"] .sales-testimonials__carousel {
   margin-top: .9rem;
+  overflow: hidden;
+  touch-action: pan-y;
 }
 
+/* Cards em movimento, imagens e textos internos: o gesto vertical é sempre da página. */
+body[data-sales-catalog="hqs"] .sales-testimonials__track,
+body[data-sales-catalog="hqs"] .sales-testimonials__track * { touch-action: pan-y; }
+body[data-sales-catalog="hqs"] .sales-testimonial__image img { pointer-events: none; }
+
+/* O trilho não rola: js/hqs-marquee.js o move com transform (loop, arraste e pausa). */
 body[data-sales-catalog="hqs"] .sales-testimonials__track {
   display: flex;
-  width: 100%;
+  width: max-content;
   gap: .55rem;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  padding: .15rem 1rem .65rem;
-  scroll-behavior: auto;
+  overflow: visible;
+  padding: .15rem 0 .65rem;
   scroll-snap-type: none;
-  scrollbar-width: none;
-  touch-action: pan-x;
-  -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
 }
 

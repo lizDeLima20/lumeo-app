@@ -13,6 +13,8 @@ const premiumHeroCss = read("css/hqs-premium-hero-v2.css");
 const bonusCss = read("css/hqs-bonus-premium.css");
 const testimonialsCss = read("css/hqs-testimonials-premium.css");
 const testimonialsJs = read("js/hqs-testimonials-marquee.js");
+const bonusJs = read("js/hqs-bonus-carousel.js");
+const marqueeJs = read("js/hqs-marquee.js");
 const demoCss = read("css/hqs-demo-compact.css");
 const finalCtaCss = read("css/hqs-final-cta.css");
 const hqsJs = read("js/hqs.js");
@@ -59,10 +61,13 @@ test("relatos de HQs são reativados, separados e identificados como reconstitu�
   assert.equal((html.match(/data-testimonial-card/g) || []).length, 3);
   assert.doesNotMatch(html, /rafaela\.webp|milena\.webp|jorge\.webp|antonio\.webp/);
   assert.match(testimonialsCss, /height:\s*clamp\(15rem, 30svh, 17rem\)/);
-  assert.match(testimonialsCss, /touch-action:\s*pan-x/);
-  assert.match(testimonialsJs, /track\.scrollLeft \+= elapsed \* \.022/);
-  assert.match(testimonialsJs, /cloneNode\(true\)/);
+  // pan-y é obrigatório: o gesto vertical sobre o carrossel precisa rolar a página no celular.
+  assert.match(testimonialsCss, /\.sales-testimonials__carousel\s*\{[^}]*touch-action:\s*pan-y/);
+  assert.match(testimonialsJs, /mountHqsMarquee\(/);
+  assert.match(testimonialsJs, /direction:\s*-1/);
   assert.match(testimonialsJs, /openModal/);
+  assert.match(testimonialsJs, /marquee\?\.pause\(\)/);
+  assert.match(testimonialsJs, /marquee\?\.resume\(\)/);
 });
 
 test("não anuncia garantia ou condição comercial não confirmada", () => {
@@ -103,9 +108,17 @@ test("seção premium preserva os três bônus e a entrega separada", () => {
   assert.match(html, /data-hqs-cta-location="bonus"/);
   assert.ok(html.indexOf('class="hqs-bonus-premium"') > html.indexOf('class="hqs-art-hero"'));
   assert.ok(html.indexOf('class="hqs-bonus-premium"') < html.indexOf('class="sales-testimonials hqs-section"'));
-  assert.match(bonusCss, /animation:\s*hqs-bonus-marquee-right 34s linear infinite/);
-  assert.match(bonusCss, /@keyframes hqs-bonus-marquee-right/);
+  // Bônus e depoimentos em loop infinito, em sentidos opostos, com o mesmo componente.
+  assert.match(bonusJs, /mountHqsMarquee\(/);
+  assert.match(bonusJs, /direction:\s*1/);
+  assert.match(bonusCss, /\.hqs-marquee\s*\{[^}]*touch-action:\s*pan-y/);
   assert.match(bonusCss, /prefers-reduced-motion:\s*reduce/);
+  // Nunca bloquear a rolagem vertical; respeitar movimento reduzido; cópias fora do leitor de tela.
+  assert.doesNotMatch(marqueeJs, /preventDefault\(\)[^;]*;[^\n]*pointermove|touchmove/);
+  assert.match(marqueeJs, /prefers-reduced-motion: reduce/);
+  assert.match(marqueeJs, /IntersectionObserver/);
+  assert.match(marqueeJs, /setAttribute\("aria-hidden", "true"\)/);
+  assert.doesNotMatch(marqueeJs, /setAttribute\("inert"/);
 });
 
 test("botão flutuante de WhatsApp está disponível em HQs", () => {
@@ -169,8 +182,13 @@ test("demonstração compacta preserva os dois vídeos e o arraste horizontal", 
   assert.match(demoCss, /\.hqs-tutorial-card__body\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(demoCss, /\.hqs-tutorial-card__captions\s*\{/);
   assert.match(demoCss, /scroll-snap-type:\s*inline mandatory/);
-  assert.match(demoCss, /touch-action:\s*pan-x/);
-  assert.match(demoCss, /grid-auto-columns:\s*min\(72vw, 15rem\)/);
+  assert.match(demoCss, /touch-action:\s*pan-x pan-y/);
+  // Um card inteiro por vez no celular, com snap; vídeo menor, na proporção exata do MP4.
+  assert.match(demoCss, /grid-auto-columns:\s*100%/);
+  assert.match(demoCss, /scroll-snap-stop:\s*always/);
+  assert.match(demoCss, /width:\s*calc\(var\(--hqs-demo-video-height\) \* 432 \/ 984\)/);
+  assert.match(demoCss, /\.hqs-tutorials__rail \* \{ touch-action: pan-x pan-y; \}/);
+  assert.match(testimonialsCss, /\.sales-testimonials__track \* \{ touch-action: pan-y; \}/);
   // O vídeo vertical aparece inteiro: largura total, altura pela proporção, nunca "cover".
   const demoVideoRule = demoCss.match(/\.hqs-tutorial-card video\s*\{[^}]*\}/)?.[0] || "";
   assert.match(demoVideoRule, /width:\s*100%/);

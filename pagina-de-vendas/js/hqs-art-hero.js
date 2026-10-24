@@ -92,8 +92,29 @@ export function mountHqsArtHero() {
     const scaleY = bounds.height / geometry.art[1];
     applyProjection(tablet, geometry.tablet, scaleX, scaleY);
     applyProjection(phone, geometry.phone, scaleX, scaleY);
+    // Só a moldura do modo visível baixa a arte: a do outro modo fica com display: none.
+    const overlay = hero.querySelector(`.hqs-art-hero__frame-overlay--${mode} image[data-href]`);
+    if (overlay && !overlay.getAttribute("href")) overlay.setAttribute("href", overlay.dataset.href);
     hero.dataset.artMode = mode;
   };
+
+  // Os vídeos da hero só começam a baixar depois da arte, que é o que aparece primeiro na tela.
+  const art = hero.querySelector(".hqs-art-hero__art img");
+  const loadHeroVideos = () => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    hero.querySelectorAll(".hqs-art-hero__tablet-screen video, .hqs-art-hero__phone-screen video").forEach((video) => {
+      const source = video.querySelector("source[data-src]");
+      if (!source || source.getAttribute("src")) return;
+      source.src = source.dataset.src;
+      video.load();
+      video.play().catch(() => {});
+    });
+  };
+  if (!art || art.complete) loadHeroVideos();
+  else {
+    art.addEventListener("load", loadHeroVideos, { once: true });
+    art.addEventListener("error", loadHeroVideos, { once: true });
+  }
 
   const scheduleUpdate = () => update();
   const resizeObserver = new ResizeObserver(scheduleUpdate);

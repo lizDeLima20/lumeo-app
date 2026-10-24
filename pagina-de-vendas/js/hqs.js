@@ -2,9 +2,9 @@ import { SALES_CONFIG, bindCommercialActions, money, mountHeader } from "./share
 import { mountMobileCtaVisibility } from "./mobile-cta.js";
 import { mountAnalyticsConsent } from "./sales-consent.js";
 import { mountHqsTracking } from "./hqs-tracking.js";
-import { mountHqsTestimonials } from "./hqs-testimonials-marquee.js?v=20261024";
-import { mountHqsArtHero } from "./hqs-art-hero.js?v=20261024-5";
-import { mountHqsBonusCarousel } from "./hqs-bonus-carousel.js?v=20261024-marquee";
+import { mountHqsTestimonials } from "./hqs-testimonials-marquee.js?v=20261024-loop4";
+import { mountHqsArtHero } from "./hqs-art-hero.js?v=20261024-6";
+import { mountHqsBonusCarousel } from "./hqs-bonus-carousel.js?v=20261024-loop4";
 
 mountHeader(document.querySelector("[data-sales-header]"));
 mountHqsArtHero();
@@ -223,7 +223,23 @@ function controlReaderVideo() {
   }, { threshold: [.1, .35] }).observe(video);
 }
 
+// Pôsteres de vídeos abaixo da dobra só são pedidos perto da tela, para não disputar banda com a hero.
+function mountDeferredPosters() {
+  const videos = [...document.querySelectorAll("video[data-poster]")];
+  const show = (video) => { if (!video.getAttribute("poster")) video.poster = video.dataset.poster; };
+  if (!("IntersectionObserver" in window)) { videos.forEach(show); return; }
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      show(entry.target);
+      observer.unobserve(entry.target);
+    });
+  }, { rootMargin: "1200px 0px" });
+  videos.forEach((video) => observer.observe(video));
+}
+
 mountHqsTestimonials();
+mountDeferredPosters();
 mountTutorials();
 controlReaderVideo();
 mountMobileCtaVisibility({ extraCtaSelectors: ['[data-hqs-cta-location="final"]'] });

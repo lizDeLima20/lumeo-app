@@ -1,4 +1,5 @@
 import { openModal } from "./shared.js";
+import { mountHqsMarquee } from "./hqs-marquee.js?v=20261024-4";
 
 const escapeHtml = (value = "") => String(value).replace(/[&<>'"]/g, (character) => ({
   "&": "&amp;",
@@ -11,84 +12,51 @@ const escapeHtml = (value = "") => String(value).replace(/[&<>'"]/g, (character)
 export function mountHqsTestimonials(root = document.querySelector("[data-testimonials-carousel]")) {
   const track = root?.querySelector("[data-testimonials-track]");
   const cards = [...(track?.querySelectorAll("[data-testimonial-card]") || [])];
-  if (!track || !cards.length || track.dataset.marqueeMounted === "true") return;
+  if (!track || !cards.length) return;
 
-  track.dataset.marqueeMounted = "true";
-  cards.forEach((card) => {
-    const clone = card.cloneNode(true);
-    clone.removeAttribute("data-testimonial-card");
-    clone.removeAttribute("tabindex");
-    clone.removeAttribute("role");
-    clone.removeAttribute("aria-label");
-    clone.setAttribute("aria-hidden", "true");
-    clone.setAttribute("inert", "");
-    clone.dataset.testimonialClone = "true";
-    track.append(clone);
-  });
+  const modal = document.querySelector("[data-sales-modal]");
+  let marquee = null;
+  let returnFocusTo = null;
 
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  let frame = 0;
-  let previousTime = 0;
-  let interacting = false;
-  let resumeTimer = 0;
-  let pointerStartX = 0;
-  let pointerMoved = false;
+  // Ao fechar o modal: o carrossel retoma de onde parou e o foco volta ao card (teclado).
+  if (modal) {
+    new MutationObserver(() => {
+      if (!modal.hidden) return;
+      marquee?.resume();
+      if (returnFocusTo) { returnFocusTo.focus({ preventScroll: true }); returnFocusTo = null; }
+    }).observe(modal, { attributes: true, attributeFilter: ["hidden"] });
+  }
 
-  const loopWidth = () => track.scrollWidth / 2;
-  const animate = (time) => {
-    if (!previousTime) previousTime = time;
-    const elapsed = Math.min(time - previousTime, 50);
-    previousTime = time;
-    if (!interacting && !reducedMotion.matches) {
-      track.scrollLeft += elapsed * .022;
-      const width = loopWidth();
-      if (width && track.scrollLeft >= width) track.scrollLeft -= width;
-    }
-    frame = window.requestAnimationFrame(animate);
-  };
-
-  const pauseForInteraction = () => {
-    interacting = true;
-    window.clearTimeout(resumeTimer);
-  };
-  const resumeAfterInteraction = () => {
-    window.clearTimeout(resumeTimer);
-    resumeTimer = window.setTimeout(() => { interacting = false; }, 900);
-  };
-
-  const openCard = (card) => openModal(`
+  const openCard = (card, fromKeyboard = false) => {
+    const original = cards.find((item) => item.dataset.testimonialImage === card.dataset.testimonialImage) || card;
+    returnFocusTo = fromKeyboard ? original : null;
+    marquee?.pause();
+    openModal(`
     <article class="sales-modal__dialog sales-testimonial-modal" role="dialog" aria-modal="true" aria-label="Relato ampliado">
       <button class="sales-modal__close" type="button" data-sales-close aria-label="Fechar">×</button>
-      <div class="sales-testimonial-modal__image" data-testimonial-avatar="${escapeHtml(card.dataset.testimonialAvatar)}">
-        <img src="${escapeHtml(card.dataset.testimonialImage)}" alt="${escapeHtml(card.dataset.testimonialAlt)}" />
+      <div class="sales-testimonial-modal__image" data-testimonial-avatar="${escapeHtml(original.dataset.testimonialAvatar)}">
+        <img src="${escapeHtml(original.dataset.testimonialImage)}" alt="${escapeHtml(original.dataset.testimonialAlt)}" />
       </div>
-    </article>`);
+    </article>`, (dialog) => dialog.querySelector("[data-sales-close]")?.focus({ preventScroll: true }));
+  };
 
   cards.forEach((card) => {
-    card.addEventListener("click", (event) => {
-      if (pointerMoved) { event.preventDefault(); pointerMoved = false; return; }
-      openCard(card);
-    });
     card.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
-      openCard(card);
+      openCard(card, true);
     });
   });
 
-  track.addEventListener("pointerdown", (event) => {
-    pointerStartX = event.clientX;
-    pointerMoved = false;
-    pauseForInteraction();
-  }, { passive: true });
-  track.addEventListener("pointermove", (event) => {
-    if (interacting && Math.abs(event.clientX - pointerStartX) > 8) pointerMoved = true;
-  }, { passive: true });
-  track.addEventListener("pointerup", resumeAfterInteraction, { passive: true });
-  track.addEventListener("pointercancel", resumeAfterInteraction, { passive: true });
-  track.addEventListener("touchend", resumeAfterInteraction, { passive: true });
-  track.addEventListener("wheel", () => { pauseForInteraction(); resumeAfterInteraction(); }, { passive: true });
-
-  frame = window.requestAnimationFrame(animate);
-  window.addEventListener("pagehide", () => window.cancelAnimationFrame(frame), { once: true });
+  // Depoimentos andam para a esquerda, no sentido contrário ao carrossel de bônus.
+  marquee = mountHqsMarquee({
+    viewport: root,
+    track,
+    cardSelector: "[data-testimonial-card]",
+    direction: -1,
+    speed: 22,
+    dragThreshold: 8,
+    horizontalRatio: 1.4,
+    onTap: (card) => openCard(card),
+  });
 }
