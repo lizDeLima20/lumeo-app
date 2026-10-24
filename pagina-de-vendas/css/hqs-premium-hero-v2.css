@@ -268,12 +268,12 @@ body[data-sales-catalog="hqs"] .hqs-hero__tablet-frame::before { content: none; 
 
 body[data-sales-catalog="hqs"] .hqs-hero__phone-frame {
   z-index: 3;
-  top: 15.4%;
-  right: 5.7%;
+  top: 14.6%;
+  right: 4.7%;
   bottom: auto;
-  width: 18.1%;
-  height: 77.8%;
-  border-radius: 11% 11% 10% 10%;
+  width: 21.8%;
+  height: 79%;
+  border-radius: 12% 12% 11% 11%;
   aspect-ratio: auto;
   background-image: url("../assets/tutorials/hqs/lumeo-hqs-phone-poster.webp");
   background-position: center;
@@ -286,8 +286,8 @@ body[data-sales-catalog="hqs"] .hqs-hero__phone-frame::before {
   z-index: 4;
   top: 0;
   left: 50%;
-  width: 48%;
-  height: 4.2%;
+  width: 42%;
+  height: 3.8%;
   border-radius: 0 0 999px 999px;
   content: "";
   background: #06060a;
@@ -306,6 +306,34 @@ body[data-sales-catalog="hqs"] .hqs-hero__phone-frame video {
   background: transparent;
   object-fit: cover;
   object-position: center;
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__tablet-bezel,
+body[data-sales-catalog="hqs"] .hqs-hero__phone-bezel {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__tablet-bezel polygon {
+  fill: none;
+  stroke: #ffd45f;
+  stroke-width: 1.25;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 2px rgba(255, 170, 37, .9));
+}
+
+body[data-sales-catalog="hqs"] .hqs-hero__phone-bezel {
+  border: clamp(1px, .22vw, 2px) solid #ffd45f;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 .42rem rgba(255, 207, 81, .22),
+    0 0 .35rem rgba(255, 163, 33, .58);
 }
 
 body[data-sales-catalog="hqs"] .hqs-reference-action {
@@ -410,7 +438,7 @@ body[data-sales-catalog="hqs"] .hqs-reference-features small { margin-top: .28re
   body[data-sales-catalog="hqs"] .hqs-hero__lead { margin-top: .48rem; font-size: clamp(.82rem, 3.6vw, 1rem); line-height: 1.28; }
   body[data-sales-catalog="hqs"] .hqs-hero__visual { aspect-ratio: 3 / 2; margin-top: .58rem; }
   body[data-sales-catalog="hqs"] .hqs-hero__tablet-frame { border-radius: .55rem; }
-  body[data-sales-catalog="hqs"] .hqs-hero__phone-frame { border-radius: .52rem; }
+  body[data-sales-catalog="hqs"] .hqs-hero__phone-frame { border-radius: .62rem; }
   body[data-sales-catalog="hqs"] .hqs-reference-action { margin-top: .42rem; }
   body[data-sales-catalog="hqs"] .hqs-reference-action__button { min-height: 3.25rem; padding: .55rem .8rem; border-width: 2px; border-radius: .8rem; column-gap: .45rem; box-shadow: 0 .25rem 0 #a75d14, 0 .55rem 1rem rgba(255, 173, 40, .3); font-size: clamp(.92rem, 4.5vw, 1.15rem); }
   body[data-sales-catalog="hqs"] .hqs-reference-features { margin-top: 1rem; }
