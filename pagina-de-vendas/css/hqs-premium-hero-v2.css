@@ -250,16 +250,16 @@ body[data-sales-catalog="hqs"] .hqs-hero__phone-frame {
 
 body[data-sales-catalog="hqs"] .hqs-hero__tablet-frame {
   z-index: 2;
-  top: 13.4%;
+  top: 10.8%;
   bottom: auto;
-  left: 7.3%;
-  width: 64.6%;
-  height: 57.8%;
+  left: 8.4%;
+  width: 64.1%;
+  height: 73.2%;
   border-radius: 3.4% 3.8% 4.8% 4%;
   background-image: url("../assets/tutorials/hqs/lumeo-hqs-tablet-two-pages-poster.webp");
   background-position: center;
   background-size: cover;
-  clip-path: polygon(1.2% 0, 99% 5.5%, 99.7% 96%, 0 91%);
+  clip-path: polygon(1.2% 0, 99% 6.4%, 99.7% 95.5%, 0 87.8%);
   transform: rotate(1deg);
   transform-origin: center;
 }
@@ -268,12 +268,13 @@ body[data-sales-catalog="hqs"] .hqs-hero__tablet-frame::before { content: none; 
 
 body[data-sales-catalog="hqs"] .hqs-hero__phone-frame {
   z-index: 3;
-  top: 15.3%;
-  right: 5.1%;
+  top: 15.4%;
+  right: 5.7%;
   bottom: auto;
-  width: 18.7%;
+  width: 18.1%;
+  height: 77.8%;
   border-radius: 11% 11% 10% 10%;
-  aspect-ratio: 360 / 830;
+  aspect-ratio: auto;
   background-image: url("../assets/tutorials/hqs/lumeo-hqs-phone-poster.webp");
   background-position: center;
   background-size: cover;
@@ -295,12 +296,16 @@ body[data-sales-catalog="hqs"] .hqs-hero__phone-frame::before {
 
 body[data-sales-catalog="hqs"] .hqs-hero__tablet-frame video,
 body[data-sales-catalog="hqs"] .hqs-hero__phone-frame video {
+  position: absolute;
+  inset: -1px;
   display: block;
-  width: 100%;
-  height: 100%;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  max-width: none;
   border-radius: inherit;
   background: transparent;
   object-fit: cover;
+  object-position: center;
 }
 
 body[data-sales-catalog="hqs"] .hqs-reference-action {
