@@ -10,6 +10,11 @@ const html = read("index-hqs.html");
 const hqsCss = read("css/hqs.css");
 const conversionCss = read("css/hqs-conversion.css");
 const premiumHeroCss = read("css/hqs-premium-hero-v2.css");
+const bonusCss = read("css/hqs-bonus-premium.css");
+const testimonialsCss = read("css/hqs-testimonials-premium.css");
+const testimonialsJs = read("js/hqs-testimonials-marquee.js");
+const demoCss = read("css/hqs-demo-compact.css");
+const finalCtaCss = read("css/hqs-final-cta.css");
 const hqsJs = read("js/hqs.js");
 const mobileCtaJs = read("js/mobile-cta.js");
 const trackingJs = read("js/hqs-tracking.js");
@@ -31,7 +36,7 @@ test("headline da hero é a copy escolhida", () => {
   assert.ok(headline, "H1 #sales-title não encontrado");
   assert.equal(normalizeText(headline), "Depois que você vê suas HQs no Lumeo, não quer voltar atrás.");
   assert.match(html, /Organize, visualize e leia sua coleção com uma experiência muito mais envolvente no Android\./);
-  assert.match(html, /De <del>R\$ 39,99<\/del><br \/>por<\/span><strong data-sales-price>R\$ 9,99<\/strong>/);
+  assert.match(html, /De R\$ 39,99 por <span data-sales-price>R\$ 9,99<\/span>/);
 });
 
 test("hero sem altura baseada na viewport", () => {
@@ -43,14 +48,21 @@ test("hero sem altura baseada na viewport", () => {
 test("relatos de HQs são reativados, separados e identificados como reconstituídos", () => {
   assert.match(html, /class="sales-testimonials hqs-section"/);
   assert.doesNotMatch(html, /class="sales-testimonials hqs-section"[^>]*hidden/);
-  assert.match(html, /RELATOS DE LEITORES · MENSAGENS RECONSTITUÍDAS/);
+  assert.match(html, /LEITORES SATISFEITOS · RELATOS RECONSTITUÍDOS/);
+  assert.match(html, /Quem usa o Lumeo sente a diferença\./);
   assert.match(html, /As imagens não são capturas originais das conversas/);
   assert.match(html, /renato\.webp/);
   assert.match(html, /pamela-hqs\.webp/);
   assert.match(html, /rodrigo-hqs\.webp/);
   assert.equal((html.match(/data-testimonial-avatar="whatsapp"/g) || []).length, 1);
   assert.equal((html.match(/data-testimonial-avatar="android"/g) || []).length, 2);
+  assert.equal((html.match(/data-testimonial-card/g) || []).length, 3);
   assert.doesNotMatch(html, /rafaela\.webp|milena\.webp|jorge\.webp|antonio\.webp/);
+  assert.match(testimonialsCss, /height:\s*clamp\(15rem, 30svh, 17rem\)/);
+  assert.match(testimonialsCss, /touch-action:\s*pan-x/);
+  assert.match(testimonialsJs, /track\.scrollLeft \+= elapsed \* \.022/);
+  assert.match(testimonialsJs, /cloneNode\(true\)/);
+  assert.match(testimonialsJs, /openModal/);
 });
 
 test("não anuncia garantia ou condição comercial não confirmada", () => {
@@ -59,15 +71,14 @@ test("não anuncia garantia ou condição comercial não confirmada", () => {
 });
 
 test("proposta HQs é separada e descreve limitações do recurso experimental", () => {
-  assert.match(html, /Depois que você vê\s*<br\s*\/?>(?:\s*)suas HQs no Lumeo,/);
+  assert.match(html, /Depois que você vê suas HQs no Lumeo, não quer voltar atrás\./);
   assert.match(html, /EU QUERO O MELHOR/);
   // Os mesmos 3 bônus da página de Livros (decisão do proprietário), entregues à parte.
-  assert.match(html, /bônus são entregues por link separado e não ficam pré-instalados no aplicativo/i);
-  assert.match(html, /Entregues por link separado do Google Drive após a compra/i);
+  assert.match(html, /bônus são disponibilizados separadamente por links do Google Drive/i);
+  assert.match(html, /Acesso por link do Google Drive/i);
   assert.match(html, /ampliação automatizada de balões é experimental/i);
   assert.doesNotMatch(html, /IA que amplia|inteligência artificial que reconhece/i);
-  for (const bonus of [/coleção de HQs da Turma da Mônica/i, /1\.500 livros digitais/i, /200 audiolivros/i]) assert.match(html, bonus);
-  assert.match(hqsJs, /A biblioteca de HQs aceita PDF, CBR e CBZ/);
+  for (const bonus of [/coleção de HQs da Turma da Mônica/i, /1\.500 livros digitais/i, /200 (?:audiolivros|audiobooks)/i]) assert.match(html, bonus);
 });
 
 test("todos os CTAs de HQs usam o checkout real da Hotmart", () => {
@@ -75,11 +86,26 @@ test("todos os CTAs de HQs usam o checkout real da Hotmart", () => {
   assert.ok(sharedJs.includes(`hqs: "${checkoutUrl}"`));
   assert.match(sharedJs, /checkoutProviders: Object\.freeze\(\{ livros: "hotmart", hqs: "hotmart" \}\)/);
   const buttons = [...html.matchAll(/<button[^>]*data-sales-cta[^>]*>/g)].map((match) => match[0]);
-  assert.equal(buttons.length, 4);
-  buttons.forEach((button) => assert.match(button, /data-hqs-cta-location="(?:hero|testimonials|offer|sticky)"/));
-  assert.match(hqsJs, /data-hqs-cta-location="modal"/);
+  assert.equal(buttons.length, 5);
+  buttons.forEach((button) => assert.match(button, /data-hqs-cta-location="(?:hero|testimonials|bonus|final|sticky)"/));
   assert.match(hqsJs, /mountHqsTracking\(\{ checkoutUrl: SALES_CONFIG\.checkoutUrls\.hqs \}\)/);
-  assert.match(hqsJs, /\["Como funciona a compra\?", "Ao tocar em um botão de compra, você será direcionado ao checkout seguro da Hotmart/);
+});
+
+test("seção premium preserva os três bônus e a entrega separada", () => {
+  assert.match(html, /class="hqs-bonus-premium"/);
+  assert.match(html, /Seu Lumeo vai além da leitura\. Confira os bônus que acompanham sua compra!/);
+  assert.equal((html.match(/data-hqs-bonus-card/g) || []).length, 3);
+  const pageText = normalizeText(html);
+  assert.match(pageText, /200 AUDIOBOOKS/);
+  assert.match(pageText, /1\.500 LIVROS EM PDF/);
+  assert.match(pageText, /COLEÇÃO DE HQs/);
+  assert.match(html, /Os bônus são disponibilizados separadamente por links do Google Drive/);
+  assert.match(html, /data-hqs-cta-location="bonus"/);
+  assert.ok(html.indexOf('class="hqs-bonus-premium"') > html.indexOf('class="hqs-art-hero"'));
+  assert.ok(html.indexOf('class="hqs-bonus-premium"') < html.indexOf('class="sales-testimonials hqs-section"'));
+  assert.match(bonusCss, /animation:\s*hqs-bonus-marquee-right 34s linear infinite/);
+  assert.match(bonusCss, /@keyframes hqs-bonus-marquee-right/);
+  assert.match(bonusCss, /prefers-reduced-motion:\s*reduce/);
 });
 
 test("botão flutuante de WhatsApp está disponível em HQs", () => {
@@ -117,12 +143,14 @@ test("hero usa os vídeos reais no tablet e no celular", () => {
   });
   assert.match(html, /lumeo-hqs-tablet-two-pages-loop-3s\.mp4/);
   assert.match(html, /lumeo-hqs-phone-loop-7s\.mp4/);
-  assert.match(html, /class="hqs-hero__tablet-frame"/);
-  assert.match(html, /class="hqs-hero__phone-frame"/);
-  assert.match(premiumHeroCss, /lumeo-hqs-futuristic-background-v2\.webp/);
-  const features = html.match(/<ul class="hqs-reference-features"[\s\S]*?<\/ul>/)?.[0] || "";
-  assert.equal((features.match(/<li>/g) || []).length, 4);
-  assert.match(features, /MP3[\s\S]*Via Google Drive/);
+  assert.match(html, /class="hqs-art-hero__tablet-screen"/);
+  assert.match(html, /class="hqs-art-hero__phone-screen"/);
+  assert.match(html, /class="hqs-art-hero__art"/);
+  assert.match(html, /lumeo-hqs-hero-mobile-approved\.webp/);
+  assert.match(html, /lumeo-hqs-hero-desktop-approved\.webp/);
+  assert.match(html, /class="hqs-art-hero__cta"[^>]*data-sales-cta[^>]*data-hqs-hero-cta/);
+  assert.match(premiumHeroCss, /\.hqs-art-hero__tablet-screen/);
+  assert.match(premiumHeroCss, /\.hqs-art-hero__phone-screen/);
 });
 
 test("seção de leitura contém uma única nota", () => {
@@ -130,16 +158,54 @@ test("seção de leitura contém uma única nota", () => {
   assert.equal((html.match(/Demonstração visual\. Os recursos podem variar conforme o arquivo e a versão do app\./g) || []).length, 1);
 });
 
-test("mídias e capas anteriores continuam referenciadas", () => {
+test("demonstração compacta preserva os dois vídeos e o arraste horizontal", () => {
+  assert.match(html, /Veja o Lumeo em ação\./);
+  assert.match(html, /Adicione suas HQs com facilidade/);
+  assert.match(html, /Conheça a interface do Lumeo/);
+  assert.equal((html.match(/data-hqs-tutorial\b/g) || []).length, 2);
+  assert.equal((html.match(/<video autoplay muted loop preload="none" playsinline/g) || []).length, 2);
+  assert.equal((html.match(/data-tutorial-captions/g) || []).length, 2);
+  assert.match(demoCss, /grid-auto-flow:\s*column/);
+  assert.match(demoCss, /\.hqs-tutorial-card__body\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(demoCss, /\.hqs-tutorial-card__captions\s*\{/);
+  assert.match(demoCss, /scroll-snap-type:\s*inline mandatory/);
+  assert.match(demoCss, /touch-action:\s*pan-x/);
+  assert.match(demoCss, /grid-auto-columns:\s*min\(72vw, 15rem\)/);
+  // O vídeo vertical aparece inteiro: largura total, altura pela proporção, nunca "cover".
+  const demoVideoRule = demoCss.match(/\.hqs-tutorial-card video\s*\{[^}]*\}/)?.[0] || "";
+  assert.match(demoVideoRule, /width:\s*100%/);
+  assert.match(demoVideoRule, /height:\s*auto/);
+  assert.match(demoVideoRule, /aspect-ratio:\s*432 \/ 984/);
+  assert.match(demoVideoRule, /object-fit:\s*contain/);
+  assert.doesNotMatch(demoVideoRule, /object-fit:\s*cover/);
+});
+
+test("fechamento final é compacto, rastreável e não inventa escassez", () => {
+  assert.match(html, /class="hqs-final-cta"/);
+  assert.match(html, /Sua coleção merece uma experiência melhor\./);
+  assert.match(html, /ACESSO AO LUMEO HQs/);
+  assert.match(html, /QUERO ENTRAR NO LUMEO AGORA/);
+  assert.match(html, /data-hqs-cta-location="final"/);
+  assert.match(hqsJs, /extraCtaSelectors: \['\[data-hqs-cta-location="final"\]'\]/);
+  assert.match(finalCtaCss, /body\[data-sales-catalog="hqs"\] \.hqs-final-cta/);
+  assert.match(finalCtaCss, /min-height:\s*3\.5rem/);
+  assert.doesNotMatch(html, /somente hoje|últimas vagas|oferta termina|contador regressivo/i);
+});
+
+test("mídias de demonstração continuam referenciadas", () => {
   const requiredHtmlAssets = [
     "assets/tutorials/hqs/lumeo-hqs-importar-google-drive.mp4",
     "assets/tutorials/hqs/lumeo-hqs-baloes-leitura-pomodoro.mp4",
     "assets/animacoes/lumeo-hqs-virada.mp4",
   ];
   requiredHtmlAssets.forEach((asset) => assert.ok(html.includes(asset), `Referência removida: ${asset}`));
-  ["x-factor-119.jpg", "x-factor-120.jpg", "x-factor-132.jpg"].forEach((asset) => {
-    assert.ok(hqsJs.includes(asset), `Capa removida: ${asset}`);
-  });
+});
+
+test("blocos indicados nas capturas foram removidos", () => {
+  for (const removed of ["hqs-library", "hqs-benefits", "hqs-offer", "hqs-faq", "data-hqs-library", "data-hqs-faq", "data-hqs-offer-cta"]) {
+    assert.equal(html.includes(removed), false, `Bloco ainda presente: ${removed}`);
+  }
+  assert.doesNotMatch(hqsJs, /mountLibrary|mountFaq|x-factor-119/);
 });
 
 test("lógica do CTA fixo", async () => {
@@ -394,8 +460,8 @@ test("assets otimizados do hero existem e respeitam a meta", () => {
     "assets/tutorials/hqs/lumeo-hqs-tablet-two-pages-poster.webp",
     "assets/tutorials/hqs/lumeo-hqs-phone-loop-7s.mp4",
     "assets/tutorials/hqs/lumeo-hqs-phone-poster.webp",
-    "assets/optimized/lumeo-hqs-futuristic-background-v2.webp",
-    "assets/optimized/lumeo-hqs-original-gold-underline.webp",
+    "assets/optimized/lumeo-hqs-hero-mobile-approved.webp",
+    "assets/optimized/lumeo-hqs-hero-desktop-approved.webp",
   ];
   assets.forEach((asset) => {
     assert.equal(existsSync(resolve(pageRoot, asset)), true, `Asset ausente: ${asset}`);

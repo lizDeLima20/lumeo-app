@@ -12,7 +12,7 @@ export function mountMobileCtaVisibility({
   const button = root?.querySelector?.(".sales-mobile-cta");
   const heroCta = root?.querySelector?.("[data-hqs-hero-cta]");
   const offerCta = root?.querySelector?.("[data-hqs-offer-cta]");
-  if (!button || !heroCta || !offerCta || typeof Observer !== "function") return () => {};
+  if (!button || !heroCta || typeof Observer !== "function") return () => {};
 
   const originalTabIndex = button.getAttribute("tabindex");
   const extraCtas = extraCtaSelectors.map((selector) => root.querySelector(selector)).filter(Boolean);
@@ -49,7 +49,7 @@ export function mountMobileCtaVisibility({
   }, { threshold: [0, 0.01, 0.5, 1] });
 
   observer.observe(heroCta);
-  observer.observe(offerCta);
+  if (offerCta) observer.observe(offerCta);
   extraCtas.forEach((cta) => observer.observe(cta));
   return () => observer.disconnect();
 }

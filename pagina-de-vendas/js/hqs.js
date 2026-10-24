@@ -1,90 +1,20 @@
-import { SALES_CONFIG, bindCommercialActions, money, mountHeader, openModal } from "./shared.js";
+import { SALES_CONFIG, bindCommercialActions, money, mountHeader } from "./shared.js";
 import { mountMobileCtaVisibility } from "./mobile-cta.js";
 import { mountAnalyticsConsent } from "./sales-consent.js";
 import { mountHqsTracking } from "./hqs-tracking.js";
-import { mountTestimonials } from "./testimonials-carousel.js";
+import { mountHqsTestimonials } from "./hqs-testimonials-marquee.js?v=20261024";
+import { mountHqsArtHero } from "./hqs-art-hero.js?v=20261024-5";
+import { mountHqsBonusCarousel } from "./hqs-bonus-carousel.js?v=20261024-marquee";
 
 mountHeader(document.querySelector("[data-sales-header]"));
+mountHqsArtHero();
+mountHqsBonusCarousel();
 document.querySelector(".sales-header__cta")?.setAttribute("data-hqs-cta-location", "header");
 mountAnalyticsConsent();
 mountHqsTracking({ checkoutUrl: SALES_CONFIG.checkoutUrls.hqs });
 bindCommercialActions();
 document.querySelector("[data-sales-year]").textContent = String(new Date().getFullYear());
 document.querySelectorAll("[data-sales-price]").forEach((node) => { node.textContent = money(SALES_CONFIG.price); });
-
-const examples = [
-  { id: "x-factor-119", title: "Capa ilustrativa · coleção 01", cover: "assets/hqs/x-factor-119.jpg" },
-  { id: "x-factor-120", title: "Capa ilustrativa · coleção 02", cover: "assets/hqs/x-factor-120.jpg" },
-  { id: "x-factor-132", title: "Capa ilustrativa · coleção 03", cover: "assets/hqs/x-factor-132.jpg" },
-];
-
-function openCover(item) {
-  openModal(`
-    <article class="sales-modal__dialog sales-book-modal" role="dialog" aria-modal="true" aria-labelledby="hqs-cover-title">
-      <button class="sales-modal__close" type="button" data-sales-close aria-label="Fechar">×</button>
-      <img src="${item.cover}" alt="${item.title}" />
-      <div><p class="sales-eyebrow">DEMONSTRAÇÃO VISUAL</p><h2 id="hqs-cover-title">${item.title}</h2><p>Esta capa aparece apenas como exemplo da organização visual. Quadrinhos não acompanham o aplicativo.</p><button class="sales-button sales-button--primary" type="button" data-sales-cta data-hqs-cta-location="modal">QUERO ORGANIZAR MINHAS HQs</button></div>
-    </article>`, bindCommercialActions);
-}
-
-function coverCard(item) {
-  const article = document.createElement("article");
-  article.className = "hqs-cover";
-  const button = document.createElement("button");
-  button.type = "button";
-  button.setAttribute("aria-label", `Ver ${item.title}`);
-  const image = document.createElement("img");
-  image.src = item.cover;
-  image.alt = item.title;
-  image.loading = "lazy";
-  image.decoding = "async";
-  const title = document.createElement("h3");
-  title.textContent = item.title;
-  button.append(image);
-  button.addEventListener("click", () => openCover(item));
-  article.append(button, title);
-  return article;
-}
-
-function mountLibrary() {
-  const root = document.querySelector("[data-hqs-library]");
-  if (!root) return;
-  [examples, [...examples].reverse()].forEach((items, index) => {
-    const rail = document.createElement("div");
-    rail.className = `hqs-library__rail${index ? " hqs-library__rail--reverse" : ""}`;
-    [...items, ...items, ...items].forEach((item) => rail.append(coverCard(item)));
-    root.append(rail);
-  });
-  const notice = document.createElement("p");
-  notice.className = "hqs-library__notice";
-  notice.textContent = "Exemplos visuais de uma coleção pessoal. Os quadrinhos não acompanham o aplicativo.";
-  root.append(notice);
-}
-
-function mountFaq() {
-  const root = document.querySelector("[data-hqs-faq]");
-  if (!root) return;
-  const rows = [
-    ["O que é o Lumeo?", "O Lumeo é um aplicativo leitor e organizador para a sua biblioteca pessoal no Android."],
-    ["A compra inclui HQs?", "O valor é referente ao aplicativo leitor. Como bônus, após a compra você recebe por link separado do Google Drive uma coleção de HQs da Turma da Mônica, 1.500 livros digitais e 200 audiolivros. Eles não ficam pré-instalados no aplicativo, e você também pode usar seus próprios arquivos."],
-    ["Como adiciono meus próprios quadrinhos?", "Você pode selecionar arquivos compatíveis no dispositivo ou adicionar uma pasta autorizada do Google Drive."],
-    ["Posso usar links do Google Drive?", "Sim. O aplicativo oferece importação de links autorizados do Google Drive para sua biblioteca pessoal."],
-    ["Quais formatos de HQ são compatíveis?", "A biblioteca de HQs aceita PDF, CBR e CBZ. Recursos específicos podem variar conforme o arquivo e a versão instalada do aplicativo."],
-    ["Como funciona a experiência de leitura de HQs?", "O Lumeo possui uma experiência de leitura visual para HQs. Recursos específicos podem variar conforme o arquivo e a versão instalada do aplicativo."],
-    ["Funciona em celular e tablet Android?", "Sim. O Lumeo foi pensado para uso em celulares e tablets Android."],
-    ["Como funciona a compra?", "Ao tocar em um botão de compra, você será direcionado ao checkout seguro da Hotmart, onde verá as condições antes da confirmação do pagamento."],
-    ["Como recebo acesso após a compra?", "Após a confirmação da compra, você recebe as orientações de acesso ao aplicativo Lumeo."],
-  ];
-  root.replaceChildren(...rows.map(([question, answer]) => {
-    const details = document.createElement("details");
-    const summary = document.createElement("summary");
-    const text = document.createElement("p");
-    summary.textContent = question;
-    text.textContent = answer;
-    details.append(summary, text);
-    return details;
-  }));
-}
 
 function mountTutorials() {
   const videos = [...document.querySelectorAll("[data-hqs-tutorial]")];
@@ -293,9 +223,7 @@ function controlReaderVideo() {
   }, { threshold: [.1, .35] }).observe(video);
 }
 
-mountLibrary();
-mountFaq();
-mountTestimonials();
+mountHqsTestimonials();
 mountTutorials();
 controlReaderVideo();
-mountMobileCtaVisibility();
+mountMobileCtaVisibility({ extraCtaSelectors: ['[data-hqs-cta-location="final"]'] });

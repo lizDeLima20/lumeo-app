@@ -139,7 +139,7 @@ export function mountHqsTracking({
   let checkoutTrackedInMemory = false;
 
   const trackViewContent = createViewContentController({ tracker });
-  const offer = documentRef.querySelector?.(".hqs-offer");
+  const offer = documentRef.querySelector?.(".hqs-offer") || documentRef.querySelector?.(".hqs-final-cta");
   let observer;
   if (offer && typeof Observer === "function") {
     observer = new Observer((entries) => {

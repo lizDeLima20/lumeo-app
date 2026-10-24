@@ -208,9 +208,9 @@ test("vídeo otimizado respeita codec, tamanho, duração e ausência de áudio"
 test("a página de HQs mantém proposta própria e descreve os 3 bônus separados", () => {
   assert.match(hqsHtml, /data-sales-catalog="hqs"/);
   assert.match(hqsHtml, /quadrinhos e mangás/i);
-  for (const bonus of [/coleção de HQs da Turma da Mônica/i, /1\.500 livros digitais/i, /200 audiolivros/i]) assert.match(hqsHtml, bonus);
-  assert.match(hqsHtml, /bônus são entregues por link separado e não ficam pré-instalados no aplicativo/i);
-  assert.match(hqsHtml, /Entregues por link separado do Google Drive após a compra/i);
+  for (const bonus of [/coleção de HQs da Turma da Mônica/i, /1\.500 livros digitais/i, /200 (?:audiolivros|audiobooks)/i]) assert.match(hqsHtml, bonus);
+  assert.match(hqsHtml, /bônus são disponibilizados separadamente por links do Google Drive/i);
+  assert.match(hqsHtml, /Acesso por link do Google Drive/i);
   assert.match(hqsHtml, /ampliação automatizada de balões é experimental/i);
   assert.doesNotMatch(hqsHtml, /inteligência artificial|IA que amplia/i);
 });

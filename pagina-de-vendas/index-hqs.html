@@ -10,71 +10,126 @@
     <meta name="theme-color" content="#130a20" />
     <title>Lumeo HQs — Leitura e organização no Android</title>
     <link rel="icon" type="image/webp" href="assets/optimized/lumeo-logo.webp" />
-    <link rel="preload" as="image" href="assets/optimized/lumeo-hqs-futuristic-background-v2.webp" type="image/webp" />
-    <link rel="preload" as="image" href="assets/tutorials/hqs/lumeo-hqs-tablet-two-pages-poster.webp" type="image/webp" />
-    <link rel="preload" as="image" href="assets/tutorials/hqs/lumeo-hqs-phone-poster.webp" type="image/webp" />
+    <link rel="preload" as="image" href="assets/optimized/lumeo-hqs-hero-mobile-approved.webp" type="image/webp" media="(max-width: 47.99rem)" fetchpriority="high" />
+    <link rel="preload" as="image" href="assets/optimized/lumeo-hqs-hero-desktop-approved.webp" type="image/webp" media="(min-width: 48rem)" fetchpriority="high" />
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/hqs.css?v=20261016-hqs" />
     <link rel="stylesheet" href="css/hqs-tutorials.css?v=20261018-hqs-tutorials" />
     <link rel="stylesheet" href="css/hqs-conversion.css?v=20261020-bonus-hqs" />
-    <link rel="stylesheet" href="css/hqs-premium-hero-v2.css?v=20261024-precision-bezels" />
+    <link rel="stylesheet" href="css/hqs-premium-hero-v2.css?v=20261024-approved-art" />
+    <link rel="stylesheet" href="css/hqs-bonus-premium.css?v=20261024-marquee" />
     <link rel="stylesheet" href="css/sales-testimonials.css?v=20261020" />
+    <link rel="stylesheet" href="css/hqs-testimonials-premium.css?v=20261024" />
+    <link rel="stylesheet" href="css/hqs-demo-compact.css?v=20261024-contain" />
+    <link rel="stylesheet" href="css/hqs-final-cta.css?v=20261024" />
     <link rel="stylesheet" href="css/sales-whatsapp.css?v=20261021" />
   </head>
   <body data-sales-catalog="hqs">
     <a class="sales-skip-link" href="#conteudo">Pular para o conteúdo</a>
     <header class="sales-header" data-sales-header></header>
     <main id="conteudo">
-      <section class="hqs-hero" aria-labelledby="sales-title">
-        <div class="hqs-hero__layout">
-          <header class="hqs-reference-top">
-            <a class="hqs-reference-brand" href="#conteudo" aria-label="Lumeo HQs, início da página">
-              <img src="assets/optimized/lumeo-logo.webp" alt="" width="160" height="160" />
-              <span class="hqs-reference-brand__copy"><strong>Lumeo</strong><small>LEIA · EVOLUA · TRANSFORME</small></span>
-            </a>
-            <p class="hqs-reference-seal hqs-reference-price"><span>De <del>R$ 39,99</del><br />por</span><strong data-sales-price>R$ 9,99</strong></p>
+      <section class="hqs-art-hero" aria-labelledby="sales-title">
+        <div class="hqs-art-hero__accessible-copy">
+          <h1 id="sales-title">Depois que você vê suas HQs no Lumeo, não quer voltar atrás.</h1>
+          <p>Organize, visualize e leia sua coleção com uma experiência muito mais envolvente no Android.</p>
+          <p>De R$ 39,99 por <span data-sales-price>R$ 9,99</span>.</p>
+        </div>
+        <picture class="hqs-art-hero__art" aria-hidden="true">
+          <source media="(min-width: 48rem)" srcset="assets/optimized/lumeo-hqs-hero-desktop-approved.webp" type="image/webp" width="1672" height="941" />
+          <img src="assets/optimized/lumeo-hqs-hero-mobile-approved.webp" alt="" width="941" height="1672" fetchpriority="high" decoding="async" />
+        </picture>
+        <div class="hqs-art-hero__tablet-screen" aria-hidden="true">
+          <video autoplay muted loop playsinline preload="metadata" poster="assets/tutorials/hqs/lumeo-hqs-tablet-two-pages-poster.webp" tabindex="-1">
+            <source src="assets/tutorials/hqs/lumeo-hqs-tablet-two-pages-loop-3s.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <div class="hqs-art-hero__phone-screen" aria-hidden="true">
+          <video autoplay muted loop playsinline preload="metadata" poster="assets/tutorials/hqs/lumeo-hqs-phone-poster.webp" tabindex="-1">
+            <source src="assets/tutorials/hqs/lumeo-hqs-phone-loop-7s.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <svg class="hqs-art-hero__frame-overlay hqs-art-hero__frame-overlay--mobile" viewBox="0 0 941 1672" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <mask id="hqs-art-mask-mobile" maskUnits="userSpaceOnUse">
+              <rect width="941" height="1672" fill="#fff" />
+              <path d="M119 762 L648 817.7 Q657 819.5 667 838 L671 860 L673 880 L675 900 L677 920 L676 940 L676 960 L675 980 L674 1000 L672 1020 L671 1040 L670 1060 L668 1080 L667 1100 L666 1120 L664 1140 L663 1160 L662 1180 L661 1200 L659 1220 L658 1224 L69 1179 Z" fill="#000" />
+              <path d="M692.5 838 C692.8 816 705 805.5 724 802 L876 792 Q887 792 888 804 L886 1253 Q886 1263 876 1263 L676 1260 Q666 1260 666 1249 Z" fill="#000" />
+              <rect x="752" y="786" width="91" height="41" rx="14.5" fill="#fff" />
+            </mask>
+          </defs>
+          <image href="assets/optimized/lumeo-hqs-hero-mobile-approved.webp" width="941" height="1672" preserveAspectRatio="none" mask="url(#hqs-art-mask-mobile)" />
+        </svg>
+        <svg class="hqs-art-hero__frame-overlay hqs-art-hero__frame-overlay--desktop" viewBox="0 0 1672 941" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <mask id="hqs-art-mask-desktop" maskUnits="userSpaceOnUse">
+              <rect width="1672" height="941" fill="#fff" />
+              <path d="M807 258 L1336 355.4 Q1343 357 1346 363 L1348 365 L1350 380 L1352 400 L1358 450 L1363 500 L1360 550 L1356 600 L1352 650 L1348 700 L1346 730 L1344 744.6 L748 703 Z" fill="#000" />
+              <path d="M1386 341.2 C1386.9 329.2 1397.7 318.6 1409.7 317.9 L1577.5 307.6 C1588.5 306.9 1597.1 315.4 1596.6 326.4 L1577.5 764.4 C1576.9 777.4 1565.4 787.8 1552.4 787.1 L1375.5 777.8 C1364.5 777.2 1355.5 767.7 1355.5 756.7 L1355.5 735 L1357.5 700 Z" fill="#000" />
+              <rect x="1444" y="304" width="94" height="28" rx="14" fill="#fff" />
+            </mask>
+          </defs>
+          <image href="assets/optimized/lumeo-hqs-hero-desktop-approved.webp" width="1672" height="941" preserveAspectRatio="none" mask="url(#hqs-art-mask-desktop)" />
+        </svg>
+        <button class="hqs-art-hero__cta" type="button" aria-label="EU QUERO O MELHOR — acessar a oferta do Lumeo HQs" data-sales-cta data-hqs-hero-cta data-hqs-cta-location="hero">
+          <span>EU QUERO O MELHOR</span>
+        </button>
+      </section>
+      <section class="hqs-bonus-premium" aria-labelledby="hqs-bonus-title" data-hqs-bonus>
+        <svg class="hqs-bonus-premium__symbols" aria-hidden="true">
+          <symbol id="hqs-bonus-drive" viewBox="0 0 48 48"><path fill="#20a464" d="M17.3 5.5h13.4l13.1 22.7H30.4z"/><path fill="#f6c344" d="M17.3 5.5 4.2 28.2l6.7 11.6L24 17.1z"/><path fill="#4385f5" d="M10.9 39.8h26.2l6.7-11.6H17.6z"/></symbol>
+          <symbol id="hqs-bonus-headphones" viewBox="0 0 48 48"><path d="M8 27v-4C8 14.2 15.2 7 24 7s16 7.2 16 16v4M8 27h6v13H9a3 3 0 0 1-3-3v-7a3 3 0 0 1 2-3Zm32 0h-6v13h5a3 3 0 0 0 3-3v-7a3 3 0 0 0-2-3Z"/></symbol>
+          <symbol id="hqs-bonus-books" viewBox="0 0 48 48"><path d="M8 7h9v34H8zM20 11h9v30h-9zM31 8l8-2 8 32-8 2z"/><path d="M11 13h3M23 17h3M36 14l4-1"/></symbol>
+          <symbol id="hqs-bonus-comics" viewBox="0 0 48 48"><path d="M7 10h25v31H7zM16 6h25v31h-5V10H16z"/><path d="m11 29 6-7 5 5 6-9M11 15h12M11 35h17"/></symbol>
+        </svg>
+        <div class="hqs-bonus-premium__inner">
+          <header class="hqs-bonus-premium__heading">
+            <p class="hqs-bonus-premium__eyebrow">BÔNUS INCLUÍDOS</p>
+            <h2 id="hqs-bonus-title">🎁 Seu Lumeo vai além da leitura. Confira os bônus que acompanham sua compra!</h2>
+            <p>Além de organizar e ler suas próprias HQs, você recebe três coleções para ampliar suas opções de leitura e entretenimento.</p>
           </header>
-          <div class="hqs-hero__copy">
-            <p class="sales-eyebrow">LUMEO HQS · LEITOR PARA ANDROID</p>
-            <h1 id="sales-title">Depois que você vê<br />suas HQs no Lumeo,<br /><span>não quer voltar atrás.</span></h1>
-            <p class="hqs-hero__lead">Organize, visualize e leia sua coleção com uma experiência muito mais envolvente no Android.</p>
-          </div>
-          <figure class="hqs-hero__visual" aria-label="Tablet deitado e celular em pé mostrando o Lumeo HQs">
-            <div class="hqs-hero__tablet-frame">
-              <video autoplay muted loop playsinline preload="metadata" poster="assets/tutorials/hqs/lumeo-hqs-tablet-two-pages-poster.webp" aria-label="Demonstração de uma HQ aberta em duas páginas no Lumeo">
-                <source src="assets/tutorials/hqs/lumeo-hqs-tablet-two-pages-loop-3s.mp4" type="video/mp4" />
-              </video>
-              <svg class="hqs-hero__tablet-bezel" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-                <polygon points="1.4,1.1 98.2,7.2 98.8,94.2 1.1,86.8" />
-              </svg>
+
+          <div class="hqs-bonus-premium__viewport">
+            <div class="hqs-bonus-premium__track" data-hqs-bonus-track aria-label="Bônus que acompanham a compra">
+              <article class="hqs-bonus-card" data-hqs-bonus-card>
+                <div class="hqs-bonus-card__visual" aria-hidden="true"><span class="hqs-bonus-card__drive"><svg><use href="#hqs-bonus-drive" /></svg></span><svg class="hqs-bonus-card__feature"><use href="#hqs-bonus-headphones" /></svg></div>
+                <p class="hqs-bonus-card__amount"><strong>200</strong><span>AUDIOBOOKS</span></p>
+                <h3>200 audiobooks para ouvir quando quiser</h3>
+                <p class="hqs-bonus-card__copy">Tem momentos em que você não pode parar para ler. Aproveite uma coleção de 200 audiobooks e continue explorando histórias em áudio.</p>
+                <p class="hqs-bonus-card__delivery"><svg aria-hidden="true"><use href="#hqs-bonus-drive" /></svg><span>Acesso por link do Google Drive</span></p>
+              </article>
+
+              <article class="hqs-bonus-card" data-hqs-bonus-card>
+                <div class="hqs-bonus-card__visual" aria-hidden="true"><span class="hqs-bonus-card__drive"><svg><use href="#hqs-bonus-drive" /></svg></span><svg class="hqs-bonus-card__feature"><use href="#hqs-bonus-books" /></svg></div>
+                <p class="hqs-bonus-card__amount"><strong>1.500</strong><span>LIVROS EM PDF</span></p>
+                <h3>1.500 livros digitais para descobrir novas histórias</h3>
+                <p class="hqs-bonus-card__copy">De clássicos a diferentes gêneros de leitura, tenha mais opções para escolher sua próxima leitura.</p>
+                <p class="hqs-bonus-card__delivery"><svg aria-hidden="true"><use href="#hqs-bonus-drive" /></svg><span>Coleção disponibilizada por link do Google Drive</span></p>
+              </article>
+
+              <article class="hqs-bonus-card" data-hqs-bonus-card>
+                <div class="hqs-bonus-card__visual" aria-hidden="true"><span class="hqs-bonus-card__drive"><svg><use href="#hqs-bonus-drive" /></svg></span><svg class="hqs-bonus-card__feature"><use href="#hqs-bonus-comics" /></svg></div>
+                <p class="hqs-bonus-card__amount hqs-bonus-card__amount--collection"><strong>COLEÇÃO</strong><span>DE HQs</span></p>
+                <h3>Uma grande coleção de HQs da Turma da Mônica</h3>
+                <p class="hqs-bonus-card__copy">Reencontre personagens e aventuras marcantes dos quadrinhos em uma coleção especial para explorar.</p>
+                <p class="hqs-bonus-card__delivery"><svg aria-hidden="true"><use href="#hqs-bonus-drive" /></svg><span>Acesso por link do Google Drive</span></p>
+              </article>
             </div>
-            <div class="hqs-hero__phone-frame">
-              <video autoplay muted loop playsinline preload="metadata" poster="assets/tutorials/hqs/lumeo-hqs-phone-poster.webp" aria-label="Demonstração da biblioteca visual do Lumeo no celular">
-                <source src="assets/tutorials/hqs/lumeo-hqs-phone-loop-7s.mp4" type="video/mp4" />
-              </video>
-              <span class="hqs-hero__phone-bezel" aria-hidden="true"></span>
-            </div>
-          </figure>
-          <div class="hqs-reference-action">
-            <button class="sales-button sales-button--primary hqs-reference-action__button" type="button" data-sales-cta data-hqs-hero-cta data-hqs-cta-location="hero"><span class="hqs-reference-action__rocket" aria-hidden="true">🚀</span><strong>EU QUERO O MELHOR</strong><span class="hqs-reference-action__arrow" aria-hidden="true">›</span></button>
-            <ul class="hqs-reference-features" aria-label="Recursos do Lumeo HQs">
-              <li><span aria-hidden="true">▧</span><strong>PDF</strong><small>Seus arquivos</small></li>
-              <li><span aria-hidden="true">▦</span><strong>CBR / CBZ</strong><small>Biblioteca visual</small></li>
-              <li><span aria-hidden="true">▯</span><strong>Android</strong><small>Leitura móvel</small></li>
-              <li><span aria-hidden="true">♫</span><strong>MP3</strong><small>Via Google Drive</small></li>
-            </ul>
           </div>
+
+          <footer class="hqs-bonus-premium__closing">
+            <div><strong>Seu leitor de HQs + três coleções para ampliar sua experiência. Tudo em uma única compra.</strong><small>Os bônus são disponibilizados separadamente por links do Google Drive. O aplicativo Lumeo não vem com os arquivos pré-instalados.</small></div>
+            <button class="hqs-bonus-premium__cta" type="button" data-sales-cta data-hqs-cta-location="bonus">QUERO MEU LUMEO + BÔNUS</button>
+          </footer>
         </div>
       </section>
       <section class="sales-testimonials hqs-section" aria-labelledby="social-title">
-        <header class="sales-testimonials__heading"><p class="sales-eyebrow">RELATOS DE LEITORES · MENSAGENS RECONSTITUÍDAS</p><h2 id="social-title">Quem experimenta o Lumeo tem muito o que contar! 📚✨</h2><p>Conheça experiências compartilhadas por leitores que já utilizaram o Lumeo para aproveitar suas HQs no Android.</p><small class="sales-testimonials__disclosure">Os relatos são reais e foram reconstituídos com base nas mensagens recebidas pelo WhatsApp. As imagens não são capturas originais das conversas.</small></header>
+        <header class="sales-testimonials__heading"><p class="sales-eyebrow">LEITORES SATISFEITOS · RELATOS RECONSTITUÍDOS</p><h2 id="social-title">Quem usa o Lumeo sente a diferença.</h2><p>Veja o que leitores e fãs de HQs estão dizendo sobre a experiência no Lumeo.</p><small class="sales-testimonials__disclosure">Os relatos são reais e foram reconstituídos com base nas mensagens recebidas pelo WhatsApp. As imagens não são capturas originais das conversas.</small></header>
         <div class="sales-testimonials__carousel" data-testimonials-carousel>
-          <div class="sales-testimonials__track" data-testimonials-track tabindex="0" aria-label="Relatos sobre a experiência com HQs no Lumeo">
-            <article class="sales-testimonial"><button class="sales-testimonial__image" type="button" data-testimonial-image="assets/depoimentos/renato.webp" data-testimonial-alt="Relato reconstituído de Renato" data-testimonial-avatar="whatsapp"><img src="assets/depoimentos/renato.webp" alt="Relato reconstituído de Renato sobre leitura de HQs no Lumeo" width="384" height="1281" loading="lazy" decoding="async" /><span>Ampliar</span></button><div class="sales-testimonial__copy"><h3>Renato</h3><p>Leitura confortável no celular, com destaque para o zoom durante as HQs.</p></div></article>
-            <article class="sales-testimonial"><button class="sales-testimonial__image" type="button" data-testimonial-image="assets/depoimentos/pamela-hqs.webp" data-testimonial-alt="Relato reconstituído de Pâmela" data-testimonial-avatar="android"><img src="assets/depoimentos/pamela-hqs.webp" alt="Relato reconstituído de Pâmela sobre balões e organização no Lumeo" width="887" height="1774" loading="lazy" decoding="async" /><span>Ampliar</span></button><div class="sales-testimonial__copy"><h3>Pâmela</h3><p>Balão ampliado mais fácil de ler e uma prateleira visual organizada.</p></div></article>
-            <article class="sales-testimonial"><button class="sales-testimonial__image" type="button" data-testimonial-image="assets/depoimentos/rodrigo-hqs.webp" data-testimonial-alt="Relato reconstituído de Rodrigo" data-testimonial-avatar="android"><img src="assets/depoimentos/rodrigo-hqs.webp" alt="Relato reconstituído de Rodrigo sobre ampliação de balões no Lumeo" width="887" height="1774" loading="lazy" decoding="async" /><span>Ampliar</span></button><div class="sales-testimonial__copy"><h3>Rodrigo</h3><p>Satisfação com a leitura de HQs e com a ampliação do balão mostrado.</p></div></article>
+          <div class="sales-testimonials__track" data-testimonials-track aria-label="Relatos sobre a experiência com HQs no Lumeo">
+            <article class="sales-testimonial" tabindex="0" role="button" aria-label="Ampliar relato de Renato" data-testimonial-card data-testimonial-image="assets/depoimentos/renato.webp" data-testimonial-alt="Relato reconstituído de Renato" data-testimonial-avatar="whatsapp"><div class="sales-testimonial__image" aria-hidden="true"><img src="assets/depoimentos/renato.webp" alt="" width="384" height="1281" loading="lazy" decoding="async" /><span>Toque para ampliar</span></div><div class="sales-testimonial__copy"><h3>Renato</h3><p>Leitura confortável no celular, com destaque para o zoom durante as HQs.</p></div></article>
+            <article class="sales-testimonial" tabindex="0" role="button" aria-label="Ampliar relato de Pâmela" data-testimonial-card data-testimonial-image="assets/depoimentos/pamela-hqs.webp" data-testimonial-alt="Relato reconstituído de Pâmela" data-testimonial-avatar="android"><div class="sales-testimonial__image" aria-hidden="true"><img src="assets/depoimentos/pamela-hqs.webp" alt="" width="887" height="1774" loading="lazy" decoding="async" /><span>Toque para ampliar</span></div><div class="sales-testimonial__copy"><h3>Pâmela</h3><p>Balão ampliado mais fácil de ler e uma prateleira visual organizada.</p></div></article>
+            <article class="sales-testimonial" tabindex="0" role="button" aria-label="Ampliar relato de Rodrigo" data-testimonial-card data-testimonial-image="assets/depoimentos/rodrigo-hqs.webp" data-testimonial-alt="Relato reconstituído de Rodrigo" data-testimonial-avatar="android"><div class="sales-testimonial__image" aria-hidden="true"><img src="assets/depoimentos/rodrigo-hqs.webp" alt="" width="887" height="1774" loading="lazy" decoding="async" /><span>Toque para ampliar</span></div><div class="sales-testimonial__copy"><h3>Rodrigo</h3><p>Satisfação com a leitura de HQs e com a ampliação do balão mostrado.</p></div></article>
           </div>
-          <div class="sales-testimonials__navigation"><button type="button" data-testimonials-previous aria-label="Relato anterior">←</button><div class="sales-testimonials__indicators" data-testimonials-indicators aria-label="Posição no carrossel"></div><button type="button" data-testimonials-next aria-label="Próximo relato">→</button></div>
         </div>
         <footer class="sales-testimonials__footer"><p>Os relatos representam experiências individuais. Recursos de ampliação podem variar conforme o arquivo e a versão instalada.</p><button class="sales-button sales-button--primary" type="button" data-sales-cta data-hqs-cta-location="testimonials">QUERO CONHECER O LUMEO HQs</button></footer>
       </section>
@@ -86,32 +141,31 @@
       </section>
 
       <section class="hqs-tutorials hqs-section" aria-labelledby="tutorials-title">
-        <header class="hqs-heading"><p class="sales-eyebrow">TUTORIAIS DO LUMEO HQs</p><h2 id="tutorials-title">Veja o Lumeo HQs em ação.</h2><p>Aprenda a adicionar sua coleção e conheça os recursos de leitura.</p></header>
+        <header class="hqs-heading"><p class="sales-eyebrow">VEJA NA PRÁTICA</p><h2 id="tutorials-title">Veja o Lumeo em ação.</h2><p>Da importação à leitura: conheça a experiência em dois vídeos rápidos.</p></header>
         <div class="hqs-tutorials__rail" data-hqs-tutorials aria-label="Tutoriais do Lumeo HQs">
           <article class="hqs-tutorial-card">
-            <h3 class="hqs-tutorial-card__title">Como adicionar suas HQs</h3>
+            <h3 class="hqs-tutorial-card__title">Adicione suas HQs com facilidade</h3>
             <div class="hqs-tutorial-card__body">
               <div class="hqs-tutorial-card__media">
-                <video autoplay muted loop preload="none" playsinline poster="assets/tutorials/hqs/lumeo-hqs-importar-google-drive-poster.webp" data-hqs-tutorial data-tutorial-key="hqs-drive" aria-describedby="hqs-tutorial-drive-caption" aria-label="Demonstração de importação de HQs pelo Google Drive">
+                <video autoplay muted loop preload="none" playsinline poster="assets/tutorials/hqs/lumeo-hqs-importar-google-drive-poster.webp" data-hqs-tutorial data-tutorial-key="hqs-drive" aria-describedby="hqs-tutorial-drive-chat" aria-label="Demonstração de importação de HQs pelo Google Drive">
                   <source data-src="assets/tutorials/hqs/lumeo-hqs-importar-google-drive.mp4" type="video/mp4">
                   Seu navegador não oferece suporte a vídeos HTML5.
                 </video>
               </div>
-              <div class="hqs-tutorial-card__captions" id="hqs-tutorial-drive-caption" data-tutorial-captions aria-live="polite" aria-atomic="true"></div>
+              <div class="hqs-tutorial-card__captions" id="hqs-tutorial-drive-chat" data-tutorial-captions aria-label="Detalhes da importação mostrados no vídeo"></div>
             </div>
           </article>
           <article class="hqs-tutorial-card">
-            <h3 class="hqs-tutorial-card__title">Conheça a interface de leitura</h3>
+            <h3 class="hqs-tutorial-card__title">Conheça a interface do Lumeo</h3>
             <div class="hqs-tutorial-card__body">
               <div class="hqs-tutorial-card__media">
-                <video autoplay muted loop preload="none" playsinline poster="assets/tutorials/hqs/lumeo-hqs-baloes-leitura-pomodoro-poster.webp" data-hqs-tutorial data-tutorial-key="hqs-reading" aria-describedby="hqs-tutorial-reading-caption" aria-label="Demonstração visual da interface de leitura de HQs">
+                <video autoplay muted loop preload="none" playsinline poster="assets/tutorials/hqs/lumeo-hqs-baloes-leitura-pomodoro-poster.webp" data-hqs-tutorial data-tutorial-key="hqs-reading" aria-describedby="hqs-tutorial-reading-chat" aria-label="Demonstração visual da interface de leitura de HQs">
                   <source data-src="assets/tutorials/hqs/lumeo-hqs-baloes-leitura-pomodoro.mp4" type="video/mp4">
                   Seu navegador não oferece suporte a vídeos HTML5.
                 </video>
               </div>
-              <div class="hqs-tutorial-card__captions" id="hqs-tutorial-reading-caption" data-tutorial-captions aria-live="polite" aria-atomic="true"></div>
+              <div class="hqs-tutorial-card__captions" id="hqs-tutorial-reading-chat" data-tutorial-captions aria-label="Detalhes da interface mostrados no vídeo"></div>
             </div>
-            <p class="hqs-tutorial-card__note">Demonstração visual. Recursos de ampliação de balões podem variar conforme o arquivo, a página e a versão instalada.</p>
           </article>
         </div>
       </section>
@@ -121,18 +175,25 @@
         <figure class="hqs-reading__media"><video muted playsinline autoplay loop preload="none" poster="assets/animacoes/lumeo-hqs-virada-poster.webp" data-hqs-reader-demo aria-label="Demonstração visual do leitor de HQs"><source data-src="assets/animacoes/lumeo-hqs-virada.mp4" type="video/mp4" /></video><figcaption class="hqs-reading__note">Demonstração visual. Os recursos podem variar conforme o arquivo e a versão do app.</figcaption></figure>
       </section>
 
-      <section class="hqs-library" aria-labelledby="library-title">
-        <header class="hqs-heading hqs-heading--center"><p class="sales-eyebrow">SUA COLEÇÃO GANHA FORMA</p><h2 id="library-title">Tudo organizado para a sua próxima história.</h2><p>Capas abaixo são exemplos visuais. Os quadrinhos não acompanham o aplicativo.</p></header>
-        <div class="hqs-library__rails" data-hqs-library></div>
+      <section class="hqs-final-cta" id="final-cta" aria-labelledby="final-cta-title">
+        <div class="hqs-final-cta__glow" aria-hidden="true"></div>
+        <div class="hqs-final-cta__inner">
+          <p class="hqs-final-cta__eyebrow"><span aria-hidden="true">●</span> COMECE AGORA</p>
+          <h2 id="final-cta-title">Sua coleção merece uma experiência melhor.</h2>
+          <p class="hqs-final-cta__lead">Organize suas HQs, leia com mais conforto e tenha sua biblioteca visual no Android. Dê o próximo passo e comece sua experiência no Lumeo agora.</p>
+          <ul class="hqs-final-cta__benefits" aria-label="Benefícios do Lumeo HQs">
+            <li>Biblioteca visual</li>
+            <li>Leitura no Android</li>
+            <li>Seus próprios arquivos</li>
+          </ul>
+          <div class="hqs-final-cta__price">
+            <span>ACESSO AO LUMEO HQs</span>
+            <strong data-sales-price>R$ 9,99</strong>
+          </div>
+          <button class="hqs-final-cta__button" type="button" data-sales-cta data-hqs-cta-location="final">QUERO ENTRAR NO LUMEO AGORA <span aria-hidden="true">›</span></button>
+          <small>As condições de pagamento serão exibidas no checkout antes da confirmação.</small>
+        </div>
       </section>
-
-      <section class="hqs-benefits hqs-section" aria-labelledby="benefits-title">
-        <header class="hqs-heading"><p class="sales-eyebrow">MAIS HQ. MENOS PASTAS.</p><h2 id="benefits-title">Uma biblioteca que acompanha sua coleção.</h2></header>
-        <div class="hqs-benefits__grid"><article><span>01</span><h3>Sua coleção, do seu jeito</h3><p>Reúna os arquivos que você já possui em uma biblioteca pessoal.</p></article><article><span>02</span><h3>Capas e organização visual</h3><p>Explore sua biblioteca por títulos e coleções pessoais.</p></article><article><span>03</span><h3>Continue de onde parou</h3><p>Retome a leitura pelo progresso salvo no aplicativo.</p></article><article><span>04</span><h3>Seu Android, sua estante</h3><p>Use no celular ou tablet Android que você já tem.</p></article></div>
-      </section>
-
-      <section class="hqs-offer hqs-section" aria-labelledby="offer-title"><div><p class="sales-eyebrow">ACESSO AO APLICATIVO</p><h2 id="offer-title">Uma biblioteca pessoal para as HQs que você já tem.</h2><p>Organize seus arquivos e continue a leitura no seu ritmo, no celular ou tablet Android.</p></div><aside><p>PREÇO DO APLICATIVO</p><div class="hqs-offer-price"><span>De <del>R$ 39,99</del> por</span><strong data-sales-price>R$ 9,99</strong></div><p class="hqs-offer__bonus">🎁 Bônus: coleção de HQs da Turma da Mônica<br />🎁 Bônus: 1.500 livros digitais<br />🎁 Bônus: 200 audiolivros<br /><small>Entregues por link separado do Google Drive após a compra.</small></p><button class="sales-button sales-button--primary" type="button" data-sales-cta data-hqs-offer-cta data-hqs-cta-location="offer">QUERO ORGANIZAR MINHAS HQs</button><small>Os bônus são entregues por link separado e não ficam pré-instalados no aplicativo. As condições de pagamento serão exibidas no checkout antes da confirmação.</small></aside></section>
-      <section class="hqs-faq hqs-section" aria-labelledby="faq-title"><p class="sales-eyebrow">DÚVIDAS FREQUENTES</p><h2 id="faq-title">Tudo para começar sua próxima leitura.</h2><div data-hqs-faq></div></section>
     </main>
     <footer class="hqs-footer"><img src="assets/optimized/lumeo-logo.webp" alt="" loading="lazy" /><p>© <span data-sales-year></span> Lumeo. Leitor pessoal para Android.</p><nav class="sales-footer__links" aria-label="Links legais"><a href="privacidade.html">Privacidade</a><a href="termos.html">Termos</a><button type="button" data-sales-open-consent>Preferências de privacidade</button></nav></footer>
     <button class="sales-whatsapp" data-sales-whatsapp type="button" hidden aria-label="Tire suas dúvidas no WhatsApp" title="Tire suas dúvidas no WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.05 4.94A9.87 9.87 0 0 0 12.05 2C6.58 2 2.13 6.45 2.13 11.92c0 1.75.46 3.46 1.33 4.96L2 22l5.27-1.38a9.9 9.9 0 0 0 4.77 1.22h.01c5.47 0 9.92-4.45 9.92-9.92a9.86 9.86 0 0 0-2.92-6.98ZM12.05 20.17a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3.13.82.84-3.04-.2-.32a8.19 8.19 0 1 1 6.97 3.86Zm4.5-6.14c-.25-.12-1.48-.73-1.7-.81-.23-.08-.4-.12-.57.12s-.65.81-.8.98c-.15.16-.3.18-.55.06a6.7 6.7 0 0 1-1.97-1.22 7.34 7.34 0 0 1-1.36-1.7c-.14-.25 0-.38.1-.5.1-.1.24-.26.36-.38.12-.13.16-.22.24-.37.08-.16.04-.29-.02-.4-.06-.1-.57-1.36-.78-1.86-.2-.49-.41-.42-.57-.43h-.48c-.17 0-.43.06-.66.3-.23.24-.87.85-.87 2.08 0 1.22.9 2.4 1.02 2.56.13.17 1.77 2.7 4.28 3.79.6.26 1.07.42 1.44.54.6.19 1.15.17 1.58.1.48-.07 1.48-.6 1.69-1.18.21-.59.21-1.1.15-1.2-.06-.11-.22-.17-.47-.29Z" /></svg><span>Tire suas dúvidas</span></button>
@@ -140,6 +201,6 @@
     <div class="sales-modal" data-sales-modal hidden aria-hidden="true"></div>
     <button class="sales-mobile-cta sales-button sales-button--primary" type="button" data-sales-cta data-hqs-cta-location="sticky">QUERO MEU LUMEO</button>
     <aside class="sales-consent" data-sales-consent role="dialog" aria-labelledby="sales-consent-title" hidden><div><h2 id="sales-consent-title">Sua privacidade importa</h2><p>O Meta Pixel só será carregado se estiver configurado e você autorizar a medição de visitas e intenções de compra. <a href="privacidade.html">Leia a política de privacidade</a>.</p></div><div class="sales-consent__actions"><button type="button" data-consent-reject>Continuar sem medição</button><button type="button" data-consent-accept>Aceitar medição</button></div></aside>
-    <script type="module" src="js/hqs.js"></script>
+    <script type="module" src="js/hqs.js?v=20261024-sections-removed"></script>
   </body>
 </html>

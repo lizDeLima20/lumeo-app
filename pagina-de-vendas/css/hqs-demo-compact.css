@@ -1,0 +1,208 @@
+body[data-sales-catalog="hqs"] .hqs-tutorials {
+  width: 100%;
+  padding: clamp(1.5rem, 4vw, 2.6rem) 0;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(circle at 88% 15%, rgba(255, 203, 72, .13), transparent 18rem),
+    linear-gradient(145deg, #180725, #2a0e3e 58%, #16051f);
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorials > .hqs-heading {
+  width: min(calc(100% - 2rem), 46rem);
+  margin-inline: auto;
+  text-align: center;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorials .sales-eyebrow {
+  color: #ffd15c;
+  font-size: .67rem;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorials .hqs-heading h2 {
+  color: #fff;
+  font-size: clamp(1.6rem, 4.6vw, 2.4rem);
+  line-height: 1.05;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorials .hqs-heading > p:not(.sales-eyebrow) {
+  margin: .5rem auto 0;
+  color: #d9cfe4;
+  font-size: .88rem;
+  line-height: 1.4;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorials__rail {
+  display: grid;
+  width: 100%;
+  grid-auto-columns: min(72vw, 15rem);
+  grid-auto-flow: column;
+  gap: .75rem;
+  margin: 1rem 0 0;
+  padding: .1rem max(1rem, calc((100vw - 60rem) / 2)) .75rem;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-padding-inline: 1rem;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorials__rail::-webkit-scrollbar { display: none; }
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card {
+  display: grid;
+  min-width: 0;
+  gap: .58rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 208, 83, .48);
+  border-radius: .95rem;
+  padding: .7rem;
+  color: #fff;
+  background: linear-gradient(155deg, rgba(70, 25, 92, .98), rgba(26, 7, 41, .99));
+  box-shadow: 0 .8rem 1.8rem rgba(3, 0, 10, .25), inset 0 1px rgba(255, 255, 255, .06);
+  scroll-snap-align: center;
+  box-sizing: border-box;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card h3.hqs-tutorial-card__title {
+  margin: 0;
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1.15;
+  text-align: left;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__body {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: .58rem;
+}
+
+/* A altura vem do próprio vídeo (432×984, vertical): nada é cortado. */
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__media {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 207, 79, .58);
+  border-radius: .75rem;
+  background: linear-gradient(145deg, #251231, #6f4288);
+  box-shadow: inset 0 0 1.8rem rgba(15, 2, 24, .32);
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__media::before { display: none; }
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card video {
+  position: static;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: none;
+  aspect-ratio: 432 / 984;
+  border-radius: .68rem;
+  background: #14091e;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+  filter: none;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__summary {
+  margin: 0;
+  color: #e4d9eb;
+  font-size: .76rem;
+  line-height: 1.38;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__captions {
+  display: flex;
+  min-height: 4.8rem;
+  max-height: 5.8rem;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: .2rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 213, 105, .22);
+  border-radius: .7rem;
+  padding: .65rem .7rem;
+  color: #f8f1fc;
+  background: rgba(11, 3, 18, .52);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .04);
+  font-size: .7rem;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-weight: 720;
+  line-height: 1.38;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__captions:empty::before {
+  color: #cdbed7;
+  content: "Acompanhe os detalhes desta demonstração…";
+  font-weight: 650;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card .hqs-tutorial-card__captions p:not(.sales-eyebrow) {
+  margin: 0;
+  color: #d3c5dd;
+  font-size: inherit;
+  font-weight: 720;
+  line-height: inherit;
+  opacity: .64;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card .hqs-tutorial-card__captions p:last-child {
+  color: #fff;
+  opacity: 1;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__captions p[data-typing="true"]::after {
+  width: .12em;
+  margin-left: .14em;
+  background: #ffd15c;
+}
+
+body[data-sales-catalog="hqs"] .hqs-tutorial-card__note {
+  margin: 0;
+  border-top: 1px solid rgba(255, 255, 255, .1);
+  padding-top: .48rem;
+  color: #aa99b6;
+  font-size: .6rem;
+  line-height: 1.35;
+}
+
+@media (min-width: 48rem) {
+  body[data-sales-catalog="hqs"] .hqs-tutorials__rail {
+    width: min(100%, 72rem);
+    grid-template-columns: repeat(2, 16.5rem);
+    grid-auto-columns: auto;
+    grid-auto-flow: row;
+    justify-content: center;
+    gap: 1.25rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+    overflow: visible;
+  }
+
+  body[data-sales-catalog="hqs"] .hqs-tutorial-card__media { height: auto; }
+
+  body[data-sales-catalog="hqs"] .hqs-tutorial-card__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body[data-sales-catalog="hqs"] .hqs-tutorial-card__captions {
+    min-height: 4.8rem;
+    max-height: 5.8rem;
+    font-size: .74rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-sales-catalog="hqs"] .hqs-tutorials__rail { scroll-behavior: auto; }
+}
