@@ -1,0 +1,242 @@
+/* Oferta final de Livros: cópia fiel de css/hqs-final-cta.css (mesmo layout, cores, tipografia e espaçamentos). */
+body[data-sales-catalog="livros"] .livros-final-cta {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(2.6rem, 7vw, 5rem) max(1rem, env(safe-area-inset-left));
+  color: #fff;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(255, 197, 67, .18), transparent 30rem),
+    linear-gradient(145deg, #16091f 0%, #2c0b46 52%, #12071d 100%);
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta::before,
+body[data-sales-catalog="livros"] .livros-final-cta::after {
+  position: absolute;
+  z-index: -1;
+  content: "";
+  pointer-events: none;
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta::before {
+  inset: 0;
+  opacity: .34;
+  background-image:
+    linear-gradient(115deg, transparent 46%, rgba(255, 207, 80, .14) 46.5%, transparent 47%),
+    linear-gradient(65deg, transparent 57%, rgba(255, 255, 255, .06) 57.5%, transparent 58%);
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta::after {
+  right: -7rem;
+  bottom: -9rem;
+  width: 19rem;
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 201, 64, .24);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2.5rem rgba(255, 201, 64, .035), 0 0 0 5rem rgba(255, 201, 64, .025);
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__glow {
+  position: absolute;
+  z-index: -1;
+  top: -4rem;
+  left: 50%;
+  width: min(38rem, 90vw);
+  height: 12rem;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: rgba(255, 190, 52, .12);
+  filter: blur(3rem);
+  pointer-events: none;
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__inner {
+  width: min(100%, 58rem);
+  margin-inline: auto;
+  display: grid;
+  justify-items: center;
+  gap: clamp(.85rem, 2vw, 1.2rem);
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__eyebrow {
+  margin: 0;
+  padding: .42rem .75rem;
+  border: 1px solid rgba(255, 204, 68, .36);
+  border-radius: 999px;
+  color: #ffd765;
+  background: rgba(255, 199, 58, .08);
+  font-size: .75rem;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__eyebrow span {
+  color: #ff5d57;
+  text-shadow: 0 0 .7rem rgba(255, 74, 67, .9);
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta h2 {
+  max-width: 16ch;
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 4.3rem);
+  line-height: .98;
+  letter-spacing: -.045em;
+  text-wrap: balance;
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__lead {
+  max-width: 44rem;
+  margin: 0;
+  color: #eee5f5;
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__benefits {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .55rem;
+  margin: .15rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__benefits li {
+  padding: .48rem .7rem;
+  border: 1px solid rgba(255, 255, 255, .13);
+  border-radius: .7rem;
+  color: #fff;
+  background: rgba(255, 255, 255, .055);
+  font-size: .88rem;
+  font-weight: 750;
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__benefits li::before {
+  margin-right: .38rem;
+  color: #ffd45e;
+  content: "✓";
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__price {
+  display: grid;
+  justify-items: center;
+  gap: .1rem;
+  margin-top: .25rem;
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__price span {
+  color: #dfd1e9;
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .14em;
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__price strong {
+  color: #ffd15a;
+  font-size: clamp(2.75rem, 7vw, 4.25rem);
+  line-height: 1;
+  letter-spacing: -.045em;
+  text-shadow: 0 .2rem 1.4rem rgba(255, 179, 28, .24);
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__button {
+  width: min(100%, 29rem);
+  min-height: 3.5rem;
+  padding: .85rem 1.15rem;
+  border: 1px solid #ffe59a;
+  border-radius: .85rem;
+  color: #21102f;
+  background: linear-gradient(135deg, #ffe17b, #ffb82e);
+  box-shadow: 0 .8rem 2rem rgba(255, 170, 23, .25), inset 0 1px 0 rgba(255, 255, 255, .8);
+  font: inherit;
+  font-size: clamp(.98rem, 2.4vw, 1.15rem);
+  font-weight: 950;
+  cursor: pointer;
+  transition: translate .2s ease, box-shadow .2s ease, filter .2s ease;
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__button span {
+  display: inline-block;
+  margin-left: .35rem;
+  font-size: 1.65em;
+  line-height: 0;
+  vertical-align: -.12em;
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__button:hover {
+  translate: 0 -.12rem;
+  filter: saturate(1.08) brightness(1.03);
+  box-shadow: 0 1rem 2.4rem rgba(255, 170, 23, .32), inset 0 1px 0 rgba(255, 255, 255, .8);
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__button:focus-visible {
+  outline: .2rem solid #fff;
+  outline-offset: .22rem;
+}
+
+body[data-sales-catalog="livros"] .livros-final-cta__inner > small {
+  max-width: 34rem;
+  color: #c9b9d3;
+  font-size: .76rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 32rem) {
+  body[data-sales-catalog="livros"] .livros-final-cta {
+    padding-block: 2.4rem;
+  }
+
+  body[data-sales-catalog="livros"] .livros-final-cta__benefits {
+    gap: .4rem;
+  }
+
+  body[data-sales-catalog="livros"] .livros-final-cta__benefits li {
+    padding: .4rem .55rem;
+    font-size: .78rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-sales-catalog="livros"] .livros-final-cta__button {
+    transition: none;
+  }
+}
+
+/* O body de Livros usa line-height 1.6; HQs usa o padrão do navegador. Igualamos para a seção e o rodapé
+   terem exatamente as mesmas alturas, e repetimos o respiro de 5px entre seções de HQs. */
+body[data-sales-catalog="livros"] .livros-final-cta,
+body[data-sales-catalog="livros"] .livros-footer { line-height: normal; }
+body[data-sales-catalog="livros"] .livros-final-cta { margin-top: 5px; }
+
+/* Rodapé compacto de Livros: mesmo padrão de .hqs-footer (css/hqs.css + css/hqs-conversion.css),
+   com o fundo claro de HQs explícito porque o body de Livros é escuro. */
+body[data-sales-catalog="livros"] .livros-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+  border-top: 1px solid #e7ddea;
+  padding: 2rem 1rem calc(5.8rem + env(safe-area-inset-bottom));
+  color: #887d8d;
+  background: #f4edef;
+  font-size: .74rem;
+  text-align: center;
+}
+
+body[data-sales-catalog="livros"] .livros-footer img { width: 2rem; height: 2rem; }
+body[data-sales-catalog="livros"] .livros-footer p { margin: 0; }
+
+/* O WhatsApp sai de cena enquanto estaria por cima de textos, preço, botão ou links da oferta final e do rodapé. */
+body[data-sales-catalog="livros"] .sales-whatsapp--clear-livros-final,
+body[data-sales-catalog="livros"] .hqs-whatsapp-nudge--clear-livros-final {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (min-width: 42rem) {
+  body[data-sales-catalog="livros"] .livros-footer { padding-bottom: 2rem; }
+}

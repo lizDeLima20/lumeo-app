@@ -183,6 +183,35 @@ function mountTutorials() {
   videos.forEach((video) => observer.observe(video));
 }
 
-mountTutorials(); mountBooksHeroVideo(); mountMobileCtaVisibility({ extraCtaSelectors: ["[data-livros-audiobooks-cta]"] });
+// O botão do WhatsApp (com o selo "Dúvidas" e a seta) some enquanto ficaria por cima de algum texto,
+// preço, botão ou link da oferta final e do rodapé; volta assim que a área fica livre.
+function mountWhatsappFinalClearance(root = document) {
+  const whatsapp = root.querySelector("[data-sales-whatsapp]");
+  const nudge = root.querySelector(".hqs-whatsapp-nudge");
+  const guarded = [...root.querySelectorAll(".livros-final-cta__inner > *, .livros-footer > img, .livros-footer > p, .livros-footer a, .livros-footer button")];
+  if (!whatsapp || !guarded.length) return;
+  let frame = 0;
+  const check = () => {
+    frame = 0;
+    const zone = whatsapp.getBoundingClientRect();
+    const label = nudge?.getBoundingClientRect();
+    // A seta animada fica acima do ícone, fora das caixas do botão e do selo.
+    const top = zone.top - 30, left = Math.min(zone.left, label?.width ? label.left : zone.left);
+    const covered = !whatsapp.hidden && guarded.some((element) => {
+      const box = element.getBoundingClientRect();
+      return box.width && box.left < zone.right && box.right > left && box.top < zone.bottom && box.bottom > top;
+    });
+    whatsapp.classList.toggle("sales-whatsapp--clear-livros-final", covered);
+    nudge?.classList.toggle("hqs-whatsapp-nudge--clear-livros-final", covered);
+  };
+  const schedule = () => { if (!frame) frame = requestAnimationFrame(check); };
+  addEventListener("scroll", schedule, { passive: true });
+  addEventListener("resize", schedule, { passive: true });
+  new MutationObserver(schedule).observe(whatsapp, { attributes: true, attributeFilter: ["hidden"] });
+  schedule();
+}
+
+// Como em HQs, a barra fixa some na oferta final; aqui também durante toda a seção e o rodapé, para não cobrir textos nem links.
+mountTutorials(); mountBooksHeroVideo(); mountWhatsappFinalClearance(); mountMobileCtaVisibility({ extraCtaSelectors: ["[data-livros-audiobooks-cta]", "#final-cta", ".livros-footer"] });
 try { mountLibrary((await loadCatalog("livros")).items || []); }
 catch (error) { const root = document.querySelector("[data-sales-library]"); if (root) root.textContent = "Não foi possível carregar a demonstração da biblioteca."; console.error("Lumeo demo library unavailable", error); }

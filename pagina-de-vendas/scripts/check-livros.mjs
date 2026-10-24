@@ -336,7 +336,7 @@ test("CTA da seção de audiolivros mantém o rastreamento e localização próp
 
 test("botão fixo se esconde quando o CTA de audiolivros está visível", async () => {
   const { mountMobileCtaVisibility } = await import(pathToFileURL(resolve(pageRoot, "js/mobile-cta.js")).href);
-  assert.match(js, /mountMobileCtaVisibility\(\{ extraCtaSelectors: \["\[data-livros-audiobooks-cta\]"\] \}\)/);
+  assert.match(js, /mountMobileCtaVisibility\(\{ extraCtaSelectors: \["\[data-livros-audiobooks-cta\]",/);
   const element = () => { const attributes = new Map(), classes = new Set(); return { dataset: {}, classList: { toggle: (name, force) => force ? classes.add(name) : classes.delete(name), contains: (name) => classes.has(name) },
     getAttribute: (name) => attributes.get(name) ?? null, setAttribute: (name, value) => attributes.set(name, String(value)), removeAttribute: (name) => attributes.delete(name) }; };
   const mobile = element(), hero = element(), offer = element(), bonus = element(), observed = [];
@@ -376,7 +376,7 @@ test("oferta isolada de HQs e bônus preservados conforme orientação", async (
   const { SALES_CONFIG } = await import(pathToFileURL(resolve(pageRoot, "js/shared.js")).href);
   assert.equal(SALES_CONFIG.livrosPrice, 9.99);
   assert.equal(SALES_CONFIG.price, 9.99);
-  assert.match(html, /QUERO ACESSAR O LUMEO/);
+  assert.match(html, /QUERO ENTRAR NO LUMEO AGORA/);
   assert.match(html, /R\$ 9,99/);
   assert.equal((html.match(/R\$ 39,99/g) || []).length, 1, "o preço anterior deve existir somente na cópia acessível da arte aprovada");
   assert.doesNotMatch(html + js, /R\$ 29,90|somente até hoje|<del>/i);
@@ -432,12 +432,31 @@ test("a seção tem exatamente os três bônus anunciados e ícones do Drive", (
   cards.forEach((card) => assert.match(card, /livros-bonus-drive/));
 });
 
-test("oferta final preserva preço, bônus e checkout após a remoção dos blocos", () => {
-  const final = html.match(/<section class="editorial-final">[\s\S]*?<\/section>/)?.[0] || "";
-  assert.match(final, /R\$ 9,99/);
-  assert.match(final, /com os bônus apresentados nesta página/);
-  assert.match(final, /data-sales-cta-location="final"/);
-  assert.match(final, /QUERO ACESSAR O LUMEO/);
+test("oferta final e rodapé seguem o padrão de HQs, com o texto de Livros", () => {
+  const final = html.match(/<section class="livros-final-cta"[\s\S]*?<\/section>/)?.[0] || "";
+  const text = normalizeText(final);
+  assert.match(final, /id="final-cta"/);
+  assert.match(text, /● COMECE AGORA/);
+  assert.match(text, /Sua biblioteca merece uma experiência melhor\./);
+  assert.match(text, /Organize seus livros, personalize sua leitura e aproveite cada página do seu jeito\. Comece sua experiência no Lumeo agora\./);
+  assert.deepEqual([...final.matchAll(/<li>([^<]+)<\/li>/g)].map((match) => match[1]), ["Biblioteca organizada", "Leitura no Android", "Seus próprios arquivos"]);
+  assert.match(final, /<span>ACESSO AO LUMEO LIVROS<\/span>\s*<strong data-sales-price>R\$ 9,99<\/strong>/);
+  assert.match(final, /class="livros-final-cta__button" type="button" data-sales-cta data-sales-cta-location="final">QUERO ENTRAR NO LUMEO AGORA/);
+  assert.match(text, /As condições de pagamento serão exibidas no checkout antes da confirmação\./);
+  assert.doesNotMatch(html, /editorial-final|class="sales-footer"/);
+  const footer = html.match(/<footer class="livros-footer">[\s\S]*?<\/footer>/)?.[0] || "";
+  assert.match(footer, /lumeo-logo\.webp/);
+  assert.match(footer, /data-sales-year/);
+  assert.match(footer, /href="privacidade\.html">Privacidade/);
+  assert.match(footer, /href="termos\.html">Termos/);
+  assert.match(footer, /data-sales-open-consent>Preferências de privacidade/);
+  const css = readFileSync(resolve(pageRoot, "css/livros-final-cta.css"), "utf8");
+  const hqsCss = readFileSync(resolve(pageRoot, "css/hqs-final-cta.css"), "utf8");
+  assert.ok(css.includes(hqsCss.replaceAll('data-sales-catalog="hqs"', 'data-sales-catalog="livros"').replaceAll("hqs-final-cta", "livros-final-cta")), "o CSS da oferta final deve ser idêntico ao de HQs");
+  assert.match(html, /css\/livros-final-cta\.css\?v=/);
+  assert.match(js, /"#final-cta"/);
+  assert.match(js, /"\.livros-footer"/);
+  assert.match(js, /sales-whatsapp--clear-livros-final/);
 });
 
 test("microcopies diferenciam o app da entrega separada dos bônus", () => {
