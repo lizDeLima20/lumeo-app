@@ -10,33 +10,127 @@
     <meta name="theme-color" content="#160d23" />
     <title>Lumeo — Seus livros, finalmente organizados no Android</title>
     <link rel="icon" type="image/webp" href="assets/optimized/lumeo-logo.webp" />
-    <link rel="preload" as="image" href="assets/optimized/lumeo-logo.webp" type="image/webp" />
+    <link rel="preload" as="image" href="assets/optimized/lumeo-livros-hero-mobile-approved.webp" type="image/webp" media="(max-width: 47.99rem)" fetchpriority="high" />
+    <link rel="preload" as="image" href="assets/optimized/lumeo-livros-hero-desktop-approved.webp" type="image/webp" media="(min-width: 48rem)" fetchpriority="high" />
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/livros.css?v=20261020-reading-demo-proportional" />
     <link rel="stylesheet" href="css/livros-conversion.css?v=20261022-conversao" />
     <link rel="stylesheet" href="css/sales-testimonials.css?v=20261020" />
     <link rel="stylesheet" href="css/sales-whatsapp.css?v=20261021" />
     <link rel="stylesheet" href="css/livros-editorial.css" />
+    <link rel="stylesheet" href="css/livros-art-hero.css?v=20261024-approved-art" />
+    <link rel="stylesheet" href="css/livros-bonus-premium.css?v=20261024-loop" />
+    <link rel="stylesheet" href="css/livros-testimonials-premium.css?v=20261024-touch" />
+    <link rel="stylesheet" href="css/livros-demo-compact.css?v=20261024-touch" />
   </head>
   <body data-sales-catalog="livros">
     <a class="sales-skip-link" href="#conteudo">Pular para o conteúdo</a>
     <header class="sales-header" data-sales-header></header>
     <main id="conteudo">
-      <section class="sales-hero" aria-labelledby="sales-title">
-        <div class="sales-hero__layout">
-          <div class="sales-hero__copy">
-            <p class="sales-eyebrow">Lumeo · leitor e organizador de livros</p>
-            <h1 id="sales-title">Seus livros organizados. <span>Sua leitura do seu jeito.</span></h1>
-            <p class="sales-hero__lead">Reúna seus PDFs e EPUBs, personalize a leitura e retome de onde parou no seu Android.</p>
-            <figure class="editorial-product"><img src="assets/optimized/lumeo-library-mobile.webp" width="540" height="960" fetchpriority="high" alt="Biblioteca real do Lumeo com capas e organização dos livros" /><figcaption>Sua biblioteca, sempre à mão.</figcaption></figure><div class="sales-hero__offer" aria-label="Oferta do aplicativo Lumeo">
-              <p class="sales-hero__price-label">ACESSO AO LUMEO —</p>
-              <div class="sales-hero__price"><strong data-sales-price>R$ 9,99</strong></div>
-              <p class="hero-bonus-summary">Inclui os 3 bônus da oferta, entregues separadamente pelo Google Drive.</p>
-              <button class="sales-button sales-button--primary sales-button--hero" type="button" data-sales-cta data-hqs-hero-cta data-sales-cta-location="hero">QUERO ACESSAR O LUMEO</button>
-              <small class="sales-hero__legal">Aplicativo leitor + bônus por link após a compra. Os arquivos não vêm pré-instalados.</small>
+      <section class="livros-art-hero" aria-labelledby="sales-title">
+        <div class="livros-art-hero__accessible-copy">
+          <h1 id="sales-title">Você ama ler. Está na hora de amar como você lê.</h1>
+          <p>Descubra uma forma mais agradável de ler seus livros digitais, com sua biblioteca organizada e a leitura do seu jeito.</p>
+          <p>De R$ 39,99 por <span data-sales-price>R$ 9,99</span>.</p>
+        </div>
+        <picture class="livros-art-hero__art" aria-hidden="true">
+          <source media="(min-width: 48rem)" srcset="assets/optimized/lumeo-livros-hero-desktop-approved.webp" type="image/webp" width="1672" height="941" />
+          <img src="assets/optimized/lumeo-livros-hero-mobile-approved.webp" alt="" width="1024" height="1536" fetchpriority="high" decoding="async" />
+        </picture>
+        <div class="livros-art-hero__tablet-screen" aria-hidden="true">
+          <video autoplay muted loop playsinline preload="metadata" poster="assets/tutorials/livros/lumeo-livros-tablet-poster.webp" tabindex="-1">
+            <source data-src="assets/tutorials/livros/lumeo-livros-tablet-loop-12s.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <div class="livros-art-hero__phone-screen" aria-hidden="true">
+          <video autoplay muted loop playsinline preload="metadata" poster="assets/tutorials/livros/lumeo-livros-phone-poster.webp" tabindex="-1">
+            <source data-src="assets/tutorials/livros/lumeo-livros-phone-loop-13s.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <svg class="livros-art-hero__frame-overlay livros-art-hero__frame-overlay--mobile" viewBox="0 0 1024 1536" preserveAspectRatio="none" aria-hidden="true">
+          <defs><mask id="livros-art-mask-mobile" maskUnits="userSpaceOnUse">
+            <rect width="1024" height="1536" fill="#fff" />
+            <path d="M180 681 C172 680 166 688 164 700 L124 1018 C122 1038 132 1049 149 1051 L682 1107 C694 1108 703 1099 701 1086 L671 793 C669 781 661 774 650 772 Z" fill="#000" />
+            <path d="M775 739 C765 740 758 749 757 761 L727 1089 C726 1104 735 1113 748 1115 L911 1125 C924 1126 932 1117 932 1104 L934 753 C934 738 925 728 912 729 Z" fill="#000" />
+            <rect x="804" y="719" width="84" height="33" rx="15" fill="#fff" />
+          </mask></defs>
+          <image data-href="assets/optimized/lumeo-livros-hero-mobile-approved.webp" width="1024" height="1536" preserveAspectRatio="none" mask="url(#livros-art-mask-mobile)" />
+        </svg>
+        <svg class="livros-art-hero__frame-overlay livros-art-hero__frame-overlay--desktop" viewBox="0 0 1672 941" preserveAspectRatio="none" aria-hidden="true">
+          <defs><mask id="livros-art-mask-desktop" maskUnits="userSpaceOnUse">
+            <rect width="1672" height="941" fill="#fff" />
+            <path d="M824 244 C814 242 806 249 804 261 L736 657 C733 676 743 687 759 689 L1321 742 C1334 743 1343 734 1344 721 L1371 373 C1372 361 1364 352 1353 349 Z" fill="#000" />
+            <path d="M1412 360 C1401 361 1394 369 1393 381 L1377 742 C1376 754 1385 763 1396 764 L1547 772 C1559 773 1568 764 1569 752 L1583 373 C1584 355 1574 344 1559 344 Z" fill="#000" />
+            <rect x="1457" y="337" width="82" height="31" rx="15" fill="#fff" />
+          </mask></defs>
+          <image data-href="assets/optimized/lumeo-livros-hero-desktop-approved.webp" width="1672" height="941" preserveAspectRatio="none" mask="url(#livros-art-mask-desktop)" />
+        </svg>
+        <button class="livros-art-hero__cta" type="button" aria-label="EU QUERO O MELHOR — acessar a oferta do Lumeo Livros" data-sales-cta data-hqs-hero-cta data-sales-cta-location="hero"><span>EU QUERO O MELHOR</span></button>
+      </section>
+      <section class="livros-bonus-premium" aria-labelledby="livros-bonus-title" data-livros-bonus>
+        <svg class="livros-bonus-premium__symbols" aria-hidden="true">
+          <symbol id="livros-bonus-drive" viewBox="0 0 48 48"><path fill="#20a464" d="M17.3 5.5h13.4l13.1 22.7H30.4z"/><path fill="#f6c344" d="M17.3 5.5 4.2 28.2l6.7 11.6L24 17.1z"/><path fill="#4385f5" d="M10.9 39.8h26.2l6.7-11.6H17.6z"/></symbol>
+          <symbol id="livros-bonus-headphones" viewBox="0 0 48 48"><path d="M8 27v-4C8 14.2 15.2 7 24 7s16 7.2 16 16v4M8 27h6v13H9a3 3 0 0 1-3-3v-7a3 3 0 0 1 2-3Zm32 0h-6v13h5a3 3 0 0 0 3-3v-7a3 3 0 0 0-2-3Z"/></symbol>
+          <symbol id="livros-bonus-books" viewBox="0 0 48 48"><path d="M8 7h9v34H8zM20 11h9v30h-9zM31 8l8-2 8 32-8 2z"/><path d="M11 13h3M23 17h3M36 14l4-1"/></symbol>
+          <symbol id="livros-bonus-comics" viewBox="0 0 48 48"><path d="M7 10h25v31H7zM16 6h25v31h-5V10H16z"/><path d="m11 29 6-7 5 5 6-9M11 15h12M11 35h17"/></symbol>
+        </svg>
+        <div class="livros-bonus-premium__inner">
+          <header class="livros-bonus-premium__heading">
+            <p class="livros-bonus-premium__eyebrow">BÔNUS INCLUÍDOS</p>
+            <h2 id="livros-bonus-title">🎁 Seu Lumeo vem com ainda mais histórias para aproveitar!</h2>
+            <p>Além de ler e organizar seus livros digitais, descubra os bônus especiais que acompanham sua compra.</p>
+          </header>
+          <div class="livros-bonus-premium__viewport">
+            <div class="livros-bonus-premium__track" data-livros-bonus-track aria-label="Bônus que acompanham a compra">
+              <article class="livros-bonus-card" data-livros-bonus-card><div class="livros-bonus-card__visual" aria-hidden="true"><span class="livros-bonus-card__drive"><svg><use href="#livros-bonus-drive" /></svg></span><svg class="livros-bonus-card__feature"><use href="#livros-bonus-books" /></svg></div><p class="livros-bonus-card__amount"><strong>1.500</strong><span>LIVROS EM PDF</span></p><h3>Uma coleção de diferentes gêneros para explorar</h3><p class="livros-bonus-card__copy">Amplie suas opções e descubra novas histórias em diferentes gêneros.</p><p class="livros-bonus-card__delivery"><svg aria-hidden="true"><use href="#livros-bonus-drive" /></svg><span>Entrega por link do Google Drive</span></p></article>
+              <article class="livros-bonus-card" data-livros-bonus-card><div class="livros-bonus-card__visual" aria-hidden="true"><span class="livros-bonus-card__drive"><svg><use href="#livros-bonus-drive" /></svg></span><svg class="livros-bonus-card__feature"><use href="#livros-bonus-headphones" /></svg></div><p class="livros-bonus-card__amount"><strong>200</strong><span>AUDIOBOOKS</span></p><h3>Mais histórias para ouvir quando quiser</h3><p class="livros-bonus-card__copy">Tenha uma coleção em áudio para aproveitar em diferentes momentos.</p><p class="livros-bonus-card__delivery"><svg aria-hidden="true"><use href="#livros-bonus-drive" /></svg><span>Entrega por link do Google Drive</span></p></article>
+              <article class="livros-bonus-card" data-livros-bonus-card><div class="livros-bonus-card__visual" aria-hidden="true"><span class="livros-bonus-card__drive"><svg><use href="#livros-bonus-drive" /></svg></span><svg class="livros-bonus-card__feature"><use href="#livros-bonus-comics" /></svg></div><p class="livros-bonus-card__amount livros-bonus-card__amount--collection"><strong>COLEÇÃO DE HQs</strong><span>TURMA DA MÔNICA</span></p><h3>Uma coleção especial de quadrinhos</h3><p class="livros-bonus-card__copy">Coleção disponibilizada somente enquanto sua distribuição comercial estiver autorizada.</p><p class="livros-bonus-card__delivery"><svg aria-hidden="true"><use href="#livros-bonus-drive" /></svg><span>Entrega por link do Google Drive</span></p></article>
             </div>
           </div>
-
+          <footer class="livros-bonus-premium__closing"><div><strong>Seu leitor de Livros + três coleções para ampliar sua experiência.</strong><small>Os bônus são entregues separadamente por links do Google Drive. O aplicativo Lumeo começa sem livros pré-instalados.</small></div><button class="livros-bonus-premium__cta" type="button" data-sales-cta data-livros-audiobooks-cta data-sales-cta-location="audiobooks">QUERO MEU LUMEO + BÔNUS</button></footer>
+        </div>
+      </section>
+      <section class="sales-testimonials sales-section livros-testimonials" aria-labelledby="stories-title">
+        <header class="sales-testimonials__heading"><p class="sales-eyebrow">EXEMPLOS ILUSTRATIVOS · RELATOS RECONSTITUÍDOS</p><h2 id="stories-title">Quem ama ler merece uma experiência melhor.</h2><p>Conheça as experiências de quem já utiliza o Lumeo.</p><small class="sales-testimonials__disclosure">As imagens são ilustrativas, não são capturas originais nem comprovação de depoimentos reais.</small></header>
+        <div class="sales-testimonials__carousel" data-testimonials-carousel>
+          <div class="sales-testimonials__track" data-testimonials-track aria-label="Relatos reconstituídos sobre a experiência com livros no Lumeo">
+            <article class="sales-testimonial" tabindex="0" role="button" aria-label="Ampliar relato reconstituído de Rafaela" data-testimonial-card data-testimonial-image="assets/depoimentos/rafaela.webp" data-testimonial-alt="Exemplo ilustrativo de Rafaela" data-testimonial-avatar="whatsapp"><div class="sales-testimonial__image" aria-hidden="true"><img src="assets/depoimentos/rafaela.webp" alt="" width="384" height="1281" loading="lazy" decoding="async" fetchpriority="low" /><span>Toque para ampliar</span></div><div class="sales-testimonial__copy"><h3>Rafaela</h3><p>Satisfação com a variedade de leituras e com a organização da biblioteca.</p></div></article>
+            <article class="sales-testimonial" tabindex="0" role="button" aria-label="Ampliar relato reconstituído de Milena" data-testimonial-card data-testimonial-image="assets/depoimentos/milena.webp" data-testimonial-alt="Exemplo ilustrativo de Milena" data-testimonial-avatar="whatsapp"><div class="sales-testimonial__image" aria-hidden="true"><img src="assets/depoimentos/milena.webp" alt="" width="384" height="1277" loading="lazy" decoding="async" fetchpriority="low" /><span>Toque para ampliar</span></div><div class="sales-testimonial__copy"><h3>Milena</h3><p>Uma experiência bonita e fácil de usar para aproveitar diferentes leituras.</p></div></article>
+            <article class="sales-testimonial" tabindex="0" role="button" aria-label="Ampliar relato reconstituído de Jorge" data-testimonial-card data-testimonial-image="assets/depoimentos/jorge.webp" data-testimonial-alt="Exemplo ilustrativo de Jorge" data-testimonial-avatar="whatsapp"><div class="sales-testimonial__image" aria-hidden="true"><img src="assets/depoimentos/jorge.webp" alt="" width="384" height="1281" loading="lazy" decoding="async" fetchpriority="low" /><span>Toque para ampliar</span></div><div class="sales-testimonial__copy"><h3>Jorge</h3><p>Busca prática e organização para montar a lista das próximas leituras.</p></div></article>
+            <article class="sales-testimonial" tabindex="0" role="button" aria-label="Ampliar relato reconstituído de Antônio" data-testimonial-card data-testimonial-image="assets/depoimentos/antonio.webp" data-testimonial-alt="Exemplo ilustrativo de Antônio" data-testimonial-avatar="whatsapp"><div class="sales-testimonial__image" aria-hidden="true"><img src="assets/depoimentos/antonio.webp" alt="" width="384" height="1281" loading="lazy" decoding="async" fetchpriority="low" /><span>Toque para ampliar</span></div><div class="sales-testimonial__copy"><h3>Antônio</h3><p>Variedade de categorias e praticidade para continuar lendo em diferentes momentos.</p></div></article>
+          </div>
+        </div>
+        <footer class="sales-testimonials__footer"><p>Os exemplos ilustram possibilidades de uso. Consulte nesta página os recursos e as condições atuais do aplicativo.</p><button class="sales-button sales-button--primary" type="button" data-sales-cta data-sales-cta-location="testimonials">QUERO CONHECER O LUMEO</button></footer>
+      </section>
+      <section class="livros-tutorials" aria-labelledby="livros-tutorials-title">
+        <header class="livros-tutorials__heading"><p class="sales-eyebrow">VEJA NA PRÁTICA</p><h2 id="livros-tutorials-title">Veja o Lumeo em ação.</h2><p>Da organização à leitura: conheça a experiência em dois vídeos rápidos.</p></header>
+        <div class="livros-tutorials__rail" data-sales-tutorials aria-label="Demonstrações do Lumeo Livros">
+          <article class="sales-tutorial-card livros-tutorial-card livros-tutorial-card--drive">
+            <h3 class="sales-tutorial-card__title livros-tutorial-card__title">Adicione seus livros com facilidade</h3>
+            <div class="sales-tutorial-card__body livros-tutorial-card__body">
+              <div class="sales-tutorial-card__media livros-tutorial-card__media">
+                <video width="432" height="996" autoplay muted loop preload="none" playsinline poster="assets/tutorials/lumeo-importar-drive-poster.svg" data-sales-tutorial data-tutorial-key="drive" aria-describedby="livros-tutorial-drive-summary livros-tutorial-drive-caption" aria-label="Demonstração de importação de livros pelo Google Drive">
+                  <source data-src="assets/tutorials/lumeo-importar-drive.mp4" type="video/mp4" />
+                  Seu navegador não oferece suporte à reprodução deste vídeo.
+                </video>
+              </div>
+              <p class="livros-tutorial-card__summary" id="livros-tutorial-drive-summary">Organize seus livros digitais e tenha suas leituras sempre à mão.</p>
+              <div class="sales-tutorial-card__captions livros-tutorial-card__captions" id="livros-tutorial-drive-caption" data-tutorial-captions aria-live="polite" aria-atomic="true"></div>
+            </div>
+          </article>
+          <article class="sales-tutorial-card livros-tutorial-card livros-tutorial-card--reading">
+            <h3 class="sales-tutorial-card__title livros-tutorial-card__title">Descubra uma leitura do seu jeito</h3>
+            <div class="sales-tutorial-card__body livros-tutorial-card__body">
+              <div class="sales-tutorial-card__media livros-tutorial-card__media">
+                <video width="432" height="984" autoplay muted loop preload="none" playsinline poster="assets/tutorials/lumeo-leitura-pomodoro-poster.svg" data-sales-tutorial data-tutorial-key="reading" aria-describedby="livros-tutorial-reading-summary livros-tutorial-reading-caption" aria-label="Demonstração de leitura, personalização e navegação entre páginas">
+                  <source data-src="assets/tutorials/lumeo-leitura-pomodoro.mp4" type="video/mp4" />
+                  Seu navegador não oferece suporte à reprodução deste vídeo.
+                </video>
+              </div>
+              <p class="livros-tutorial-card__summary" id="livros-tutorial-reading-summary">Ajuste sua experiência, vire as páginas e aproveite cada momento da leitura.</p>
+              <div class="sales-tutorial-card__captions livros-tutorial-card__captions" id="livros-tutorial-reading-caption" data-tutorial-captions aria-live="polite" aria-atomic="true"></div>
+            </div>
+          </article>
         </div>
       </section>
       <section class="sales-benefits sales-section" aria-labelledby="benefits-title">
@@ -46,32 +140,6 @@
       <section class="sales-how sales-section" aria-labelledby="how-title">
         <header class="sales-heading"><p class="sales-eyebrow">Simples desde o primeiro livro</p><h2 id="how-title">Da pasta à leitura, em 5 passos.</h2></header>
         <ol class="sales-how__steps"><li><strong>01</strong><div><h3>Adicione seus arquivos ou um link autorizado do Google Drive</h3></div></li><li><strong>02</strong><div><h3>Organize os livros na biblioteca</h3></div></li><li><strong>03</strong><div><h3>Selecione um livro</h3></div></li><li><strong>04</strong><div><h3>Abra o leitor</h3></div></li><li><strong>05</strong><div><h3>Personalize sua leitura</h3></div></li></ol>
-        <div class="sales-tutorials" data-sales-tutorials aria-label="Tutoriais do Lumeo">
-          <article class="sales-tutorial-card">
-            <h3 class="sales-tutorial-card__title">Como adicionar seus livros</h3>
-            <div class="sales-tutorial-card__body">
-              <div class="sales-tutorial-card__media">
-              <video controls muted loop preload="none" playsinline poster="assets/tutorials/lumeo-importar-drive-poster.svg" data-sales-tutorial data-tutorial-key="drive" aria-describedby="tutorial-drive-caption" aria-label="Demonstração de importação de livros pelo Google Drive">
-                <source data-src="assets/tutorials/lumeo-importar-drive.mp4" type="video/mp4" />
-                Seu navegador não oferece suporte à reprodução deste vídeo.
-              </video>
-              </div>
-              <div class="sales-tutorial-card__captions" id="tutorial-drive-caption" data-tutorial-captions aria-live="polite" aria-atomic="true"></div>
-            </div>
-          </article>
-          <article class="sales-tutorial-card">
-            <h3 class="sales-tutorial-card__title">Como funciona a leitura</h3>
-            <div class="sales-tutorial-card__body">
-              <div class="sales-tutorial-card__media">
-              <video controls muted loop preload="none" playsinline poster="assets/tutorials/lumeo-leitura-pomodoro-poster.svg" data-sales-tutorial data-tutorial-key="reading" aria-describedby="tutorial-reading-caption" aria-label="Demonstração de leitura, aparência e Pomodoro">
-                <source data-src="assets/tutorials/lumeo-leitura-pomodoro.mp4" type="video/mp4" />
-                Seu navegador não oferece suporte à reprodução deste vídeo.
-              </video>
-              </div>
-              <div class="sales-tutorial-card__captions" id="tutorial-reading-caption" data-tutorial-captions aria-live="polite" aria-atomic="true"></div>
-            </div>
-          </article>
-        </div>
       </section>
       <section class="sales-how sales-section sales-how--reading" aria-label="Demonstração da experiência de leitura">
         <div class="editorial-mini-demo"><div class="sales-hero__visual">
@@ -94,62 +162,10 @@
         <div class="sales-library__rails" data-sales-library aria-live="polite"></div>
         <p class="sales-library__notice">Capas e descrições ilustram a biblioteca do aplicativo. Não representam uma lista dos títulos entregues nos bônus.</p>
       </section>
-      <section class="sales-testimonials sales-section" aria-labelledby="stories-title">
-        <header class="sales-testimonials__heading"><p class="sales-eyebrow">EXEMPLOS ILUSTRATIVOS</p><h2 id="stories-title">Veja exemplos de uso do Lumeo</h2><p>Peças ilustrativas sobre organização e leitura; não representam compras verificadas.</p><small class="sales-testimonials__disclosure">As imagens são ilustrativas, não são capturas originais nem comprovação de depoimentos reais.</small></header>
-        <div class="sales-testimonials__carousel" data-testimonials-carousel>
-          <div class="sales-testimonials__track" data-testimonials-track tabindex="0" aria-label="Exemplos sobre a experiência com livros no Lumeo">
-            <article class="sales-testimonial"><button class="sales-testimonial__image" type="button" data-testimonial-image="assets/depoimentos/rafaela.webp" data-testimonial-alt="Exemplo ilustrativo de Rafaela" data-testimonial-avatar="whatsapp"><img src="assets/depoimentos/rafaela.webp" alt="Exemplo ilustrativo de Rafaela sobre livros no Lumeo" width="384" height="1281" loading="lazy" decoding="async" /><span>Ampliar</span></button><div class="sales-testimonial__copy"><h3>Rafaela</h3><p>Satisfação com a variedade de leituras e com a organização da biblioteca.</p></div></article>
-            <article class="sales-testimonial"><button class="sales-testimonial__image" type="button" data-testimonial-image="assets/depoimentos/milena.webp" data-testimonial-alt="Exemplo ilustrativo de Milena" data-testimonial-avatar="whatsapp"><img src="assets/depoimentos/milena.webp" alt="Exemplo ilustrativo de Milena sobre o uso do Lumeo" width="384" height="1277" loading="lazy" decoding="async" /><span>Ampliar</span></button><div class="sales-testimonial__copy"><h3>Milena</h3><p>Uma experiência bonita e fácil de usar para aproveitar diferentes leituras.</p></div></article>
-            <article class="sales-testimonial"><button class="sales-testimonial__image" type="button" data-testimonial-image="assets/depoimentos/jorge.webp" data-testimonial-alt="Exemplo ilustrativo de Jorge" data-testimonial-avatar="whatsapp"><img src="assets/depoimentos/jorge.webp" alt="Exemplo ilustrativo de Jorge sobre busca e organização no Lumeo" width="384" height="1281" loading="lazy" decoding="async" /><span>Ampliar</span></button><div class="sales-testimonial__copy"><h3>Jorge</h3><p>Busca prática e organização para montar a lista das próximas leituras.</p></div></article>
-            <article class="sales-testimonial"><button class="sales-testimonial__image" type="button" data-testimonial-image="assets/depoimentos/antonio.webp" data-testimonial-alt="Exemplo ilustrativo de Antônio" data-testimonial-avatar="whatsapp"><img src="assets/depoimentos/antonio.webp" alt="Exemplo ilustrativo de Antônio sobre leitura no Lumeo" width="384" height="1281" loading="lazy" decoding="async" /><span>Ampliar</span></button><div class="sales-testimonial__copy"><h3>Antônio</h3><p>Variedade de categorias e praticidade para continuar lendo em diferentes momentos.</p></div></article>
-          </div>
-          <div class="sales-testimonials__navigation"><button type="button" data-testimonials-previous aria-label="Relato anterior">←</button><div class="sales-testimonials__indicators" data-testimonials-indicators aria-label="Posição no carrossel"></div><button type="button" data-testimonials-next aria-label="Próximo relato">→</button></div>
-        </div>
-        <footer class="sales-testimonials__footer"><p>Os exemplos ilustram possibilidades de uso. Consulte nesta página os recursos e as condições atuais do aplicativo.</p><button class="sales-button sales-button--primary" type="button" data-sales-cta data-sales-cta-location="testimonials">QUERO CONHECER O LUMEO</button></footer>
-      </section>
-      <section class="livros-bonus" aria-labelledby="audiobooks-title">
-        <div class="livros-bonus__inner">
-          <span class="livros-bonus__ribbon" aria-hidden="true">BÔNUS</span>
-          <header class="livros-bonus__copy">
-            <p class="sales-eyebrow">BÔNUS EXCLUSIVOS</p>
-            <h2 id="audiobooks-title">Mais leitura para aproveitar no Lumeo.</h2>
-            <p class="livros-bonus__lead">Além do aplicativo, você recebe acesso separado pelo Google Drive à coleção especial de livros digitais, audiolivros e HQs e mangás, entregue após a compra.</p>
-          </header>
-          <div class="livros-bonus__visual">
-            <div class="livros-bonus__phone" role="img" aria-label="Player do Lumeo Audiolivros com disco de vinil, barra de progresso e controles de reprodução">
-              <div class="livros-bonus__screen" aria-hidden="true">
-                <p class="livros-bonus__screen-title">Escolha um capítulo</p>
-                <div class="livros-bonus__turntable">
-                  <div class="livros-bonus__disc"><span>LUMEO</span></div>
-                  <div class="livros-bonus__arm"></div>
-                </div>
-                <div class="livros-bonus__timeline"><span></span></div>
-                <div class="livros-bonus__times"><span>12:40</span><span>1x</span><span>38:15</span></div>
-                <div class="livros-bonus__controls"><span>15</span><span>⏮</span><b>▶</b><span>⏭</span><span>15</span></div>
-              </div>
-            </div>
-          </div>
-          <ol class="livros-bonus__cards" aria-label="Bônus incluídos na oferta">
-            <li class="livros-bonus__card"><span class="livros-bonus__tag">BÔNUS 1</span><span class="livros-bonus__icon" aria-hidden="true">📚</span><h3>1.500 livros digitais</h3><p>Uma coleção diversa para adicionar à sua biblioteca pessoal pelo link do Google Drive entregue após a compra.</p></li>
-            <li class="livros-bonus__card"><span class="livros-bonus__tag">BÔNUS 2</span><span class="livros-bonus__icon" aria-hidden="true">🎧</span><h3>200 audiolivros</h3><p>Uma coleção de audiolivros para aproveitar no player do Lumeo, entregue por link separado do Google Drive após a compra.</p></li>
-            <li class="livros-bonus__card"><span class="livros-bonus__tag">BÔNUS 3</span><span class="livros-bonus__icon" aria-hidden="true">💥</span><h3>Coleção de HQs e mangás</h3><p>Quadrinhos e mangás para ler no leitor de HQs do Lumeo, entregues por link separado do Google Drive após a compra.</p></li>
-            <li class="livros-bonus__card"><span class="livros-bonus__tag">NO APP</span><span class="livros-bonus__icon" aria-hidden="true">▶</span><h3>Ouça por capítulos</h3><p>Use Play, pausa, velocidade e avanço de 15 segundos para ouvir os arquivos MP3 adicionados ao Lumeo.</p></li>
-          </ol>
-          <div class="livros-bonus__details">
-            <p class="livros-bonus__highlight">Os bônus são entregues separadamente por link do Google Drive após a compra e não ficam pré-instalados no aplicativo.</p>
-            <button class="sales-button livros-bonus__cta" type="button" data-sales-cta data-livros-audiobooks-cta data-sales-cta-location="audiobooks">QUERO CONHECER O LUMEO</button>
-          </div>
-        </div>
-      </section>
       <section class="sales-devices sales-section" aria-labelledby="devices-title">
         <div class="sales-devices__copy"><p class="sales-eyebrow">LEITURA DIGITAL NO ANDROID QUE VOCÊ JÁ TEM</p><h2 id="devices-title">QUER UMA EXPERIÊNCIA DE LEITURA DIGITAL SEM COMPRAR OUTRO APARELHO?</h2><p>Use o celular ou tablet Android que você já tem para organizar sua biblioteca pessoal e aproveitar seus livros no Lumeo. Uma experiência inspirada nos leitores digitais, sem equivalência técnica total. Lumeo é independente e não possui vínculo com Amazon ou Kindle. Para estudar com mais espaço, o Lumeo também pode ser acessado pela versão web no navegador do computador.</p><ul class="sales-devices__features" aria-label="Recursos do Lumeo"><li>Biblioteca pessoal e busca</li><li>Celular e tablet Android</li><li>Fonte, tema e aparência</li><li>Animação de virar páginas</li><li>Pomodoro por tempo ou páginas</li><li>Pausas programadas</li><li>Lembretes de leitura</li><li>Arquivos e links autorizados</li></ul></div>
         <div class="sales-devices__stage" aria-label="Biblioteca pessoal do Lumeo em tablet Android"><figure class="sales-tablet"><img src="assets/optimized/lumeo-library-mobile.webp" alt="Biblioteca pessoal do Lumeo em um tablet Android" width="540" height="960" loading="lazy" decoding="async" /></figure></div>
       </section>
-      <section class="sales-offer sales-section" aria-labelledby="offer-title">
-        <div class="sales-offer__copy"><p class="sales-eyebrow">ACESSO AO APLICATIVO</p><h2 id="offer-title">Uma biblioteca pessoal para os livros que você já tem.</h2><p>Organize seus próprios arquivos, personalize a leitura e acompanhe o progresso no celular ou tablet Android.</p><ul><li>Leitura de PDF e EPUB</li><li>Importação local e por pasta autorizada do Google Drive</li><li>Biblioteca offline após baixar os arquivos escolhidos</li><li>Personalização, Pomodoro e lembretes</li></ul></div>
-        <aside class="sales-price-card" aria-label="Preço do aplicativo Lumeo"><div class="livros-receive"><h3>O que você recebe:</h3><ul><li><span aria-hidden="true">✓</span> Aplicativo leitor para Android</li><li class="livros-receive__bonus"><span aria-hidden="true">🎁</span> Bônus: 1.500 livros digitais</li><li class="livros-receive__bonus"><span aria-hidden="true">🎁</span> Bônus: 200 audiolivros</li><li class="livros-receive__bonus"><span aria-hidden="true">🎁</span> Bônus: coleção de HQs e mangás</li><li><span aria-hidden="true">✓</span> Biblioteca e progresso locais</li></ul></div><p>PREÇO DO APLICATIVO</p><div class="sales-offer-price"><strong data-sales-price>R$ 9,99</strong></div><small>Os bônus são entregues separadamente por link do Google Drive após a compra e não ficam pré-instalados no aplicativo. As condições de pagamento serão exibidas no checkout antes da confirmação.</small><button class="sales-button sales-button--primary" type="button" data-sales-cta data-hqs-offer-cta data-sales-cta-location="offer">QUERO ORGANIZAR MEUS LIVROS</button></aside>
-      </section>
-      <section class="sales-faq sales-section" aria-labelledby="faq-title"><header class="sales-heading"><p class="sales-eyebrow">Dúvidas frequentes</p><h2 id="faq-title">Saiba o que está incluído.</h2></header><div data-sales-faq></div></section>
 <section class="editorial-final"><p class="sales-eyebrow">SUA PRÓXIMA LEITURA COMEÇA AQUI</p><h2>Organize. Personalize. Continue lendo.</h2><p>Acesse o Lumeo por <strong data-sales-price>R$ 9,99</strong>, com os bônus apresentados nesta página.</p><button type="button" class="sales-button sales-button--primary" data-sales-cta data-sales-cta-location="final">QUERO ACESSAR O LUMEO</button></section>
 </main>
     <footer class="sales-footer"><img src="assets/optimized/lumeo-logo.webp" alt="" width="32" height="32" loading="lazy" /><p>© <span data-sales-year></span> Lumeo. Leitor pessoal para Android.</p><nav class="sales-footer__links" aria-label="Links legais"><a href="privacidade.html">Privacidade</a><a href="termos.html">Termos</a><button type="button" data-sales-open-consent>Preferências de privacidade</button></nav></footer>
@@ -158,6 +174,6 @@
     <button class="sales-mobile-cta sales-button sales-button--primary" type="button" data-sales-cta data-sales-cta-location="sticky">QUERO MEU LUMEO</button>
     <aside class="sales-consent" data-sales-consent role="dialog" aria-labelledby="sales-consent-title" hidden><div><h2 id="sales-consent-title">Sua privacidade importa</h2><p>O Meta Pixel só será carregado se estiver configurado e você autorizar a medição de visitas e intenções de compra. <a href="privacidade.html">Leia a política de privacidade</a>.</p></div><div class="sales-consent__actions"><button type="button" data-consent-reject>Continuar sem medição</button><button type="button" data-consent-accept>Aceitar medição</button></div></aside>
     <div class="sales-modal" data-sales-modal hidden aria-hidden="true"></div>
-    <script type="module" src="js/livros.js"></script>
+    <script type="module" src="js/livros.js?v=20261024-padrao-hqs"></script>
   </body>
 </html>

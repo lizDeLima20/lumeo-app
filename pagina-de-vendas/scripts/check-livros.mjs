@@ -10,7 +10,7 @@ const read = (relativePath) => readFileSync(resolve(pageRoot, relativePath), "ut
 const sha256 = (relativePath) => createHash("sha256").update(readFileSync(resolve(pageRoot, relativePath))).digest("hex");
 const html = read("index-livros.html");
 const hqsHtml = read("index-hqs.html");
-const css = `${read("css/livros.css")}\n${read("css/livros-conversion.css")}`;
+const css = `${read("css/livros.css")}\n${read("css/livros-conversion.css")}\n${read("css/livros-art-hero.css")}\n${read("css/livros-bonus-premium.css")}\n${read("css/livros-testimonials-premium.css")}\n${read("css/livros-demo-compact.css")}`;
 const js = read("js/livros.js");
 const sharedJs = read("js/shared.js");
 const relevantSource = `${html}\n${css}\n${js}`;
@@ -18,10 +18,10 @@ const tests = [];
 const test = (name, callback) => tests.push([name, callback]);
 const normalizeText = (markup) => markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").replace(/\s+([.,!?;:])/g, "$1").trim();
 
-test("headline AIDA e destaque estão exatos", () => {
+test("headline acessível acompanha exatamente a arte aprovada", () => {
   const headline = html.match(/<h1\s+id="sales-title"[^>]*>([\s\S]*?)<\/h1>/)?.[1];
   assert.ok(headline);
-  assert.equal(normalizeText(headline), "Seus livros organizados. Sua leitura do seu jeito.");
+  assert.equal(normalizeText(headline), "Você ama ler. Está na hora de amar como você lê.");
 });
 
 test("hero não usa altura baseada na viewport", () => {
@@ -30,7 +30,6 @@ test("hero não usa altura baseada na viewport", () => {
 
 test("não anuncia garantia ou condição comercial ainda não configurada", () => {
   assert.doesNotMatch(`${html}\n${js}`, /Garantia de 7 dias|7 dias de garantia/i);
-  assert.match(html, /condições de pagamento serão exibidas no checkout antes da confirmação/i);
 });
 
 test("copy comercial não contém condições removidas nem pagamento único", () => {
@@ -39,8 +38,8 @@ test("copy comercial não contém condições removidas nem pagamento único", (
 });
 
 test("relatos de Livros são reativados e identificados como mensagens reconstituídas", () => {
-  assert.match(html, /class="sales-testimonials sales-section"/);
-  assert.doesNotMatch(html, /class="sales-testimonials sales-section"[^>]*hidden/);
+  assert.match(html, /class="sales-testimonials sales-section livros-testimonials"/);
+  assert.doesNotMatch(html, /class="sales-testimonials sales-section livros-testimonials"[^>]*hidden/);
   assert.match(html, /EXEMPLOS ILUSTRATIVOS/);
   assert.match(html, /não são capturas originais nem comprovação/);
   assert.match(html, /rafaela\.webp/);
@@ -49,6 +48,54 @@ test("relatos de Livros são reativados e identificados como mensagens reconstit
   assert.match(html, /antonio\.webp/);
   assert.equal((html.match(/data-testimonial-avatar="whatsapp"/g) || []).length, 4);
   assert.doesNotMatch(html, /data-testimonial-image="assets\/depoimentos\/renato\.webp"/);
+});
+
+test("depoimentos de Livros ficam logo após os bônus no padrão premium", () => {
+  const bonus = html.indexOf('class="livros-bonus-premium"');
+  const testimonials = html.indexOf('class="sales-testimonials sales-section livros-testimonials"');
+  const benefits = html.indexOf('class="sales-benefits sales-section"');
+  assert.ok(bonus >= 0 && testimonials > bonus && benefits > testimonials);
+  assert.match(html, /Quem ama ler merece uma experiência melhor\./);
+  assert.match(html, /Conheça as experiências de quem já utiliza o Lumeo\./);
+  assert.equal((html.match(/data-testimonial-card/g) || []).length, 4);
+  assert.match(js, /mountLivrosTestimonials\(\)/);
+  // Mesmo componente dos depoimentos de HQs (js/hqs-marquee.js): loop, arraste, pausa e
+  // rolagem vertical livre sobre os cards.
+  const marquee = read("js/livros-testimonials-marquee.js");
+  const component = read("js/hqs-marquee.js");
+  assert.match(marquee, /mountHqsMarquee\(/);
+  assert.match(marquee, /direction:\s*1/);
+  assert.match(marquee, /marquee\?\.pause\(\)/);
+  assert.match(marquee, /marquee\?\.resume\(\)/);
+  assert.match(marquee, /MutationObserver/);
+  assert.match(component, /pointerdown/);
+  assert.match(component, /prefers-reduced-motion: reduce/);
+  assert.match(css, /\.livros-testimonials \.sales-testimonials__carousel \{[^}]*touch-action: pan-y/);
+  assert.match(css, /\.livros-testimonials \.sales-testimonials__track \* \{ touch-action: pan-y; \}/);
+  assert.match(css, /height:\s*clamp\(15rem, 30svh, 17rem\)/);
+});
+
+test("demonstração compacta fica após os depoimentos e preserva os vídeos de Livros", () => {
+  const testimonials = html.indexOf('class="sales-testimonials sales-section livros-testimonials"');
+  const tutorials = html.indexOf('class="livros-tutorials"');
+  const benefits = html.indexOf('class="sales-benefits sales-section"');
+  assert.ok(testimonials >= 0 && tutorials > testimonials && benefits > tutorials);
+  const section = sectionAt("livros-tutorials");
+  assert.match(section, /Veja o Lumeo em ação\./);
+  assert.match(section, /Adicione seus livros com facilidade/);
+  assert.match(section, /Descubra uma leitura do seu jeito/);
+  assert.match(section, /Organize seus livros digitais e tenha suas leituras sempre à mão\./);
+  assert.match(section, /Ajuste sua experiência, vire as páginas e aproveite cada momento da leitura\./);
+  assert.equal((section.match(/<video/g) || []).length, 2);
+  assert.equal((section.match(/\bautoplay\b/g) || []).length, 2);
+  assert.equal((section.match(/\bmuted\b/g) || []).length, 2);
+  assert.equal((section.match(/\bloop\b/g) || []).length, 2);
+  assert.equal((section.match(/\bplaysinline\b/g) || []).length, 2);
+  assert.match(section, /data-src="assets\/tutorials\/lumeo-importar-drive\.mp4"/);
+  assert.match(section, /data-src="assets\/tutorials\/lumeo-leitura-pomodoro\.mp4"/);
+  assert.match(css, /object-fit:\s*contain/);
+  assert.match(css, /touch-action:\s*pan-x pan-y/);
+  assert.match(css, /\.livros-tutorials\s*\{[\s\S]*?margin-top:\s*5px/);
 });
 
 test("vídeo leve do hero está configurado e os arquivos existem", () => {
@@ -232,14 +279,11 @@ const sectionAt = (className) => {
 
 
 
-test("FAQ responde formatos, áudio e compra sem prometer garantia", () => {
-  for (const question of ["O Lumeo vem com livros ou áudios?", "Como funcionam os audiolivros?", "Posso adicionar meus próprios áudios?", "Como funciona a compra?",
-    "Posso ouvir enquanto leio?", "Quais formatos de áudio funcionam?",
-    "Como acesso o Lumeo?", "Os livros já vêm inclusos?", "Quais formatos posso adicionar?"]) {
-    assert.ok(js.includes(`["${question}"`), `Pergunta ausente: ${question}`);
-  }
-  assert.doesNotMatch(js, /Tem garantia\?/);
-  assert.match(js, /\["Como funciona a compra\?", "Ao tocar em um botão de compra, você será direcionado ao checkout seguro da Hotmart/);
+test("blocos de oferta interna e dúvidas frequentes foram removidos", () => {
+  assert.doesNotMatch(html, /class="sales-offer sales-section"/);
+  assert.doesNotMatch(html, /class="sales-faq sales-section"/);
+  assert.doesNotMatch(html, /data-sales-faq|id="offer-title"|id="faq-title"/);
+  assert.doesNotMatch(js, /function mountFaq|mountFaq\(\)/);
 });
 
 test("todos os CTAs de Livros usam o checkout real da Hotmart", () => {
@@ -247,8 +291,8 @@ test("todos os CTAs de Livros usam o checkout real da Hotmart", () => {
   assert.ok(sharedJs.includes(`livros: "${checkoutUrl}"`));
   assert.match(sharedJs, /checkoutProviders: Object\.freeze\(\{ livros: "hotmart", hqs: "hotmart" \}\)/);
   const buttons = [...html.matchAll(/<button[^>]*data-sales-cta[^>]*>/g)].map((match) => match[0]);
-  assert.equal(buttons.length, 6);
-  buttons.forEach((button) => assert.match(button, /data-sales-cta-location="(?:hero|testimonials|audiobooks|offer|sticky|final)"/));
+  assert.equal(buttons.length, 5);
+  buttons.forEach((button) => assert.match(button, /data-sales-cta-location="(?:hero|testimonials|audiobooks|sticky|final)"/));
   assert.match(js, /mountLivrosTracking\(\{ checkoutUrl: SALES_CONFIG\.checkoutUrls\.livros \}\)/);
 });
 
@@ -308,14 +352,19 @@ test("botão fixo se esconde quando o CTA de audiolivros está visível", async 
   assert.equal(mobile.classList.contains("is-visible"), true);
 });
 
-test("mockup do player: imagem existente ou disco em CSS que respeita reduced-motion", () => {
-  const image = sectionAt("livros-bonus").match(/assets\/audiolivros\/player\.(?:png|webp)/)?.[0];
-  if (image) { assert.equal(existsSync(resolve(pageRoot, image)), true); return; }
-  assert.match(sectionAt("livros-bonus"), /class="livros-bonus__disc"/);
-  const animation = css.match(/@media \(prefers-reduced-motion: no-preference\) \{\s*\.livros-bonus__disc \{ animation:[^}]+\}\s*\}/);
-  assert.ok(animation, "a rotação do disco deve existir só sem prefers-reduced-motion");
-  assert.equal((css.match(/livros-bonus-spin \d/g) || []).length, 1, "a animação não pode ser aplicada fora do media query");
-  assert.match(css, /\.livros-bonus__phone \{[^}]*aspect-ratio:/);
+test("carrossel de bônus é contínuo, arrastável e respeita movimento reduzido", () => {
+  // Mesmo componente do bônus de HQs; em sentido contrário aos depoimentos de Livros.
+  const carousel = read("js/livros-bonus-carousel.js");
+  const component = read("js/hqs-marquee.js");
+  assert.match(carousel, /mountHqsMarquee\(/);
+  assert.match(carousel, /direction:\s*-1/);
+  assert.match(component, /cloneNode\(true\)/);
+  assert.match(component, /pointerdown/);
+  assert.doesNotMatch(component, /setAttribute\("inert"/);
+  // pan-y: o gesto vertical sobre o bônus rola a página (pan-x bloqueava).
+  assert.match(css, /body\[data-sales-catalog="livros"\] \.hqs-marquee \{[^}]*touch-action: pan-y/);
+  assert.doesNotMatch(read("css/livros-bonus-premium.css"), /touch-action:\s*pan-x;/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
 test("check-hqs.mjs continua passando", () => {
@@ -329,76 +378,77 @@ test("oferta isolada de HQs e bônus preservados conforme orientação", async (
   assert.equal(SALES_CONFIG.price, 9.99);
   assert.match(html, /QUERO ACESSAR O LUMEO/);
   assert.match(html, /R\$ 9,99/);
-  assert.doesNotMatch(html + js, /R\$ (?:29,90|39,99)|somente até hoje|<del>/i);
-  assert.match(html, /1\.500 livros digitais/);
-  assert.match(html, /200 audiolivros/);
-  assert.ok(html.indexOf('class="sales-how sales-section"') < html.indexOf('class="sales-testimonials'));
+  assert.equal((html.match(/R\$ 39,99/g) || []).length, 1, "o preço anterior deve existir somente na cópia acessível da arte aprovada");
+  assert.doesNotMatch(html + js, /R\$ 29,90|somente até hoje|<del>/i);
+  const bonusText = normalizeText(sectionAt("livros-bonus-premium"));
+  assert.match(bonusText, /1\.500 LIVROS EM PDF/i);
+  assert.match(bonusText, /200 AUDIOBOOKS/i);
+  assert.ok(html.indexOf('class="livros-bonus-premium"') < html.indexOf('class="sales-testimonials'));
   assert.equal((html.match(/<li><strong>0[1-5]<\/strong>/g)||[]).length, 5);
-  assert.match(html, /controles|Ouça por capítulos/);
+  assert.match(html, /TURMA DA MÔNICA/);
   assert.match(html, /não possui vínculo com Amazon ou Kindle/);
 });
-test("hero destaca o aplicativo e os bônus entregues separadamente", () => {
-  const heroStart = html.indexOf('<section class="sales-hero"');
+test("hero usa a arte aprovada, dois vídeos e CTA transparente", () => {
+  const heroStart = html.indexOf('<section class="livros-art-hero"');
   const hero = html.slice(heroStart, html.indexOf("</section>", heroStart));
-  assert.match(hero, /ACESSO AO LUMEO/);
-  assert.match(hero, /QUERO ACESSAR O LUMEO/);
-  assert.match(hero, /Os arquivos não vêm pré-instalados/);
-  assert.match(hero, /3 bônus da oferta/);
-  assert.match(html, /1\.500 livros digitais/);
-  assert.match(hero, /entregues separadamente pelo Google Drive/);
+  assert.match(hero, /lumeo-livros-hero-mobile-approved\.webp/);
+  assert.match(hero, /lumeo-livros-hero-desktop-approved\.webp/);
+  assert.equal((hero.match(/<video autoplay muted loop playsinline/g) || []).length, 2);
+  assert.match(hero, /class="livros-art-hero__cta"[^>]*data-sales-cta/);
+  assert.match(hero, /EU QUERO O MELHOR/);
 });
 
 test("seção de bônus explica a entrega externa pelo Google Drive", () => {
-  const start = html.indexOf('<section class="livros-bonus"');
+  const start = html.indexOf('<section class="livros-bonus-premium"');
   const end = html.indexOf("</section>", start);
   const section = html.slice(start, end);
   assert.ok(start >= 0 && end > start);
-  assert.match(section, /aria-labelledby="audiobooks-title"/);
-  assert.match(section, /<h2 id="audiobooks-title">/);
+  assert.match(section, /aria-labelledby="livros-bonus-title"/);
+  assert.match(section, /<h2 id="livros-bonus-title">/);
   assert.match(section, /data-livros-audiobooks-cta/);
-  assert.match(section, /BÔNUS EXCLUSIVOS/);
-  assert.match(section, /acesso separado pelo Google Drive/);
+  assert.match(section, /BÔNUS INCLUÍDOS/);
+  assert.equal((section.match(/Entrega por link do Google Drive/g) || []).length, 3);
 });
 
 test("seção restaura os bônus e preserva a separação do aplicativo", () => {
-  const headline = html.match(/<h2 id="audiobooks-title">([\s\S]*?)<\/h2>/)?.[1];
-  assert.equal(normalizeText(headline || ""), "Mais leitura para aproveitar no Lumeo.");
-  assert.match(sectionAt("livros-bonus"), /1\.500 livros digitais/);
-  assert.match(sectionAt("livros-bonus"), /200 audiolivros/);
+  const headline = html.match(/<h2 id="livros-bonus-title">([\s\S]*?)<\/h2>/)?.[1];
+  assert.equal(normalizeText(headline || ""), "🎁 Seu Lumeo vem com ainda mais histórias para aproveitar!");
+  assert.match(sectionAt("livros-bonus-premium"), /1\.500/);
+  assert.match(sectionAt("livros-bonus-premium"), /200/);
 });
 
 test("descrição esclarece que os bônus não ficam pré-instalados", () => {
-  const audio = normalizeText(sectionAt("livros-bonus"));
-  for (const text of ["1.500 livros digitais", "200 audiolivros", "não ficam pré-instalados no aplicativo", "QUERO CONHECER O LUMEO"]) assert.ok(audio.includes(text), `Texto ausente: ${text}`);
+  const bonus = normalizeText(sectionAt("livros-bonus-premium"));
+  for (const text of ["1.500", "200", "sem livros pré-instalados", "QUERO MEU LUMEO + BÔNUS"]) assert.ok(bonus.includes(text), `Texto ausente: ${text}`);
 });
 
-test("a seção tem os três bônus anunciados e o recurso de reprodução", () => {
-  const cards = [...sectionAt("livros-bonus").matchAll(/<li class="livros-bonus__card">([\s\S]*?)<\/li>/g)].map((match) => match[1]);
-  assert.equal(cards.length, 4);
-  assert.deepEqual(cards.map((card) => normalizeText(card.match(/<h3>([\s\S]*?)<\/h3>/)?.[1] || "")), ["1.500 livros digitais", "200 audiolivros", "Coleção de HQs e mangás", "Ouça por capítulos"]);
-  cards.forEach((card) => assert.match(card, /class="livros-bonus__icon"/));
+test("a seção tem exatamente os três bônus anunciados e ícones do Drive", () => {
+  const section = sectionAt("livros-bonus-premium");
+  const cards = [...section.matchAll(/<article class="livros-bonus-card" data-livros-bonus-card>([\s\S]*?)<\/article>/g)].map((match) => match[1]);
+  assert.equal(cards.length, 3);
+  assert.match(section, /LIVROS EM PDF/);
+  assert.match(section, /AUDIOBOOKS/);
+  assert.match(section, /TURMA DA MÔNICA/);
+  cards.forEach((card) => assert.match(card, /livros-bonus-drive/));
 });
 
-test("a oferta discrimina o aplicativo e os bônus entregues separadamente", () => {
-  const card = html.match(/<aside class="sales-price-card"[\s\S]*?<\/aside>/)?.[0] || "";
-  const text = normalizeText(card);
-  assert.ok(text.includes("O que você recebe:"));
-  assert.ok(text.includes("Aplicativo leitor para Android"));
-  for (const item of ["Aplicativo leitor para Android", "Bônus: 1.500 livros digitais", "Bônus: 200 audiolivros", "Biblioteca e progresso locais"]) assert.ok(text.includes(item), `Ausente: ${item}`);
-  assert.ok(card.indexOf("O que você recebe") < card.indexOf("data-sales-price"));
-  assert.ok(text.includes("PREÇO DO APLICATIVO"));
-  assert.ok(text.includes("bônus são entregues separadamente por link do Google Drive"));
+test("oferta final preserva preço, bônus e checkout após a remoção dos blocos", () => {
+  const final = html.match(/<section class="editorial-final">[\s\S]*?<\/section>/)?.[0] || "";
+  assert.match(final, /R\$ 9,99/);
+  assert.match(final, /com os bônus apresentados nesta página/);
+  assert.match(final, /data-sales-cta-location="final"/);
+  assert.match(final, /QUERO ACESSAR O LUMEO/);
 });
 
 test("microcopies diferenciam o app da entrega separada dos bônus", () => {
-  assert.match(html, /Aplicativo leitor \+ bônus por link após a compra/);
-  assert.match(html, /bônus são entregues separadamente por link do Google Drive/i);
+  assert.match(html, /aplicativo Lumeo começa sem livros pré-instalados/i);
+  assert.match(html, /bônus são entregues separadamente por links do Google Drive/i);
 });
 
 test("página anuncia somente os bônus comerciais autorizados pelo proprietário", () => {
-  const source = `${html}\n${js}`;
-  assert.match(source, /200 audiolivros/i);
-  assert.match(source, /1\.500 livros/i);
+  const source = `${normalizeText(html)}\n${js}`;
+  assert.match(source, /200 AUDIOBOOKS/i);
+  assert.match(source, /1\.500 LIVROS EM PDF/i);
   assert.doesNotMatch(source, /músicas para ler ouvindo|Músicas para leitura/i);
   assert.match(source, /Google Drive/i);
 });

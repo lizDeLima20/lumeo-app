@@ -4,9 +4,14 @@ import { mountBooksHeroVideo } from "./livros-hero-video.js";
 import { mountLivrosTracking } from "./livros-tracking.js";
 import { mountMobileCtaVisibility } from "./mobile-cta.js";
 import { mountAnalyticsConsent } from "./sales-consent.js";
-import { mountTestimonials } from "./testimonials-carousel.js";
+import { mountLivrosArtHero } from "./livros-art-hero.js?v=20261024-2";
+import { mountLivrosBonusCarousel } from "./livros-bonus-carousel.js?v=20261024-2";
+import { mountLivrosTestimonials } from "./livros-testimonials-marquee.js?v=20261024-2";
 
 mountHeader(document.querySelector("[data-sales-header]"));
+mountLivrosArtHero();
+mountLivrosBonusCarousel();
+mountLivrosTestimonials();
 document.querySelector(".sales-header__cta")?.setAttribute("data-sales-cta-location", "header");
 mountAnalyticsConsent();
 mountLivrosTracking({ checkoutUrl: SALES_CONFIG.checkoutUrls.livros });
@@ -72,27 +77,6 @@ function mountLibrary(items) {
     });
     row.forEach((item) => rail.append(bookCard(item))); root.append(rail);
   });
-}
-
-function mountFaq() {
-  const root = document.querySelector("[data-sales-faq]"); if (!root) return;
-  const rows = [
-    ["Como acesso o Lumeo?", "Após a confirmação da compra, você recebe as orientações de acesso ao aplicativo Lumeo."],
-    ["O Lumeo funciona no celular?", "Sim. O Lumeo foi pensado para celulares Android e possui interface adaptada para telas móveis."],
-    ["Posso usar no tablet?", "Sim. Em tablets Android, você aproveita mais espaço para a biblioteca e para as páginas."],
-    ["Os livros já vêm inclusos?", "O aplicativo é um leitor pessoal. Após a compra, esta oferta entrega por link separado do Google Drive acesso à coleção anunciada de 1.500 livros digitais; os arquivos não ficam pré-instalados no app."],
-    ["Posso adicionar meus próprios arquivos?", "Sim. Você pode selecionar arquivos compatíveis no aparelho ou adicionar uma pasta autorizada do Google Drive."],
-    ["Quais formatos posso adicionar?", "Esta página trata da leitura de PDF e EPUB. A compatibilidade pode variar conforme o arquivo e a versão instalada."],
-    ["O Lumeo vem com livros ou áudios?", "Após a compra, a oferta entrega por link separado do Google Drive os bônus anunciados de 1.500 livros digitais, 200 audiolivros e uma coleção de HQs e mangás. Eles não ficam instalados automaticamente no aplicativo."],
-    ["Como funcionam os audiolivros?", "Após a compra, o bônus de 200 audiolivros é entregue por link separado do Google Drive. No Lumeo, o player reproduz os arquivos MP3 adicionados por você, com download por faixa quando você solicita a reprodução."],
-    ["Posso ouvir enquanto leio?", "Sim. O áudio continua tocando no mini player enquanto você lê outro livro no Lumeo."],
-    ["Posso adicionar meus próprios áudios?", "Sim. Você adiciona pastas de áudio do Google Drive, como audiolivros, cursos ou playlists."],
-    ["Quais formatos de áudio funcionam?", "Arquivos MP3."],
-    ["O Lumeo ajuda a organizar minha leitura?", "Sim. Biblioteca visual, pesquisa, gêneros, progresso e leitura offline ajudam você a encontrar e retomar seus arquivos."],
-    ["Como funcionam lembretes e Pomodoro?", "Você pode organizar sessões por tempo ou páginas, programar pausas e criar lembretes de leitura no Android."],
-    ["Como funciona a compra?", "Ao tocar em um botão de compra, você será direcionado ao checkout seguro da Hotmart, onde verá as condições antes da confirmação do pagamento."],
-  ];
-  root.replaceChildren(...rows.map(([question, answer]) => { const details = document.createElement("details"); const summary = document.createElement("summary"), text = document.createElement("p"); summary.textContent = question; text.textContent = answer; details.append(summary, text); return details; }));
 }
 
 function mountTutorials() {
@@ -199,31 +183,6 @@ function mountTutorials() {
   videos.forEach((video) => observer.observe(video));
 }
 
-function mountTutorialCarousel() {
-  const track = document.querySelector("[data-sales-tutorials]");
-  if (!track) return;
-  const cards = [...track.querySelectorAll(".sales-tutorial-card")];
-  const navigation = document.createElement("nav");
-  navigation.className = "tutorial-navigation";
-  navigation.setAttribute("aria-label", "Escolher tutorial");
-  track.id = "tutoriais-livros";
-  const buttons = cards.map((card, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = index === 0 ? "1. Adicionar livros" : "2. Como ler";
-    button.setAttribute("aria-controls", track.id);
-    button.setAttribute("aria-pressed", String(index === 0));
-    button.addEventListener("click", () => track.scrollTo({ left: index * (track.clientWidth + 16), behavior: "auto" }));
-    navigation.append(button);
-    return button;
-  });
-  track.addEventListener("scroll", () => {
-    const active = Math.round(track.scrollLeft / (track.clientWidth + 16));
-    buttons.forEach((button, index) => button.setAttribute("aria-pressed", String(index === active)));
-  }, { passive: true });
-  track.after(navigation);
-}
-
-mountFaq(); mountTestimonials(); mountTutorials(); mountTutorialCarousel(); mountBooksHeroVideo(); mountMobileCtaVisibility({ extraCtaSelectors: ["[data-livros-audiobooks-cta]"] });
+mountTutorials(); mountBooksHeroVideo(); mountMobileCtaVisibility({ extraCtaSelectors: ["[data-livros-audiobooks-cta]"] });
 try { mountLibrary((await loadCatalog("livros")).items || []); }
 catch (error) { const root = document.querySelector("[data-sales-library]"); if (root) root.textContent = "Não foi possível carregar a demonstração da biblioteca."; console.error("Lumeo demo library unavailable", error); }
