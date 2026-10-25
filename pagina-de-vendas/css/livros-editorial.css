@@ -35,9 +35,16 @@ body[data-sales-catalog="livros"] .sales-how__steps { gap:16px; }
 body[data-sales-catalog="livros"] .sales-tutorial-card { border-radius:20px; overflow:hidden; }
 body[data-sales-catalog="livros"] .tutorial-navigation { display:none; }
 body[data-sales-catalog="livros"] .sales-testimonial { border-radius:16px; }
-body[data-sales-catalog="livros"] .sales-library__rail { animation:none!important; display:flex; overflow-x:auto; width:100%; max-width:100%; scroll-snap-type:x mandatory; padding-bottom:16px; }
-body[data-sales-catalog="livros"] .sales-demo-book { flex:0 0 156px; scroll-snap-align:start; }
-body[data-sales-catalog="livros"] .sales-demo-book__cover img { object-fit:contain; }
+/* Capas da biblioteca: duas fileiras com o mesmo carrossel dos bônus e depoimentos (js/hqs-marquee.js),
+   em sentidos opostos, sobre um fundo roxo claro. O viewport recebe .hqs-marquee (overflow hidden, pan-y). */
+body[data-sales-catalog="livros"] .sales-library { background:linear-gradient(180deg,#f1e9fc 0%,#e7dbf7 100%); }
+body[data-sales-catalog="livros"] .sales-library__rails { display:grid; gap:.8rem; overflow:visible; margin-inline:calc(50% - 50vw); }
+body[data-sales-catalog="livros"] .sales-library__viewport { overflow:hidden; touch-action:pan-y; }
+body[data-sales-catalog="livros"] .sales-library__viewport * { touch-action:pan-y; }
+body[data-sales-catalog="livros"] .sales-library__rail { display:flex; gap:.65rem; width:max-content; max-width:none; overflow:visible; padding:.35rem 0 1rem; animation:none!important; scroll-snap-type:none; }
+body[data-sales-catalog="livros"] .sales-demo-book { flex:0 0 156px; scroll-snap-align:none; }
+body[data-sales-catalog="livros"] .sales-demo-book__cover { padding:.3rem; border:1px solid rgba(238,196,103,.28); background:linear-gradient(145deg,#351b4d,#1c0d2b); box-shadow:0 .55rem 1.1rem rgba(64,30,98,.22); }
+body[data-sales-catalog="livros"] .sales-demo-book__cover img { border-radius:.25rem; object-fit:contain; background:#28143b; pointer-events:none; }
 body[data-sales-catalog="livros"] .sales-faq details { background:#fffaf2; border:1px solid #ded1e3; border-radius:12px; padding:18px; }
 body[data-sales-catalog="livros"] .sales-faq summary { font-size:18px; }
 body[data-sales-catalog="livros"] .editorial-final { padding:72px 24px 110px; text-align:center; background:#30203e; }

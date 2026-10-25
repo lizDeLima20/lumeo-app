@@ -10,7 +10,7 @@ const read = (relativePath) => readFileSync(resolve(pageRoot, relativePath), "ut
 const sha256 = (relativePath) => createHash("sha256").update(readFileSync(resolve(pageRoot, relativePath))).digest("hex");
 const html = read("index-livros.html");
 const hqsHtml = read("index-hqs.html");
-const css = `${read("css/livros.css")}\n${read("css/livros-conversion.css")}\n${read("css/livros-art-hero.css")}\n${read("css/livros-bonus-premium.css")}\n${read("css/livros-testimonials-premium.css")}\n${read("css/livros-demo-compact.css")}`;
+const css = `${read("css/livros.css")}\n${read("css/livros-conversion.css")}\n${read("css/livros-art-hero.css")}\n${read("css/livros-bonus-premium.css")}\n${read("css/livros-testimonials-premium.css")}\n${read("css/livros-demo-compact.css")}\n${read("css/livros-editorial.css")}`;
 const js = read("js/livros.js");
 const sharedJs = read("js/shared.js");
 const relevantSource = `${html}\n${css}\n${js}`;
@@ -98,40 +98,6 @@ test("demonstração compacta fica após os depoimentos e preserva os vídeos de
   assert.match(css, /\.livros-tutorials\s*\{[\s\S]*?margin-top:\s*5px/);
 });
 
-test("vídeo leve do hero está configurado e os arquivos existem", () => {
-  const video = html.match(/<video[^>]*data-books-hero-video[^>]*>/i)?.[0];
-  assert.ok(video);
-  for (const attribute of ["autoplay", "muted", "loop", "playsinline", "poster", "aria-hidden"]) {
-    assert.match(video, new RegExp(`\\b${attribute}(?:=|\\s|>)`, "i"));
-  }
-  assert.match(video, /preload="metadata"/i);
-  const source = html.match(/<source[^>]*data-src="assets\/tutorials\/livros\/lumeo-livros-hero\.mp4"[^>]*>/i)?.[0];
-  assert.ok(source);
-  assert.doesNotMatch(source, /\ssrc=/i);
-  assert.equal(existsSync(resolve(pageRoot, "assets/tutorials/livros/lumeo-livros-hero.mp4")), true);
-  assert.equal(existsSync(resolve(pageRoot, "assets/tutorials/livros/lumeo-livros-hero-poster.webp")), true);
-});
-
-test("economia de dados mantém o poster sem carregar o vídeo", async () => {
-  const { mountBooksHeroVideo } = await import(pathToFileURL(resolve(pageRoot, "js/livros-hero-video.js")).href);
-  const source = { dataset: { src: "assets/tutorials/livros/lumeo-livros-hero.mp4" } };
-  const video = {
-    dataset: {},
-    poster: "assets/tutorials/livros/lumeo-livros-hero-poster.webp",
-    querySelectorAll: () => [source],
-    load() { this.loadCalls = (this.loadCalls || 0) + 1; },
-    pause() { this.pauseCalls = (this.pauseCalls || 0) + 1; },
-    play() { this.playCalls = (this.playCalls || 0) + 1; return Promise.resolve(); },
-  };
-  const root = { hidden: false, querySelector: () => video, addEventListener() {}, removeEventListener() {} };
-  const windowRef = { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) };
-  mountBooksHeroVideo({ root, windowRef, navigatorRef: { connection: { saveData: true, effectiveType: "4g" } }, Observer: null });
-  assert.equal(source.src, undefined);
-  assert.equal(video.loadCalls || 0, 0);
-  assert.equal(video.playCalls || 0, 0);
-  assert.equal(video.dataset.posterOnly, "true");
-});
-
 test("assets anteriores continuam referenciados e inalterados", () => {
   const expected = {
     "assets/optimized/lumeo-logo.webp": "f2f0cf2e7feb9ee8d9a3ced10ff8119597918fe0f7f003d8007d131a100f07ef",
@@ -139,8 +105,6 @@ test("assets anteriores continuam referenciados e inalterados", () => {
     "assets/tutorials/lumeo-importar-drive.mp4": "a1ab5b92dc3ef7d603443b18279185a2f0c81da00ac9ced6eec3883f74c89247",
     "assets/tutorials/lumeo-leitura-pomodoro-poster.svg": "569f4d98ae10d987cec8cefc1a00558af694e419da281d0f6d62b5e4592eac55",
     "assets/tutorials/lumeo-leitura-pomodoro.mp4": "977b6031112969f438e73c7436008e13c77eaf2bf085303728eacdaabd2242b0",
-    "assets/animacoes/lumeo-virada-pagina.webp": "1a0df3ab887b8b5faacea627f54b756d142b2ad34dfb0d141a0fd5c162adbb59",
-    "assets/optimized/lumeo-library-mobile.webp": "7160d445728de0f26a46fd502635c5730ba93c70452b19276aa2d63cb87b9cea",
     "assets/depoimentos/rafaela.webp": "869e61ea9fc1ec1b540a5428de1ffacb080a8c2787f167c20a0959c043f6c342",
     "assets/depoimentos/renato.webp": "ce5aabfadecc79258b7a9b0544a037a5732444ffa92244dcedaf718aaab0feb1",
     "assets/depoimentos/milena.webp": "1d6f61512855ff7ba88fcdd42f0b0a2ba6162caf044ee91f173d502c8212f952",
@@ -234,22 +198,6 @@ test("Pixel de Livros não carrega nem envia eventos sem consentimento", async (
   cleanup();
 });
 
-test("vídeo otimizado respeita codec, tamanho, duração e ausência de áudio", () => {
-  const videoPath = resolve(pageRoot, "assets/tutorials/livros/lumeo-livros-hero.mp4");
-  const posterPath = resolve(pageRoot, "assets/tutorials/livros/lumeo-livros-hero-poster.webp");
-  assert.ok(statSync(videoPath).size <= 1_200_000);
-  assert.ok(statSync(posterPath).size <= 60_000);
-  const probe = spawnSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-show_entries", "stream=codec_type,codec_name,width,pix_fmt", "-of", "json", videoPath], { encoding: "utf8" });
-  assert.equal(probe.status, 0, probe.stderr);
-  const metadata = JSON.parse(probe.stdout);
-  const video = metadata.streams.find((stream) => stream.codec_type === "video");
-  assert.equal(video.codec_name, "h264");
-  assert.equal(video.pix_fmt, "yuv420p");
-  assert.ok(video.width <= 540);
-  assert.ok(Number(metadata.format.duration) >= 4 && Number(metadata.format.duration) <= 8);
-  assert.equal(metadata.streams.some((stream) => stream.codec_type === "audio"), false);
-});
-
 // As duas páginas oferecem agora os mesmos 3 bônus (decisão do proprietário): coleção de HQs e
 // mangás, 1.500 livros digitais e 200 audiolivros, entregues por link separado do Google Drive.
 test("a página de HQs mantém proposta própria e descreve os 3 bônus separados", () => {
@@ -284,6 +232,31 @@ test("blocos de oferta interna e dúvidas frequentes foram removidos", () => {
   assert.doesNotMatch(html, /class="sales-faq sales-section"/);
   assert.doesNotMatch(html, /data-sales-faq|id="offer-title"|id="faq-title"/);
   assert.doesNotMatch(js, /function mountFaq|mountFaq\(\)/);
+});
+
+test("seções adicionais indicadas nas capturas foram removidas", () => {
+  assert.doesNotMatch(html, /Da pasta à leitura, em 5 passos/);
+  assert.doesNotMatch(html, /Veja como funciona a leitura/);
+  assert.doesNotMatch(html, /LEITURA DIGITAL NO ANDROID QUE VOCÊ JÁ TEM/);
+  assert.doesNotMatch(html, /class="sales-how sales-section|class="sales-devices sales-section/);
+  assert.doesNotMatch(html, /data-books-hero-video|lumeo-virada-pagina\.webp|lumeo-library-mobile\.webp/);
+  assert.doesNotMatch(js, /mountBooksHeroVideo/);
+});
+
+test("capas da biblioteca percorrem duas linhas em sentidos opostos", () => {
+  // Mesmo carrossel dos bônus e depoimentos: o componente cria as cópias do loop (aria-hidden, tocáveis).
+  assert.match(js, /import \{ mountHqsMarquee \} from "\.\/hqs-marquee\.js\?v=/);
+  assert.match(js, /mountHqsMarquee\(\{ viewport, track: rail, cardSelector: "\.sales-demo-book", direction: index \? 1 : -1/);
+  assert.match(js, /className = "sales-library__viewport"/);
+  assert.match(js, /closest\("\.sales-demo-book__download"\)\) setDownloadState/);
+  assert.match(js, /closest\("\.sales-demo-book__cover"\)\)[^\n]*openBookDetails\(item\)/);
+  assert.doesNotMatch(js, /cover\.addEventListener|download\.addEventListener|setAttribute\("inert", ""\)/);
+  assert.match(css, /\.sales-library\s*\{[^}]*background:\s*linear-gradient\(180deg,#f1e9fc/);
+  assert.match(css, /\.sales-library__viewport\s*\{[^}]*touch-action:\s*pan-y/);
+  assert.match(css, /\.sales-library__viewport \*\s*\{[^}]*touch-action:\s*pan-y/);
+  assert.match(css, /\.sales-library__rail\s*\{[^}]*animation:\s*none!important/);
+  assert.match(css, /\.sales-demo-book__cover\s*\{[^}]*background:\s*linear-gradient\([^}]*#351b4d/);
+  assert.match(css, /\.sales-demo-book__cover img\s*\{[^}]*background:\s*#28143b/);
 });
 
 test("todos os CTAs de Livros usam o checkout real da Hotmart", () => {
@@ -384,9 +357,7 @@ test("oferta isolada de HQs e bônus preservados conforme orientação", async (
   assert.match(bonusText, /1\.500 LIVROS EM PDF/i);
   assert.match(bonusText, /200 AUDIOBOOKS/i);
   assert.ok(html.indexOf('class="livros-bonus-premium"') < html.indexOf('class="sales-testimonials'));
-  assert.equal((html.match(/<li><strong>0[1-5]<\/strong>/g)||[]).length, 5);
   assert.match(html, /TURMA DA MÔNICA/);
-  assert.match(html, /não possui vínculo com Amazon ou Kindle/);
 });
 test("hero usa a arte aprovada, dois vídeos e CTA transparente", () => {
   const heroStart = html.indexOf('<section class="livros-art-hero"');

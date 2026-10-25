@@ -1,12 +1,12 @@
 import { SALES_CONFIG, bindCommercialActions, money, mountHeader, openModal } from "./shared.js";
 import { loadCatalog } from "./catalogo.js";
-import { mountBooksHeroVideo } from "./livros-hero-video.js";
 import { mountLivrosTracking } from "./livros-tracking.js";
 import { mountMobileCtaVisibility } from "./mobile-cta.js";
 import { mountAnalyticsConsent } from "./sales-consent.js";
 import { mountLivrosArtHero } from "./livros-art-hero.js?v=20261024-2";
 import { mountLivrosBonusCarousel } from "./livros-bonus-carousel.js?v=20261024-2";
 import { mountLivrosTestimonials } from "./livros-testimonials-marquee.js?v=20261024-2";
+import { mountHqsMarquee } from "./hqs-marquee.js?v=20261024-4";
 
 mountHeader(document.querySelector("[data-sales-header]"));
 mountLivrosArtHero();
@@ -53,12 +53,13 @@ function openBookDetails(item) {
 }
 
 function bookCard(item) {
-  const article = document.createElement("article"); article.className = "sales-demo-book";
+  const article = document.createElement("article"); article.className = "sales-demo-book"; article.dataset.demoBook = item.id;
   const cover = document.createElement("button"); cover.type = "button"; cover.className = "sales-demo-book__cover"; cover.setAttribute("aria-label", `Ver detalhes de ${item.titulo}`);
   const image = document.createElement("img"); image.src = item.capa; image.alt = `Capa de ${item.titulo}`; image.loading = "lazy"; image.decoding = "async"; image.width = 180; image.height = 270;
   const download = document.createElement("button"); download.type = "button"; download.className = "sales-demo-book__download"; download.dataset.demoDownload = item.id; download.setAttribute("aria-pressed", String(downloaded.has(item.id))); download.textContent = downloaded.has(item.id) ? "✓" : "↓"; download.setAttribute("aria-label", `Simular download de ${item.titulo}`);
   const title = document.createElement("h3"); title.textContent = item.titulo;
-  cover.append(image); cover.addEventListener("click", () => openBookDetails(item)); download.addEventListener("click", () => setDownloadState(item.id)); article.append(cover, download, title); return article;
+  // Os cliques são tratados no carrossel (mountLibrary), para valerem também nas cópias do loop.
+  cover.append(image); article.append(cover, download, title); return article;
 }
 
 function mountLibrary(items) {
@@ -66,17 +67,27 @@ function mountLibrary(items) {
   const useful = items.filter((item) => item?.capa && item?.titulo);
   const selected = [...useful.filter((item) => item.sinopse), ...useful.filter((item) => !item.sinopse)].filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index).slice(0, 20);
   if (selected.length < 2) { root.textContent = "A demonstração da biblioteca está sendo preparada."; return; }
+  const byId = new Map(selected.map((item) => [item.id, item]));
+  const marquees = [];
   const middle = Math.ceil(selected.length / 2);
+  // Mesmo carrossel dos bônus e depoimentos: loop infinito, segurar pausa, arrastar move as capas
+  // com o dedo e o gesto vertical rola a página. A primeira fileira anda para a esquerda, a segunda para a direita.
   [selected.slice(0, middle), selected.slice(middle)].forEach((row, index) => {
-    const rail = document.createElement("div"); rail.className = `sales-library__rail${index ? " sales-library__rail--reverse" : ""}`; rail.setAttribute("aria-label", `Exemplos de biblioteca, linha ${index + 1}`);
-    rail.tabIndex = 0;
-    rail.addEventListener("keydown", (event) => {
-      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-      event.preventDefault();
-      rail.scrollBy({ left: event.key === "ArrowRight" ? 180 : -180, behavior: "auto" });
+    const viewport = document.createElement("div"); viewport.className = "sales-library__viewport"; viewport.setAttribute("role", "group"); viewport.setAttribute("aria-label", `Exemplos de biblioteca, linha ${index + 1}`);
+    const rail = document.createElement("div"); rail.className = `sales-library__rail${index ? " sales-library__rail--reverse" : ""}`;
+    row.forEach((item) => rail.append(bookCard(item)));
+    viewport.append(rail); root.append(viewport);
+    // Depois de um arraste o carrossel cancela o clique (fase de captura), então só toques simples chegam aqui.
+    viewport.addEventListener("click", (event) => {
+      const item = byId.get(event.target.closest(".sales-demo-book")?.dataset.demoBook);
+      if (!item) return;
+      if (event.target.closest(".sales-demo-book__download")) setDownloadState(item.id);
+      else if (event.target.closest(".sales-demo-book__cover")) { marquees.forEach((marquee) => marquee?.pause()); openBookDetails(item); }
     });
-    row.forEach((item) => rail.append(bookCard(item))); root.append(rail);
+    marquees.push(mountHqsMarquee({ viewport, track: rail, cardSelector: ".sales-demo-book", direction: index ? 1 : -1, speed: index ? 22 : 26, dragThreshold: 8, horizontalRatio: 1.4 }));
   });
+  const modal = document.querySelector("[data-sales-modal]");
+  if (modal) new MutationObserver(() => { if (modal.hidden) marquees.forEach((marquee) => marquee?.resume()); }).observe(modal, { attributes: true, attributeFilter: ["hidden"] });
 }
 
 function mountTutorials() {
@@ -212,6 +223,6 @@ function mountWhatsappFinalClearance(root = document) {
 }
 
 // Como em HQs, a barra fixa some na oferta final; aqui também durante toda a seção e o rodapé, para não cobrir textos nem links.
-mountTutorials(); mountBooksHeroVideo(); mountWhatsappFinalClearance(); mountMobileCtaVisibility({ extraCtaSelectors: ["[data-livros-audiobooks-cta]", "#final-cta", ".livros-footer"] });
+mountTutorials(); mountWhatsappFinalClearance(); mountMobileCtaVisibility({ extraCtaSelectors: ["[data-livros-audiobooks-cta]", "#final-cta", ".livros-footer"] });
 try { mountLibrary((await loadCatalog("livros")).items || []); }
 catch (error) { const root = document.querySelector("[data-sales-library]"); if (root) root.textContent = "Não foi possível carregar a demonstração da biblioteca."; console.error("Lumeo demo library unavailable", error); }
